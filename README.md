@@ -5,12 +5,12 @@ DOI for publication: AWAITING.
 
 Installation:
 
-Clone the repo and use enrivonment.yml and Anaconda or Miniconda to install the Python 3.9 environment including RDKIT and XTB from conda-forge.
+Clone the repo and use enrivonment.yml and Anaconda or Miniconda to install the Python 3.9 environment including RDKIT and XTB from conda-forge (see environment.yml for versions).
 CREST must be installed by the user (version 2.11.2 was used). In env_set.py, I set environment variables, including directories for output. E.g. the working directory for me is `/data/atarzia/projects/big_unsymm`.
 
 Usage:
 
-`build_ligand.py`: 
+`build_ligand.py`:
     build ligand precusor for cage construction -- includes optimisation. Generates ligands lowest energy conformer
 
 `build_metal_precusor.py`:
@@ -34,18 +34,18 @@ Usage:
 
 `analyse_cages.py`:
     for all desired systems:
-    
+
         * calculates total energies
         * calculates metal-atom order parameter
         * calculates ligand strain energy
 
 `analyse_subsystems.py` and `analyse_manual_subsytems.py`:
     for all desired systems: Not used in the manuscript.
-    
+
         * calculates total energies
         * calculates metal-atom order parameter
         * calculates ligand strain energy
-    
+
 
 
 `plotting.py`:
