@@ -25,6 +25,12 @@ def cage_path():
     )
 
 
+def dft_path():
+    return pathlib.Path(
+        '/data/atarzia/projects/simple_het/dft/'
+    )
+
+
 def calc_path():
     return pathlib.Path(
         '/data/atarzia/projects/simple_het/calculations/'

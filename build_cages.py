@@ -9,17 +9,161 @@ Author: Andrew Tarzia
 
 """
 
+import dataclasses
 import logging
 import sys
+import glob
 import os
 import stk
 import numpy as np
+from itertools import combinations
+from dataclasses import dataclass
 
-from utilities import AromaticCNC, AromaticCNCFactory
+from utilities import (
+    AromaticCNCFactory,
+    AromaticCNC,
+    get_furthest_pair_FGs,
+)
 from env_set import cage_path, calc_path, liga_path
 from optimisation import optimisation_sequence
-from topologies import M12L24
 
+
+def react_factory():
+    return stk.DativeReactionFactory(
+        stk.GenericReactionFactory(
+            bond_orders={
+                frozenset({
+                    AromaticCNC,
+                    stk.SingleAtom,
+                }): 9,
+            },
+        ),
+    )
+
+
+def stk_opt():
+    return stk.MCHammer(
+        target_bond_length=2,
+    )
+
+
+def homoleptic_m2l4(metal, ligand):
+    return stk.cage.M2L4Lantern(
+        building_blocks={
+            metal: (0, 1),
+            ligand: (2, 3, 4, 5),
+        },
+        optimizer=stk_opt(),
+        reaction_factory=react_factory(),
+    )
+
+
+def homoleptic_m3l6(metal, ligand):
+    return stk.cage.M3L6(
+        building_blocks={
+            metal: (0, 1, 2),
+            ligand: range(3, 9),
+        },
+        optimizer=stk_opt(),
+        reaction_factory=react_factory(),
+    )
+
+
+def homoleptic_m4l8(metal, ligand):
+    return stk.cage.M4L8(
+        building_blocks={
+            metal: (0, 1, 2, 3),
+            ligand: range(4, 12),
+        },
+        optimizer=stk_opt(),
+        reaction_factory=react_factory(),
+    )
+
+
+def heteroleptic_cis(metal, ligand1, ligand2):
+    return stk.cage.M2L4Lantern(
+        building_blocks={
+            metal: (0, 1),
+            ligand1: (2, 3),
+            ligand2: (4, 5),
+        },
+        optimizer=stk_opt(),
+        reaction_factory=react_factory(),
+    )
+
+
+def heteroleptic_trans(metal, ligand1, ligand2):
+    return stk.cage.M2L4Lantern(
+        building_blocks={
+            metal: (0, 1),
+            ligand1: (2, 4),
+            ligand2: (3, 5),
+        },
+        optimizer=stk_opt(),
+        reaction_factory=react_factory(),
+    )
+
+
+@dataclass
+class CageInfo:
+    tg: stk.TopologyGraph
+    charge: int
+
+
+def define_to_build(ligands):
+    pd = stk.BuildingBlock(
+        smiles='[Pd+2]',
+        functional_groups=(
+            stk.SingleAtom(stk.Pd(0, charge=2))
+            for i in range(4)
+        ),
+        position_matrix=[[0, 0, 0]],
+    )
+
+    to_build = {}
+    for lig in ligands:
+        homo_m2_name = f'm2_{lig}'
+        to_build[homo_m2_name] = CageInfo(
+            tg=homoleptic_m2l4(pd, ligands[lig]),
+            charge=4,
+        )
+
+        homo_m3_name = f'm3_{lig}'
+        to_build[homo_m3_name] = CageInfo(
+            tg=homoleptic_m3l6(pd, ligands[lig]),
+            charge=6,
+        )
+
+        homo_m4_name = f'm4_{lig}'
+        to_build[homo_m4_name] = CageInfo(
+            tg=homoleptic_m4l8(pd, ligands[lig]),
+            charge=8,
+        )
+
+    het_to_build = (
+        ('l1', 'la'), ('l1', 'lb'), ('l1', 'lc'), ('l1', 'ld'),
+        ('l2', 'la'), ('l2', 'lb'), ('l2', 'lc'), ('l2', 'ld'),
+        ('l3', 'la'), ('l3', 'lb'), ('l3', 'lc'), ('l3', 'ld'),
+    )
+    for lig1, lig2 in combinations(ligands, r=2):
+        l1, l2 = tuple(sorted((lig1, lig2)))
+        if (l1, l2) not in het_to_build:
+            continue
+
+        het_cis_name = f'cis_{l1}_{l2}'
+        to_build[het_cis_name] = CageInfo(
+            tg=heteroleptic_cis(pd, ligands[l1], ligands[l2]),
+            charge=4,
+        )
+
+        het_trans_name = f'trans_{l1}_{l2}'
+        to_build[het_trans_name] = CageInfo(
+            tg=heteroleptic_trans(pd, ligands[l1], ligands[l2]),
+            charge=4,
+        )
+
+    logging.info(f'there are {len(to_build)} cages to build')
+    return to_build
 
 def main():
     if (not len(sys.argv) == 1):
@@ -32,18 +176,20 @@ def main():
         pass
 
     li_path = liga_path()
-    lig_bb = stk.BuildingBlock.init_from_file(
-        path=os.path.join(li_path, 'lig_lowe.mol'),
-        functional_groups=(AromaticCNCFactory(), ),
-    )
-    pd = stk.BuildingBlock(
-        smiles='[Pd+2]',
-        functional_groups=(
-            stk.SingleAtom(stk.Pd(0, charge=2))
-            for i in range(4)
-        ),
-        position_matrix=[[0, 0, 0]],
-    )
+    ligands = {
+        i.split('/')[-1].replace('_opt.mol', ''): (
+            stk.BuildingBlock.init_from_file(
+                path=i,
+                functional_groups=(AromaticCNCFactory(), ),
+            )
+        )
+        for i in glob.glob(str(li_path / '*_opt.mol'))
+    }
+    ligands = {
+        i: ligands[i].with_functional_groups(
+            functional_groups=get_furthest_pair_FGs(ligands[i])
+        ) for i in ligands
+    }
 
     _wd = cage_path()
     _cd = calc_path()
@@ -54,159 +200,26 @@ def main():
     if not os.path.exists(_cd):
         os.mkdir(_cd)
 
-    # Define series of topologies to build.
-    # _init_opts = stk.MCHammer(target_bond_length=2.5, num_steps=1000)
-    _init_opts = stk.NullOptimizer()
-    _react_factory = stk.DativeReactionFactory(
-        stk.GenericReactionFactory(
-            bond_orders={
-                frozenset({
-                    AromaticCNC,
-                    stk.SingleAtom,
-                }): 9,
-            },
-        ),
-    )
-
-    _topos = {
-        'def': {
-            'tg': M12L24(
-                building_blocks={
-                    pd: range(0, 12),
-                    lig_bb: range(12, 36),
-                },
-                optimizer=_init_opts,
-                reaction_factory=_react_factory,
-            ),
-            'charge': 2*12,
-        },
-        'E1': {
-            'tg': M12L24(
-                building_blocks={
-                    pd: range(0, 12),
-                    lig_bb: range(12, 36),
-                },
-                # Based on A-1.
-                vertex_alignments={
-                    # Right.
-                    12: 0, 13: 0, 14: 1, 15: 1,
-                    # Left.
-                    16: 1, 17: 1, 18: 0, 19: 0,
-                    # Top.
-                    20: 0, 21: 0, 22: 1, 23: 1,
-                    # Bottom.
-                    24: 1, 25: 1, 26: 0, 27: 0,
-                    # Front.
-                    28: 0, 29: 1, 30: 0, 31: 1,
-                    # Back.
-                    32: 0, 33: 1, 34: 0, 35: 1,
-                },
-                optimizer=_init_opts,
-                reaction_factory=_react_factory,
-            ),
-            'charge': 2*12,
-        },
-        'E2': {
-            'tg': M12L24(
-                building_blocks={
-                    pd: range(0, 12),
-                    lig_bb: range(12, 36),
-                },
-                # Based on A-2.
-                vertex_alignments={
-                    # Right.
-                    12: 0, 13: 1, 14: 0, 15: 1,
-                    # Left.
-                    16: 1, 17: 0, 18: 1, 19: 0,
-                    # Top.
-                    20: 0, 21: 0, 22: 1, 23: 1,
-                    # Bottom.
-                    24: 1, 25: 1, 26: 0, 27: 0,
-                    # Front.
-                    28: 0, 29: 1, 30: 0, 31: 0,
-                    # Back.
-                    32: 0, 33: 1, 34: 1, 35: 1,
-                },
-                optimizer=_init_opts,
-                reaction_factory=_react_factory,
-            ),
-            'charge': 2*12,
-        },
-        'E3': {
-            'tg': M12L24(
-                building_blocks={
-                    pd: range(0, 12),
-                    lig_bb: range(12, 36),
-                },
-                # Based on A-3.
-                vertex_alignments={
-                    # Right.
-                    12: 1, 13: 0, 14: 1, 15: 0,
-                    # Left.
-                    16: 0, 17: 1, 18: 0, 19: 1,
-                    # Top.
-                    20: 0, 21: 1, 22: 0, 23: 1,
-                    # Bottom.
-                    24: 1, 25: 0, 26: 1, 27: 0,
-                    # Front.
-                    28: 0, 29: 0, 30: 1, 31: 1,
-                    # Back.
-                    32: 1, 33: 1, 34: 0, 35: 0,
-                },
-                optimizer=_init_opts,
-                reaction_factory=_react_factory,
-            ),
-            'charge': 2*12,
-        },
-        'G1': {
-            'tg': M12L24(
-                building_blocks={
-                    pd: range(0, 12),
-                    lig_bb: range(12, 36),
-                },
-                # Based on C-1.
-                vertex_alignments={
-                    # Right.
-                    12: 0, 13: 0, 14: 1, 15: 1,
-                    # Left.
-                    16: 1, 17: 1, 18: 0, 19: 0,
-                    # Top.
-                    20: 0, 21: 0, 22: 1, 23: 1,
-                    # Bottom.
-                    24: 1, 25: 1, 26: 0, 27: 0,
-                    # Front.
-                    28: 1, 29: 0, 30: 1, 31: 0,
-                    # Back.
-                    32: 1, 33: 0, 34: 1, 35: 0,
-                },
-                optimizer=_init_opts,
-                reaction_factory=_react_factory,
-            ),
-            'charge': 2*12,
-        },
-    }
-
+    # Define cages to build.
+    cages_to_build = define_to_build(ligands)
     # Build them all.
-    for topo in _topos:
-        unopt_file = os.path.join(_wd, f'{topo}_unopt.mol')
-        opt_file = os.path.join(_wd, f'{topo}_opt.mol')
+    for cage_name in cages_to_build:
+        cage_info = cages_to_build[cage_name]
+        unopt_file = os.path.join(_wd, f'{cage_name}_unopt.mol')
+        opt_file = os.path.join(_wd, f'{cage_name}_opt.mol')
 
-        tg = _topos[topo]['tg']
-        charge = _topos[topo]['charge']
-
-        logging.info(f'building {topo}')
-        unopt_mol = stk.ConstructedMolecule(tg)
+        logging.info(f'building {cage_name}')
+        unopt_mol = stk.ConstructedMolecule(cage_info.tg)
         unopt_mol.write(unopt_file)
 
         if not os.path.exists(opt_file):
-            logging.info(f'optimising {topo}')
+            logging.info(f'optimising {cage_name}')
             opt_mol = optimisation_sequence(
                 mol=unopt_mol,
-                name=topo,
-                charge=charge,
+                name=cage_name,
+                charge=cage_info.charge,
                 calc_dir=_cd,
             )
-            opt_mol = opt_mol.with_centroid(np.array((0, 0, 0)))
             opt_mol.write(opt_file)
 
 
