@@ -17,10 +17,10 @@ import env_set
 
 
 def optimisation_sequence(mol, name, charge, calc_dir):
-    gulp1_output = calc_dir / f'{name}_gulp1.mol'
-    gulp2_output = calc_dir / f'{name}_gulp2.mol'
-    gulpmd_output = calc_dir / f'{name}_gulpmd.mol'
-    xtbopt_output = calc_dir / f'{name}_xtb.mol'
+    gulp1_output = str(calc_dir / f'{name}_gulp1.mol')
+    gulp2_output = str(calc_dir / f'{name}_gulp2.mol')
+    gulpmd_output = str(calc_dir / f'{name}_gulpmd.mol')
+    xtbopt_output = str(calc_dir / f'{name}_xtb.mol')
 
     if not os.path.exists(gulp1_output):
         output_dir = os.path.join(calc_dir, f'{name}_gulp1')
