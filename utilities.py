@@ -638,3 +638,77 @@ def get_energy(molecule, name, charge, calc_dir):
 
     # In a.u.
     return energy
+
+
+def update_from_rdkit_conf(stk_mol, rdk_mol, conf_id):
+    """
+    Update the structure to match `conf_id` of `mol`.
+
+    Parameters
+    ----------
+    struct : :class:`stk.Molecule`
+        The molecule whoce coordinates are to be updated.
+
+    mol : :class:`rdkit.Mol`
+        The :mod:`rdkit` molecule to use for the structure update.
+
+    conf_id : :class:`int`
+        The conformer ID of the `mol` to update from.
+
+    Returns
+    -------
+    :class:`.Molecule`
+        The molecule.
+
+    """
+
+    pos_mat = rdk_mol.GetConformer(id=conf_id).GetPositions()
+    return stk_mol.with_position_matrix(pos_mat)
+
+
+def calculate_N_centroid_N_angle(bb):
+    """
+    Calculate the N-centroid-N angle of a ditopic building block.
+
+    This function will not work for cages built from FGs other than
+    metals + AromaticCNC and metals + AromaticCNN.
+
+    Parameters
+    ----------
+    bb : :class:`stk.BuildingBlock`
+        stk molecule to analyse.
+
+    Returns
+    -------
+    angle : :class:`float`
+        Angle between two bonding vectors of molecule.
+
+    """
+
+    fg_counts = 0
+    fg_positions = []
+    for fg in bb.get_functional_groups():
+        if isinstance(fg, AromaticCNC):
+            fg_counts += 1
+            # Get geometrical properties of the FG.
+            # Get N position - deleter.
+            N_position, = bb.get_atomic_positions(
+                atom_ids=fg.get_nitrogen().get_id()
+            )
+            fg_positions.append(N_position)
+
+    if fg_counts != 2:
+        raise ValueError(
+            f'{bb} does not have 2 AromaticCNC or AromaticCNN '
+            'functional groups.'
+        )
+
+    # Get building block centroid.
+    centroid_position = bb.get_centroid()
+
+    # Get vectors.
+    fg_vectors = [i-centroid_position for i in fg_positions]
+
+    # Calculate the angle between the two vectors.
+    angle = np.degrees(angle_between(*fg_vectors))
+    return angle
