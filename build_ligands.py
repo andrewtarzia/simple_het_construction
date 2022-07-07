@@ -14,19 +14,18 @@ import sys
 import os
 import stk
 import stko
-from itertools import combinations
-from scipy.spatial.distance import euclidean
 from rdkit.Chem import AllChem as rdkit
 
-from env_set import liga_path, calc_path
+from env_set import liga_path, calc_path, xtb_path
 from utilities import (
     AromaticCNCFactory,
     update_from_rdkit_conf,
     calculate_N_centroid_N_angle,
+    get_furthest_pair_FGs,
 )
 
 
-def select_conformer(molecule):
+def select_conformer(molecule, name, calc_dir):
     """
     Select and optimize a conformer with desired directionality.
 
@@ -41,7 +40,7 @@ def select_conformer(molecule):
     etkdg.randomSeed = 1000
     cids = rdkit.EmbedMultipleConfs(
         mol=confs,
-        numConfs=100,
+        numConfs=25,
         params=etkdg
     )
 
@@ -57,7 +56,18 @@ def select_conformer(molecule):
         new_mol = new_mol.with_functional_groups(
             functional_groups=get_furthest_pair_FGs(new_mol)
         )
-        new_mol = stko.UFF().optimize(new_mol)
+        logging.info(f'xtb opt of {name} conformer {cid}')
+        xtb_opt = stko.XTB(
+            xtb_path=xtb_path(),
+            output_dir= calc_dir / f'{name}_{cid}_ligxtb',
+            gfn_version=2,
+            num_cores=6,
+            opt_level='crude',
+            max_runs=1,
+            calculate_hessian=False,
+            unlimited_memory=True
+        )
+        new_mol = xtb_opt.optimize(mol=new_mol)
 
         # Update stk_mol to conformer geometry.
         new_mol = update_from_rdkit_conf(
@@ -68,6 +78,7 @@ def select_conformer(molecule):
 
         angle = calculate_N_centroid_N_angle(new_mol)
         if angle < min_angle:
+            logging.info(f'new selected conformer: {cid}')
             min_cid = cid
             min_angle = angle
             molecule = update_from_rdkit_conf(
@@ -76,35 +87,20 @@ def select_conformer(molecule):
                 conf_id=min_cid
             )
 
-    return molecule
-
-
-def get_furthest_pair_FGs(stk_mol):
-    """
-    Returns the pair of functional groups that are furthest apart.
-
-    """
-
-    if stk_mol.get_num_functional_groups() == 2:
-        return tuple(i for i in stk_mol.get_functional_groups())
-    elif stk_mol.get_num_functional_groups() < 2:
-        raise ValueError(f'{stk_mol} does not have at least 2 FGs')
-
-    fg_centroids = [
-        (fg, stk_mol.get_centroid(atom_ids=fg.get_placer_ids()))
-        for fg in stk_mol.get_functional_groups()
-    ]
-
-    fg_dists = sorted(
-        [
-            (i[0], j[0], euclidean(i[1], j[1]))
-            for i, j in combinations(fg_centroids, 2)
-        ],
-        key=lambda x: x[2],
-        reverse=True
+    logging.info(f'final xtb opt of {name}')
+    xtb_opt = stko.XTB(
+        xtb_path=xtb_path(),
+        output_dir= calc_dir / f'{name}_ligxtb',
+        gfn_version=2,
+        num_cores=6,
+        opt_level='normal',
+        max_runs=1,
+        calculate_hessian=False,
+        unlimited_memory=True
     )
+    molecule = xtb_opt.optimize(mol=molecule)
 
-    return (fg_dists[0][0], fg_dists[0][1])
+    return molecule
 
 
 def main():
@@ -161,7 +157,11 @@ def main():
 
         if not os.path.exists(opt_file):
             logging.info(f'selecting construction ligand for {lig}')
-            opt_mol = select_conformer(unopt_mol)
+            opt_mol = select_conformer(
+                molecule=unopt_mol,
+                name=lig,
+                calc_dir=_cd,
+            )
             opt_mol.write(opt_file)
 
 
