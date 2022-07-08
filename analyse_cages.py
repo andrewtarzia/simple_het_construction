@@ -16,13 +16,17 @@ import os
 import json
 import stk
 
-from env_set import cage_path, calc_path, liga_path
+from env_set import cage_path, calc_path, dft_path, liga_path
 from utilities import (
     get_order_values,
     get_organic_linkers,
     calculate_ligand_SE,
     get_energy,
+    get_dft_opt_energy,
+    get_dft_preopt_energy,
 )
+from pywindow_module import PyWindow
+from inflation import PoreMapper
 from plotting import plot_energies, plot_ops, plot_strain_energies
 
 
@@ -98,9 +102,32 @@ def main():
     )
     _wd = cage_path()
     _cd = calc_path()
+    dft_directory = dft_path()
+
+    property_dictionary = {
+        'cis': {
+            'charge': 4,
+            'exp_lig': 2,
+        },
+        'het': {
+            'charge': 4,
+            'exp_lig': 2,
+        },
+        'm2': {
+            'charge': 4,
+            'exp_lig': 1,
+        },
+        'm3': {
+            'charge': 6,
+            'exp_lig': 1,
+        },
+        'm4': {
+            'charge': 8,
+            'exp_lig': 1,
+        },
+    }
 
     structure_files = glob.glob(os.path.join(_wd, '*_opt.mol'))
-
     logging.info(f'there are {len(structure_files)} structures.')
     structure_results = {
         i.split('/')[-1].replace('_opt.mol', ''): {}
@@ -113,35 +140,53 @@ def main():
     else:
         for s_file in structure_files:
             name = s_file.split('/')[-1].replace('_opt.mol', '')
+            prefix = name.split('_')[0]
+            properties = property_dictionary[prefix]
+            print(properties)
+            charge = properties['charge']
+            exp_lig = properties['exp_lig']
             molecule = stk.BuildingBlock.init_from_file(s_file)
-
-            charge = 24
-            exp_lig = 1
 
             xtb_energy = get_energy(molecule, name, charge, _cd)
             structure_results[name]['xtb_energy'] = xtb_energy
+            structure_results[name]['dft_preopt_energy'] = (
+                get_dft_preopt_energy(molecule, name, dft_directory)
+            )
+            structure_results[name]['dft_opt_energy'] = (
+                get_dft_opt_energy(molecule, name, dft_directory)
+            )
 
             min_order_param = get_min_order_parameter(molecule)
             structure_results[name]['min_order_param'] = (
                 min_order_param
             )
 
-            sum_strain_energy = get_sum_strain_energy(
-                molecule=molecule,
-                name=name,
-                exp_lig=exp_lig,
-                lowe_ligand=lowe_ligand,
-                calc_dir=_cd,
+            structure_results[name]['pw_results'] = (
+                PyWindow(name, _cd).get_results(molecule)
+            )
+            structure_results[name]['pm_results'] = (
+                PoreMapper(name, _cd).get_results(molecule)
             )
 
-            structure_results[name]['sum_strain_energy'] = (
-                sum_strain_energy
-            )
+            # sum_strain_energy = get_sum_strain_energy(
+            #     molecule=molecule,
+            #     name=name,
+            #     exp_lig=exp_lig,
+            #     lowe_ligand=lowe_ligand,
+            #     calc_dir=_cd,
+            # )
+
+            # structure_results[name]['sum_strain_energy'] = (
+            #     sum_strain_energy
+            # )
+            print(structure_results)
+            raise SystemExit()
 
         with open(structure_res_file, 'w') as f:
             json.dump(structure_results, f)
 
     print(structure_results)
+    raise SystemExit()
 
     plot_energies(
         results_dict=structure_results,

@@ -168,17 +168,23 @@ dependencies:
     - dill==0.3.5.1
     - dnspython==2.2.1
     - fonttools==4.34.3
+    - joblib==1.1.0
     - mchammer==1.0.4
     - multiprocess==0.70.13
     - pandas==1.4.3
     - pathos==0.2.9
+    - poremapper==0.0.1
     - pox==0.3.1
     - ppft==1.7.6.5
     - pymongo==4.1.1
+    - pywindowx==0.0.4
     - rdkit-pypi==2022.3.4
+    - scikit-learn==1.1.1
     - seaborn==0.11.2
+    - sklearn==0.0
     - spindry==0.0.91
     - stk==2022.6.17.0
     - stko==0.0.40
+    - threadpoolctl==3.1.0
     - vabene==0.0.5
 prefix: /home/atarzia/anaconda3/envs/simple_het
