@@ -120,7 +120,7 @@ def write_input_file(
 def setup_calculations(structures_to_run, methods, directory):
     num_proc = 32
     for name, s_file, charge in structures_to_run:
-        struct = stk.BuildingBlock.init_from_file(s_file)
+        struct = stk.BuildingBlock.init_from_file(str(s_file))
         for method in methods:
             prefix = f'{method}_{name}'
             if method == 'sp_opt':
@@ -156,8 +156,9 @@ def get_orca_energy(
 
 def analyse_calculations(structures_to_run, methods, directory):
 
+    dft_data = {}
     for name, s_file, charge in structures_to_run:
-        struct = stk.BuildingBlock.init_from_file(s_file)
+        struct = stk.BuildingBlock.init_from_file(str(s_file))
         for method in methods:
             prefix = f'{method}_{name}'
             if method == 'opt':
@@ -219,6 +220,55 @@ def main():
     structures_to_run = (
         # name, structure file, charge
         ('m2_l1', ca_path / 'm2_l1_opt.mol', 4),
+        ('m2_l2', ca_path / 'm2_l2_opt.mol', 4),
+        ('m2_l3', ca_path / 'm2_l3_opt.mol', 4),
+        ('m2_la', ca_path / 'm2_la_opt.mol', 4),
+        ('m2_lb', ca_path / 'm2_lb_opt.mol', 4),
+        ('m2_lc', ca_path / 'm2_lc_opt.mol', 4),
+        ('m2_ld', ca_path / 'm2_ld_opt.mol', 4),
+
+        ('m3_l1', ca_path / 'm2_l1_opt.mol', 6),
+        ('m3_l2', ca_path / 'm2_l2_opt.mol', 6),
+        ('m3_l3', ca_path / 'm2_l3_opt.mol', 6),
+        ('m3_la', ca_path / 'm2_la_opt.mol', 6),
+        ('m3_lb', ca_path / 'm2_lb_opt.mol', 6),
+        ('m3_lc', ca_path / 'm2_lc_opt.mol', 6),
+        ('m3_ld', ca_path / 'm2_ld_opt.mol', 6),
+
+        ('m4_l1', ca_path / 'm2_l1_opt.mol', 8),
+        ('m4_l2', ca_path / 'm2_l2_opt.mol', 8),
+        ('m4_l3', ca_path / 'm2_l3_opt.mol', 8),
+        ('m4_la', ca_path / 'm2_la_opt.mol', 8),
+        ('m4_lb', ca_path / 'm2_lb_opt.mol', 8),
+        ('m4_lc', ca_path / 'm2_lc_opt.mol', 8),
+        ('m4_ld', ca_path / 'm2_ld_opt.mol', 8),
+
+        ('cis_l1_la', ca_path / 'cis_l1_la_opt.mol', 4),
+        ('cis_l1_lb', ca_path / 'cis_l1_lb_opt.mol', 4),
+        ('cis_l1_lc', ca_path / 'cis_l1_lc_opt.mol', 4),
+        ('cis_l1_ld', ca_path / 'cis_l1_ld_opt.mol', 4),
+        ('trans_l1_la', ca_path / 'trans_l1_la_opt.mol', 4),
+        ('trans_l1_lb', ca_path / 'trans_l1_lb_opt.mol', 4),
+        ('trans_l1_lc', ca_path / 'trans_l1_lc_opt.mol', 4),
+        ('trans_l1_ld', ca_path / 'trans_l1_ld_opt.mol', 4),
+
+        ('cis_l2_la', ca_path / 'cis_l2_la_opt.mol', 4),
+        ('cis_l2_lb', ca_path / 'cis_l2_lb_opt.mol', 4),
+        ('cis_l2_lc', ca_path / 'cis_l2_lc_opt.mol', 4),
+        ('cis_l2_ld', ca_path / 'cis_l2_ld_opt.mol', 4),
+        ('trans_l2_la', ca_path / 'trans_l2_la_opt.mol', 4),
+        ('trans_l2_lb', ca_path / 'trans_l2_lb_opt.mol', 4),
+        ('trans_l2_lc', ca_path / 'trans_l2_lc_opt.mol', 4),
+        ('trans_l2_ld', ca_path / 'trans_l2_ld_opt.mol', 4),
+
+        ('cis_l3_la', ca_path / 'cis_l3_la_opt.mol', 4),
+        ('cis_l3_lb', ca_path / 'cis_l3_lb_opt.mol', 4),
+        ('cis_l3_lc', ca_path / 'cis_l3_lc_opt.mol', 4),
+        ('cis_l3_ld', ca_path / 'cis_l3_ld_opt.mol', 4),
+        ('trans_l3_la', ca_path / 'trans_l3_la_opt.mol', 4),
+        ('trans_l3_lb', ca_path / 'trans_l3_lb_opt.mol', 4),
+        ('trans_l3_lc', ca_path / 'trans_l3_lc_opt.mol', 4),
+        ('trans_l3_ld', ca_path / 'trans_l3_ld_opt.mol', 4),
     )
 
     if state == 'setup':
