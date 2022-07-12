@@ -22,10 +22,16 @@ class PoreMapper():
     def get_results(self, molecule):
         results = {}
 
-        xyz_file = self._calc_dir / f'{self._name}_pm.xyz'
-        final_stru_xyz = self._calc_dir / f'{self._name}_pm_stru.xyz'
-        final_blob_xyz = self._calc_dir / f'{self._name}_pm_blob.xyz'
-        final_pore_xyz = self._calc_dir / f'{self._name}_pm_pore.xyz'
+        xyz_file = str(self._calc_dir / f'{self._name}_pm.xyz')
+        final_stru_xyz = str(
+            self._calc_dir / f'{self._name}_pm_stru.xyz'
+        )
+        final_blob_xyz = str(
+            self._calc_dir / f'{self._name}_pm_blob.xyz'
+        )
+        final_pore_xyz = str(
+            self._calc_dir / f'{self._name}_pm_pore.xyz'
+        )
 
         logging.info(f'running pore mapper on {self._name}:')
 

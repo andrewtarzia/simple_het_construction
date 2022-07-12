@@ -24,9 +24,9 @@ class PyWindow():
     def get_results(self, molecule):
         results = {}
 
-        xyz_file = self._calc_dir / f'{self._name}_pw.xyz'
-        json_file = self._calc_dir / f'{self._name}_pw.json'
-        pdb_file = self._calc_dir / f'{self._name}_pw.pdb'
+        xyz_file = str(self._calc_dir / f'{self._name}_pw.xyz')
+        json_file = str(self._calc_dir / f'{self._name}_pw.json')
+        pdb_file = str(self._calc_dir / f'{self._name}_pw.pdb')
 
         # Read in host from xyz file.
         molecule.write(xyz_file)

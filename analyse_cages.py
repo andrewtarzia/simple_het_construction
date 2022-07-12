@@ -24,6 +24,8 @@ from utilities import (
     get_energy,
     get_dft_opt_energy,
     get_dft_preopt_energy,
+    AromaticCNCFactory,
+    get_furthest_pair_FGs,
 )
 from pywindow_module import PyWindow
 from inflation import PoreMapper
@@ -97,9 +99,21 @@ def main():
         pass
 
     li_path = liga_path()
-    lowe_ligand = stk.BuildingBlock.init_from_file(
-        path=os.path.join(li_path, 'lig_lowe.mol'),
-    )
+    ligands = {
+        i.split('/')[-1].replace('_opt.mol', ''): (
+            stk.BuildingBlock.init_from_file(
+                path=i,
+                functional_groups=(AromaticCNCFactory(), ),
+            )
+        )
+        for i in glob.glob(str(li_path / '*_opt.mol'))
+    }
+    ligands = {
+        i: ligands[i].with_functional_groups(
+            functional_groups=get_furthest_pair_FGs(ligands[i])
+        ) for i in ligands
+    }
+
     _wd = cage_path()
     _cd = calc_path()
     dft_directory = dft_path()
@@ -109,7 +123,7 @@ def main():
             'charge': 4,
             'exp_lig': 2,
         },
-        'het': {
+        'trans': {
             'charge': 4,
             'exp_lig': 2,
         },
@@ -142,7 +156,6 @@ def main():
             name = s_file.split('/')[-1].replace('_opt.mol', '')
             prefix = name.split('_')[0]
             properties = property_dictionary[prefix]
-            print(properties)
             charge = properties['charge']
             exp_lig = properties['exp_lig']
             molecule = stk.BuildingBlock.init_from_file(s_file)
@@ -179,9 +192,8 @@ def main():
             # structure_results[name]['sum_strain_energy'] = (
             #     sum_strain_energy
             # )
-            print(structure_results)
-            raise SystemExit()
 
+        raise SystemExit()
         with open(structure_res_file, 'w') as f:
             json.dump(structure_results, f)
 

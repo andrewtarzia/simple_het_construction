@@ -642,6 +642,66 @@ def get_energy(molecule, name, charge, calc_dir):
     return energy
 
 
+def get_dft_preopt_energy(molecule, name, calc_dir):
+    return 0
+    raise NotImplementedError()
+    output_dir = os.path.join(calc_dir, f'{name}_xtbey')
+    output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
+    if os.path.exists(output_file):
+        with open(output_file, 'r') as f:
+            lines = f.readlines()
+        for line in lines:
+            energy = float(line.rstrip())
+            break
+    else:
+        logging.info(f'xtb energy calculation of {name}')
+        xtb = stko.XTBEnergy(
+            xtb_path=xtb_path(),
+            output_dir=output_dir,
+            gfn_version=2,
+            num_cores=6,
+            charge=charge,
+            num_unpaired_electrons=0,
+            unlimited_memory=True,
+        )
+        energy = xtb.get_energy(mol=molecule)
+        with open(output_file, 'w') as f:
+            f.write(f'{energy}\n')
+
+    # In a.u.
+    return energy
+
+
+def get_dft_opt_energy(molecule, name, calc_dir):
+    return 0
+    raise NotImplementedError()
+    output_dir = os.path.join(calc_dir, f'{name}_xtbey')
+    output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
+    if os.path.exists(output_file):
+        with open(output_file, 'r') as f:
+            lines = f.readlines()
+        for line in lines:
+            energy = float(line.rstrip())
+            break
+    else:
+        logging.info(f'xtb energy calculation of {name}')
+        xtb = stko.XTBEnergy(
+            xtb_path=xtb_path(),
+            output_dir=output_dir,
+            gfn_version=2,
+            num_cores=6,
+            charge=charge,
+            num_unpaired_electrons=0,
+            unlimited_memory=True,
+        )
+        energy = xtb.get_energy(mol=molecule)
+        with open(output_file, 'w') as f:
+            f.write(f'{energy}\n')
+
+    # In a.u.
+    return energy
+
+
 def update_from_rdkit_conf(stk_mol, rdk_mol, conf_id):
     """
     Update the structure to match `conf_id` of `mol`.
