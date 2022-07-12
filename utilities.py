@@ -643,7 +643,6 @@ def get_energy(molecule, name, charge, calc_dir):
 
 
 def get_dft_preopt_energy(molecule, name, calc_dir):
-    return 0
     raise NotImplementedError()
     output_dir = os.path.join(calc_dir, f'{name}_xtbey')
     output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
@@ -673,7 +672,6 @@ def get_dft_preopt_energy(molecule, name, calc_dir):
 
 
 def get_dft_opt_energy(molecule, name, calc_dir):
-    return 0
     raise NotImplementedError()
     output_dir = os.path.join(calc_dir, f'{name}_xtbey')
     output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
