@@ -22,10 +22,11 @@ from utilities import (
     update_from_rdkit_conf,
     calculate_N_centroid_N_angle,
     get_furthest_pair_FGs,
+    get_energy,
 )
 
 
-def select_conformer(molecule, name, calc_dir):
+def select_conformer(molecule, name, lowe_output, calc_dir):
     """
     Select and optimize a conformer with desired directionality.
 
@@ -36,20 +37,26 @@ def select_conformer(molecule, name, calc_dir):
     """
 
     confs = molecule.to_rdkit_mol()
-    etkdg = rdkit.ETKDG()
+    etkdg = rdkit.srETKDGv3()
     etkdg.randomSeed = 1000
     cids = rdkit.EmbedMultipleConfs(
         mol=confs,
-        numConfs=25,
-        params=etkdg
+        numConfs=100,
+        params=etkdg,
     )
 
     min_angle = 10000
-    min_cid = -10
+    min_energy = 1E24
     for cid in cids:
+        # Update stk_mol to conformer geometry.
+        new_mol = update_from_rdkit_conf(
+            stk_mol=molecule,
+            rdk_mol=confs,
+            conf_id=cid
+        )
         # Need to define the functional groups.
         new_mol = stk.BuildingBlock.init_from_molecule(
-            molecule=molecule,
+            molecule=new_mol,
             functional_groups=[AromaticCNCFactory()]
         )
         # Only get two FGs.
@@ -62,45 +69,29 @@ def select_conformer(molecule, name, calc_dir):
             output_dir= calc_dir / f'{name}_{cid}_ligxtb',
             gfn_version=2,
             num_cores=6,
-            opt_level='crude',
+            opt_level='normal',
             max_runs=1,
             calculate_hessian=False,
-            unlimited_memory=True
+            unlimited_memory=True,
         )
         new_mol = xtb_opt.optimize(mol=new_mol)
-
-        # Update stk_mol to conformer geometry.
-        new_mol = update_from_rdkit_conf(
-            stk_mol=new_mol,
-            rdk_mol=confs,
-            conf_id=cid
-        )
-
         angle = calculate_N_centroid_N_angle(new_mol)
+        charge = 0
+        cid_name = f'{name}_{cid}_ligey'
+        energy = get_energy(new_mol, cid_name, charge, calc_dir)
         if angle < min_angle:
             logging.info(f'new selected conformer: {cid}')
-            min_cid = cid
             min_angle = angle
-            molecule = update_from_rdkit_conf(
-                stk_mol=molecule,
-                rdk_mol=confs,
-                conf_id=min_cid
+            final_molecule = stk.BuildingBlock.init_from_molecule(
+                new_mol,
             )
 
-    logging.info(f'final xtb opt of {name}')
-    xtb_opt = stko.XTB(
-        xtb_path=xtb_path(),
-        output_dir= calc_dir / f'{name}_ligxtb',
-        gfn_version=2,
-        num_cores=6,
-        opt_level='normal',
-        max_runs=1,
-        calculate_hessian=False,
-        unlimited_memory=True
-    )
-    molecule = xtb_opt.optimize(mol=molecule)
+        if energy < min_energy:
+            logging.info(f'new lowest energy conformer: {cid}')
+            min_energy = energy
+            new_mol.write(str(lowe_output))
 
-    return molecule
+    return final_molecule
 
 
 def main():
@@ -149,6 +140,7 @@ def main():
     for lig in ligand_smiles:
         unopt_file = _wd / f'{lig}_unopt.mol'
         opt_file = _wd / f'{lig}_opt.mol'
+        lowe_file = _wd / f'{lig}_lowe.mol'
         unopt_mol = stk.BuildingBlock(
             smiles=ligand_smiles[lig],
             functional_groups=(AromaticCNCFactory(), ),
@@ -160,6 +152,7 @@ def main():
             opt_mol = select_conformer(
                 molecule=unopt_mol,
                 name=lig,
+                lowe_output=lowe_file,
                 calc_dir=_cd,
             )
             opt_mol.write(opt_file)
