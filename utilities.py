@@ -144,122 +144,6 @@ class AromaticCNC(stk.GenericFunctionalGroup):
         )
 
 
-class MissingSettingError(Exception):
-    ...
-
-
-def get_lowest_energy_conformer(name, mol, settings, calc_dir):
-    """
-    Get lowest energy conformer of molecule.
-
-    Method:
-        1) squick CREST conformer search
-        2) xTB `opt_level` optimisation of lowest energy conformer
-        3) save file
-
-    """
-
-    # Check for missing settings.
-    req_settings = [
-        'final_opt_level', 'conf_opt_level', 'charge', 'no_unpaired_e',
-        'max_runs', 'calc_hessian', 'solvent', 'nc',
-        'etemp', 'keepdir', 'cross', 'md_len', 'ewin', 'speed_setting'
-    ]
-    for i in req_settings:
-        if i not in settings:
-            raise MissingSettingError(
-                f'Settings missing {i}. Has {settings.keys()}.'
-            )
-
-    crest_output_dir = os.path.join(calc_dir, f'{name}_crest')
-    crest_opt_dir = os.path.join(calc_dir, f'{name}_crestxtb')
-    low_unopt_file = os.path.join(calc_dir, f'{name}_low_e_unopt.mol')
-    low_opt_file = os.path.join(calc_dir, f'{name}_low_e_opt.mol')
-
-    if not os.path.exists(low_unopt_file):
-        logging.info(f'running crest opt of {name}')
-        xtb_crest = stko.XTBCREST(
-            crest_path=crest_path(),
-            xtb_path=xtb_path(),
-            gfn_version=2,
-            output_dir=crest_output_dir,
-            num_cores=settings['nc'],
-            ewin=settings['ewin'],
-            opt_level=settings['conf_opt_level'],
-            charge=settings['charge'],
-            electronic_temperature=settings['etemp'],
-            num_unpaired_electrons=settings['no_unpaired_e'],
-            solvent=settings['solvent'],
-            keepdir=settings['keepdir'],
-            cross=settings['cross'],
-            speed_setting=settings['speed_setting'],
-            md_len=settings['md_len'],
-            unlimited_memory=True,
-        )
-        low_e_conf = xtb_crest.optimize(mol=mol)
-        # Save lowest energy conformer.
-        low_e_conf.write(low_unopt_file)
-    else:
-        low_e_conf = stk.BuildingBlock.init_from_file(low_unopt_file)
-
-    if not os.path.exists(low_opt_file):
-        logging.info(f'running xtb opt of crest conformer of {name}')
-        xtb_opt = stko.XTB(
-            xtb_path=xtb_path(),
-            output_dir=crest_opt_dir,
-            gfn_version=2,
-            num_cores=6,
-            opt_level=settings['final_opt_level'],
-            charge=settings['charge'],
-            num_unpaired_electrons=settings['no_unpaired_e'],
-            max_runs=settings['max_runs'],
-            calculate_hessian=settings['calc_hessian'],
-            unlimited_memory=True,
-            solvent=settings['solvent'],
-        )
-        low_e_opt = xtb_opt.optimize(mol=low_e_conf)
-        low_e_opt.write(low_opt_file)
-    else:
-        low_e_opt = stk.BuildingBlock.init_from_file(low_opt_file)
-
-    return low_e_opt
-
-
-def split_xyz_file(num_atoms, xyz_file):
-    """
-    Splits xyz trajectory file into xyz files.
-
-    """
-
-    with open(xyz_file, 'r') as f:
-        lines = f.readlines()
-
-    file_strings = []
-    string = []
-    for line in lines:
-        if f' {num_atoms} ' in f' {line.strip()} ':
-            if len(string) == 0:
-                string.append(line)
-            else:
-                # New block.
-                file_strings.append(string)
-                string = [line]
-        else:
-            string.append(line)
-    # Add last set.
-    file_strings.append(string)
-
-    out_files = []
-    for i, fs in enumerate(file_strings):
-        file_name = xyz_file.replace('.xyz', f'_s{i}.xyz')
-        with open(file_name, 'w') as f:
-            for line in fs:
-                f.write(line)
-        out_files.append(file_name)
-
-    return out_files
-
-
 def unit_vector(vector):
     """
     Returns the unit vector of the vector.
@@ -698,6 +582,14 @@ def get_dft_opt_energy(molecule, name, calc_dir):
 
     # In a.u.
     return energy
+
+
+def get_xtb_strain(molecule, name, calc_dir):
+    raise NotImplementedError()
+
+
+def get_dft_strain(molecule, name, calc_dir):
+    raise NotImplementedError()
 
 
 def update_from_rdkit_conf(stk_mol, rdk_mol, conf_id):

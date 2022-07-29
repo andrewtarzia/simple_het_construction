@@ -43,7 +43,7 @@ def react_factory():
 
 def stk_opt():
     return stk.MCHammer(
-        target_bond_length=2,
+        target_bond_length=2.5,
     )
 
 
@@ -176,14 +176,15 @@ def main():
         pass
 
     li_path = liga_path()
+    li_suffix = '_opt.mol'
     ligands = {
-        i.split('/')[-1].replace('_opt.mol', ''): (
+        i.split('/')[-1].replace(li_suffix, ''): (
             stk.BuildingBlock.init_from_file(
                 path=i,
                 functional_groups=(AromaticCNCFactory(), ),
             )
         )
-        for i in glob.glob(str(li_path / '*_opt.mol'))
+        for i in glob.glob(str(li_path / f'*{li_suffix}'))
     }
     ligands = {
         i: ligands[i].with_functional_groups(
@@ -211,7 +212,6 @@ def main():
         logging.info(f'building {cage_name}')
         unopt_mol = stk.ConstructedMolecule(cage_info.tg)
         unopt_mol.write(unopt_file)
-
         if not os.path.exists(opt_file):
             logging.info(f'optimising {cage_name}')
             opt_mol = optimisation_sequence(
