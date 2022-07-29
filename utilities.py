@@ -23,7 +23,7 @@ from pymatgen.analysis.local_env import (
 )
 import json
 
-from env_set import xtb_path, crest_path
+from env_set import xtb_path
 
 
 class AromaticCNCFactory(stk.FunctionalGroupFactory):
@@ -452,53 +452,7 @@ def get_organic_linkers(
     return org_lig, smiles_keys
 
 
-def calculate_ligand_SE(
-    org_ligs,
-    lowe_ligand_energy,
-    output_json,
-    calc_dir,
-):
-
-    # Check if output file exists.
-    if not os.path.exists(output_json):
-        logging.info(
-            f'calculating strain energy of target with 30 atoms.'
-        )
-        strain_energies = {}
-        # Iterate over ligands.
-        for lig in org_ligs:
-            stk_lig = org_ligs[lig]
-            # Only run for the target ligand.
-            if stk_lig.get_num_atoms() != 30:
-                continue
-
-            # Calculate energy of extracted ligand.
-            energy_au = get_energy(
-                molecule=stk_lig,
-                name=lig,
-                charge=0,
-                calc_dir=calc_dir,
-            )
-            # kJ/mol.
-            E_extracted = energy_au * 2625.5
-            E_free = lowe_ligand_energy * 2625.5
-            # Add to list the strain energy:
-            # (E(extracted) - E(optimised/free))
-            lse = E_extracted - E_free
-            strain_energies[lig] = lse
-
-        # Write data.
-        with open(output_json, 'w') as f:
-            json.dump(strain_energies, f)
-
-    # Get data.
-    with open(output_json, 'r') as f:
-        strain_energies = json.load(f)
-
-    return strain_energies
-
-
-def get_energy(molecule, name, charge, calc_dir):
+def get_xtb_energy(molecule, name, charge, calc_dir):
     output_dir = os.path.join(calc_dir, f'{name}_xtbey')
     output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
     if os.path.exists(output_file):
@@ -584,8 +538,114 @@ def get_dft_opt_energy(molecule, name, calc_dir):
     return energy
 
 
-def get_xtb_strain(molecule, name, calc_dir):
-    raise NotImplementedError()
+def get_stoichiometry(topology_string):
+    return {
+        'm2': (4, 0),
+        'm3': (6, 0),
+        'm4': (8, 0),
+        'trans': (4, 0),
+        'cis': (2, 2),
+    }[topology_string]
+
+def name_parser(name):
+    splits = name.split('_')
+    if len(splits) == 2:
+        topo, ligand1 = splits
+        ligand2 = None
+    elif len(splits) == 3:
+        topo, ligand1, ligand2 = splits
+
+    return topo, ligand1, ligand2
+
+
+class UnexpectedNumLigands(Exception):
+    ...
+
+
+def get_xtb_strain(
+    molecule,
+    name,
+    liga_dir,
+    calc_dir,
+    exp_lig,
+):
+
+    ls_file = os.path.join(calc_dir, f'{name}_strain_xtb.json')
+    if os.path.exists(ls_file):
+        with open(ls_file, 'r') as f:
+            strain_energies = json.load(f)
+        return strain_energies
+    strain_energies = {}
+
+    # Define the free ligand properties.
+    topo, ligand1_name, ligand2_name = name_parser(name)
+    ligand1 = stk.BuildingBlock.init_from_file(
+        path=str(liga_dir / f'{ligand1_name}_lowe.mol'),
+    )
+    ligand1_free_l_energy = get_xtb_energy(
+        molecule=ligand1,
+        name=f'{ligand1_name}_lowe',
+        charge=0,
+        calc_dir=calc_dir,
+    )
+    ligand1_smiles = stk.Smiles().get_key(ligand1)
+
+    if ligand2_name is not None:
+        ligand2 = stk.BuildingBlock.init_from_file(
+            path=str(liga_dir / f'{ligand2_name}_lowe.mol'),
+        )
+        ligand2_free_l_energy = get_xtb_energy(
+            molecule=ligand2,
+            name=f'{ligand2_name}_lowe',
+            charge=0,
+            calc_dir=calc_dir,
+        )
+        ligand2_smiles = stk.Smiles().get_key(ligand2)
+        smiles_map = {
+            ligand1_smiles: ligand1_free_l_energy,
+            ligand2_smiles: ligand2_free_l_energy,
+        }
+    else:
+        smiles_map = {
+            ligand1_smiles: ligand1_free_l_energy,
+        }
+
+    org_ligs, smiles_keys = get_organic_linkers(
+        cage=molecule,
+        metal_atom_nos=(46, ),
+        file_prefix=f'{name}_sg',
+        calc_dir=calc_dir,
+    )
+
+    num_unique_ligands = len(set(smiles_keys.values()))
+    if num_unique_ligands != exp_lig:
+        raise UnexpectedNumLigands(
+            f'{name} had {num_unique_ligands} unique ligands'
+            f', {exp_lig} were expected. Suggests bad '
+            'optimization. Recommend reoptimising structure.'
+        )
+
+    for lfile in org_ligs:
+        lname = lfile.replace('.mol', '')
+        lmol = org_ligs[lfile]
+        extracted_smiles = stk.Smiles().get_key(lmol)
+        # Extracted ligand energies.
+        extracted_energy = get_xtb_energy(
+            lmol,
+            f'{lname}_xtb',
+            0,
+            calc_dir,
+        )
+
+        # Free ligand energies.
+        free_l_energy = smiles_map[extracted_smiles]
+
+        strain = extracted_energy - free_l_energy
+        strain_energies[lname] = strain
+
+    with open(ls_file, 'w') as f:
+        json.dump(strain_energies, f, indent=4)
+    return strain_energies
 
 
 def get_dft_strain(molecule, name, calc_dir):

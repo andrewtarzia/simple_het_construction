@@ -20,16 +20,17 @@ from env_set import cage_path, calc_path, dft_path, liga_path
 from utilities import (
     get_order_values,
     get_organic_linkers,
-    calculate_ligand_SE,
-    get_energy,
+    get_xtb_energy,
     get_dft_opt_energy,
     get_dft_preopt_energy,
     AromaticCNCFactory,
     get_furthest_pair_FGs,
+    get_xtb_strain,
+    get_dft_strain,
 )
 from pywindow_module import PyWindow
 from inflation import PoreMapper
-from plotting import plot_energies, plot_ops, plot_strain_energies
+import plotting
 
 
 def get_min_order_parameter(molecule):
@@ -39,53 +40,6 @@ def get_min_order_parameter(molecule):
         metal=46
     )
     return order_results['sq_plan']['min']
-
-
-class UnexpectedNumLigands(Exception):
-    ...
-
-
-def get_sum_strain_energy(
-    molecule,
-    name,
-    exp_lig,
-    lowe_ligand,
-    calc_dir,
-):
-
-    ls_file = os.path.join(calc_dir, f'{name}_strain.json')
-
-    org_ligs, smiles_keys = get_organic_linkers(
-        cage=molecule,
-        metal_atom_nos=(46, ),
-        file_prefix=f'{name}_sg',
-        calc_dir=calc_dir,
-    )
-
-    num_unique_ligands = len(set(smiles_keys.values()))
-    if num_unique_ligands != exp_lig:
-        raise UnexpectedNumLigands(
-            f'{name} had {num_unique_ligands} unique ligands'
-            f', {exp_lig} were expected. Suggests bad '
-            'optimization. Recommend reoptimising structure.'
-        )
-
-    lowe_ligand_energy = get_energy(
-        molecule=lowe_ligand,
-        name='lig',
-        charge=0,
-        calc_dir=calc_dir,
-    )
-
-    lse_dict = calculate_ligand_SE(
-        org_ligs=org_ligs,
-        lowe_ligand_energy=lowe_ligand_energy,
-        output_json=f'{ls_file}.json',
-        calc_dir=calc_dir,
-    )
-
-    sum_strain = sum(lse_dict.values())
-    return sum_strain
 
 
 def main():
@@ -116,6 +70,7 @@ def main():
 
     _wd = cage_path()
     _cd = calc_path()
+    _ld = liga_path()
     dft_directory = dft_path()
 
     property_dictionary = {
@@ -160,14 +115,26 @@ def main():
             exp_lig = properties['exp_lig']
             molecule = stk.BuildingBlock.init_from_file(s_file)
 
-            xtb_energy = get_energy(molecule, name, charge, _cd)
-            structure_results[name]['xtb_energy'] = xtb_energy
-            structure_results[name]['dft_preopt_energy'] = (
-                get_dft_preopt_energy(molecule, name, dft_directory)
+            structure_results[name]['xtb_energy'] = (
+                get_xtb_energy(molecule, name, charge, _cd)
             )
-            structure_results[name]['dft_opt_energy'] = (
-                get_dft_opt_energy(molecule, name, dft_directory)
+            # structure_results[name]['dft_preopt_energy'] = (
+            #     get_dft_preopt_energy(molecule, name, dft_directory)
+            # )
+            # structure_results[name]['dft_opt_energy'] = (
+            #     get_dft_opt_energy(molecule, name, dft_directory)
+            # )
+
+            structure_results[name]['xtb_lig_strain'] = get_xtb_strain(
+                molecule=molecule,
+                name=name,
+                liga_dir=_ld,
+                calc_dir=_cd,
+                exp_lig=exp_lig,
             )
+            # structure_results[name]['dft_lig_strain'] = get_dft_strain(
+            #     molecule, name, charge, _cd
+            # )
 
             min_order_param = get_min_order_parameter(molecule)
             structure_results[name]['min_order_param'] = (
@@ -181,36 +148,56 @@ def main():
                 PoreMapper(name, _cd).get_results(molecule)
             )
 
-            # sum_strain_energy = get_sum_strain_energy(
-            #     molecule=molecule,
-            #     name=name,
-            #     exp_lig=exp_lig,
-            #     lowe_ligand=lowe_ligand,
-            #     calc_dir=_cd,
-            # )
-
-            # structure_results[name]['sum_strain_energy'] = (
-            #     sum_strain_energy
-            # )
-
-        raise SystemExit()
         with open(structure_res_file, 'w') as f:
             json.dump(structure_results, f)
 
-    print(structure_results)
-    raise SystemExit()
-
-    plot_energies(
-        results_dict=structure_results,
-        outname='cage_energies',
-    )
-    plot_ops(
+    plotting.plot_property(
         results_dict=structure_results,
         outname='cage_ops',
+        yproperty='min_order_param',
     )
-    plot_strain_energies(
+    plotting.plot_property(
         results_dict=structure_results,
-        outname='cage_strain_energies',
+        outname='cage_pw_diameter',
+        yproperty='pore_diameter_opt',
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname='cage_xtb_strain',
+        yproperty='xtb_lig_strain',
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname='het_cage_ops',
+        yproperty='min_order_param',
+        ignore_topos=('m3', 'm4'),
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname='het_cage_pw_diameter',
+        yproperty='pore_diameter_opt',
+        ignore_topos=('m3', 'm4'),
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname='het_cage_xtb_strain',
+        yproperty='xtb_lig_strain',
+        ignore_topos=('m3', 'm4'),
+    )
+    plotting.compare_cis_trans(
+        results_dict=structure_results,
+        outname='hetcf_cage_xtb_strain',
+        yproperty='xtb_lig_strain',
+    )
+    plotting.compare_cis_trans(
+        results_dict=structure_results,
+        outname='hetcf_cage_ops',
+        yproperty='min_order_param',
+    )
+    plotting.compare_cis_trans(
+        results_dict=structure_results,
+        outname='hetcf_cage_pw_diameter',
+        yproperty='pore_diameter_opt',
     )
 
 

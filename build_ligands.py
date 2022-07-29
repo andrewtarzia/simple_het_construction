@@ -22,7 +22,7 @@ from utilities import (
     update_from_rdkit_conf,
     calculate_N_centroid_N_angle,
     get_furthest_pair_FGs,
-    get_energy,
+    get_xtb_energy,
 )
 
 
@@ -78,7 +78,7 @@ def select_conformer(molecule, name, lowe_output, calc_dir):
         angle = calculate_N_centroid_N_angle(new_mol)
         charge = 0
         cid_name = f'{name}_{cid}_ligey'
-        energy = get_energy(new_mol, cid_name, charge, calc_dir)
+        energy = get_xtb_energy(new_mol, cid_name, charge, calc_dir)
         if angle < min_angle:
             logging.info(f'new selected conformer: {cid}')
             min_angle = angle
@@ -90,6 +90,10 @@ def select_conformer(molecule, name, lowe_output, calc_dir):
             logging.info(f'new lowest energy conformer: {cid}')
             min_energy = energy
             new_mol.write(str(lowe_output))
+            with open(
+                lowe_output.replace('.mol', '_xtb.ey'
+            ), 'w') as f:
+                f.write(f'{min_energy}\n')
 
     return final_molecule
 
