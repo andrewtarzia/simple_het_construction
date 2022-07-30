@@ -182,3 +182,63 @@ def compare_cis_trans(results_dict, outname, yproperty):
         bbox_inches='tight'
     )
     plt.close()
+
+
+def plot_exchange_reactions(rxns, hs, outname):
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    x_values = []
+    for i, rxn in enumerate(rxns):
+        print(rxn)
+        # l1_prefix = int(rxn['l1_prefix'][1])
+        # l2_prefix = int(rxn['l2_prefix'][1])
+        # r_string = (
+        #     f"{rxn['lhs_stoich']}[Pd2 L2 L'2] "
+        #     "<-> "
+        #     f"{rxn['l1_stoich']}[Pd{l1_prefix} "
+        #     f"L{l1_prefix*2}] + "
+        #     f"{rxn['l2_stoich']}[Pd{l2_prefix} "
+        #     f"L'{l2_prefix*2}]"
+        # )
+        r_string = (
+            f"{rxn['lhs_stoich']} "
+            "<-> \n"
+            f"{rxn['l1_stoich']}{rxn['l1_prefix']} + "
+            f"{rxn['l2_stoich']}{rxn['l2_prefix']} "
+        )
+        print(r_string)
+        r_energy = float(rxn['lhs']) - float(rxn['rhs'])
+        r_energy = r_energy / int(rxn['lhs_stoich'])
+        r_energy = r_energy * 2625.5
+        ax.scatter(
+            x=i,
+            y=r_energy,
+            c='gold',
+            edgecolors='k',
+            s=180,
+        )
+        # ax.text(i-2, r_energy, r_string, fontsize=16)
+        x_values.append((i, r_string))
+
+    ax.tick_params(axis='both', which='major', labelsize=16)
+    ax.set_title(f"{rxn['l1']} + {rxn['l2']}", fontsize=16)
+    ax.set_xlabel('reaction', fontsize=16)
+    ax.set_ylabel(
+        'energy per heteroleptic cage [kJ mol-1]',
+        fontsize=16,
+    )
+    ax.axhline(y=0, lw=2, c='k')
+
+    ax.set_xticks([i[0] for i in x_values])
+    ax.set_xticklabels([i[1] for i in x_values], rotation=45)
+
+    # ax.set_xlim(lab_prop[1])
+    # ax.set_ylim(0, None)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f'{outname}.pdf'),
+        dpi=720,
+        bbox_inches='tight'
+    )
+    plt.close()

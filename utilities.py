@@ -480,6 +480,21 @@ def get_xtb_energy(molecule, name, charge, calc_dir):
     return energy
 
 
+def read_xtb_energy(name, calc_dir):
+    output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
+    if os.path.exists(output_file):
+        with open(output_file, 'r') as f:
+            lines = f.readlines()
+        for line in lines:
+            energy = float(line.rstrip())
+            break
+    else:
+        raise FileNotFoundError(f'{output_file} not found.')
+
+    # In a.u.
+    return energy
+
+
 def get_dft_preopt_energy(molecule, name, calc_dir):
     raise NotImplementedError()
     output_dir = os.path.join(calc_dir, f'{name}_xtbey')
