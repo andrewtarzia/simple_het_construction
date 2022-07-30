@@ -118,12 +118,12 @@ def main():
             structure_results[name]['xtb_energy'] = (
                 get_xtb_energy(molecule, name, charge, _cd)
             )
-            # structure_results[name]['dft_preopt_energy'] = (
-            #     get_dft_preopt_energy(molecule, name, dft_directory)
-            # )
-            # structure_results[name]['dft_opt_energy'] = (
-            #     get_dft_opt_energy(molecule, name, dft_directory)
-            # )
+            structure_results[name]['dft_preopt_energy'] = (
+                get_dft_preopt_energy(molecule, name, dft_directory)
+            )
+            structure_results[name]['dft_opt_energy'] = (
+                get_dft_opt_energy(molecule, name, dft_directory)
+            )
 
             structure_results[name]['xtb_lig_strain'] = get_xtb_strain(
                 molecule=molecule,
@@ -132,9 +132,9 @@ def main():
                 calc_dir=_cd,
                 exp_lig=exp_lig,
             )
-            # structure_results[name]['dft_lig_strain'] = get_dft_strain(
-            #     molecule, name, charge, _cd
-            # )
+            structure_results[name]['dft_lig_strain'] = get_dft_strain(
+                molecule, name, charge, _cd
+            )
 
             min_order_param = get_min_order_parameter(molecule)
             structure_results[name]['min_order_param'] = (
