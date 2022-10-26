@@ -13,8 +13,7 @@ import logging
 import pore_mapper as pm
 
 
-class PoreMapper():
-
+class PoreMapper:
     def __init__(self, name, calc_dir):
         self._name = name
         self._calc_dir = calc_dir
@@ -22,23 +21,23 @@ class PoreMapper():
     def get_results(self, molecule):
         results = {}
 
-        xyz_file = str(self._calc_dir / f'{self._name}_pm.xyz')
+        xyz_file = str(self._calc_dir / f"{self._name}_pm.xyz")
         final_stru_xyz = str(
-            self._calc_dir / f'{self._name}_pm_stru.xyz'
+            self._calc_dir / f"{self._name}_pm_stru.xyz"
         )
         final_blob_xyz = str(
-            self._calc_dir / f'{self._name}_pm_blob.xyz'
+            self._calc_dir / f"{self._name}_pm_blob.xyz"
         )
         final_pore_xyz = str(
-            self._calc_dir / f'{self._name}_pm_pore.xyz'
+            self._calc_dir / f"{self._name}_pm_pore.xyz"
         )
 
-        logging.info(f'running pore mapper on {self._name}:')
+        logging.info(f"running pore mapper on {self._name}:")
 
         # Read in host from xyz file.
         molecule.write(xyz_file)
         host = pm.Host.init_from_xyz_file(path=xyz_file)
-        host = host.with_centroid([0., 0., 0.])
+        host = host.with_centroid([0.0, 0.0, 0.0])
 
         # Define calculator object.
         calculator = pm.Inflater(bead_sigma=1.2)
@@ -49,12 +48,14 @@ class PoreMapper():
         blob = final_result.pore.get_blob()
         windows = pore.get_windows()
 
-        results['num_windows'] = len(windows)
-        results['max_window_size'] = max(windows)
-        results['min_window_size'] = min(windows)
-        results['pore_volume'] = pore.get_volume()
-        results['asphericity'] = pore.get_asphericity()
-        results['shape_anisotropy'] = pore.get_relative_shape_anisotropy()
+        results["num_windows"] = len(windows)
+        results["max_window_size"] = max(windows)
+        results["min_window_size"] = min(windows)
+        results["pore_volume"] = pore.get_volume()
+        results["asphericity"] = pore.get_asphericity()
+        results[
+            "shape_anisotropy"
+        ] = pore.get_relative_shape_anisotropy()
 
         # Do final structure.
         host.write_xyz_file(final_stru_xyz)

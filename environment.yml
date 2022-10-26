@@ -165,14 +165,18 @@ dependencies:
   - zlib=1.2.12=h166bdaf_1
   - zstd=1.5.2=h8a70e8d_2
   - pip:
+    - black==22.10.0
     - dill==0.3.5.1
     - dnspython==2.2.1
     - fonttools==4.34.3
     - joblib==1.1.0
     - mchammer==1.0.4
     - multiprocess==0.70.13
+    - mypy-extensions==0.4.3
     - pandas==1.4.3
     - pathos==0.2.9
+    - pathspec==0.10.1
+    - platformdirs==2.5.2
     - poremapper==0.0.1
     - pox==0.3.1
     - ppft==1.7.6.5
@@ -185,6 +189,7 @@ dependencies:
     - spindry==0.0.91
     - stk==2022.6.17.0
     - stko==0.0.40
-    - threadpoolctl==3.1.0
+    - tomli==2.0.1
+    - typing-extensions==4.4.0
     - vabene==0.0.5
-prefix: /home/atarzia/anaconda3/envs/simple_het
+prefix: /home/atarzia/miniconda3/envs/simple_het

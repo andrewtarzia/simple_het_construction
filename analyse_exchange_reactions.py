@@ -25,6 +25,7 @@ from utilities import (
     get_dft_preopt_energy,
     name_parser,
 )
+from topologies import ligand_cage_topologies
 import plotting
 
 
@@ -42,14 +43,14 @@ class ExchangeReaction:
         self._product_energy = self._get_energy(product_name)
 
     def _get_energy(self, name):
-        if self._method == 'xtb':
+        if self._method == "xtb":
             return read_xtb_energy(
                 name=name,
                 calc_dir=self._calc_dir,
             )
-        elif self._method == 'dft_preopt':
+        elif self._method == "dft_preopt":
             raise NotImplementedError()
-        elif self._method == 'dft':
+        elif self._method == "dft":
             raise NotImplementedError()
 
     def _get_rxn_energies(
@@ -61,27 +62,29 @@ class ExchangeReaction:
         l2_prefix,
     ):
         return {
-            'lhs_stoich': lhs_stoich,
-            'l1': self._l1_name,
-            'l2': self._l2_name,
-            'l1_stoich': l1_stoich,
-            'l2_stoich': l2_stoich,
-            'l1_prefix': l1_prefix,
-            'l2_prefix': l2_prefix,
-            'lhs': lhs_stoich*self._product_energy,
-            'rhs': (
-                l1_stoich*self._get_energy(
-                    name=f'{l1_prefix}_{self._l1_name}',
+            "lhs_stoich": lhs_stoich,
+            "l1": self._l1_name,
+            "l2": self._l2_name,
+            "l1_stoich": l1_stoich,
+            "l2_stoich": l2_stoich,
+            "l1_prefix": l1_prefix,
+            "l2_prefix": l2_prefix,
+            "lhs": lhs_stoich * self._product_energy,
+            "rhs": (
+                l1_stoich
+                * self._get_energy(
+                    name=f"{l1_prefix}_{self._l1_name}",
                 )
-                +
-                l2_stoich*self._get_energy(
-                    name=f'{l2_prefix}_{self._l2_name}',
+                + l2_stoich
+                * self._get_energy(
+                    name=f"{l2_prefix}_{self._l2_name}",
                 )
-            )
+            ),
         }
 
     def get_all_rxn_energies(self):
-        pot_homo_topos = ('m2', 'm3', 'm4')
+        lct = ligand_cage_topologies()
+        pot_homo_topos = ("m2", "m3", "m4", "m6", "m12", "m24", "m30")
         for l1_prefix, l2_prefix in product(pot_homo_topos, repeat=2):
             if l1_prefix == l2_prefix:
                 l1_stoich = 1
@@ -92,9 +95,13 @@ class ExchangeReaction:
                 l2_stoich = int(l1_prefix[1])
                 lhs_stoich = int((l1_stoich * l2_stoich))
 
-            assert lhs_stoich*2 == (
-                l1_stoich*int(l1_prefix[1])
-                + l1_stoich*int(l1_prefix[1])
+            print(lct)
+            print("you need to only use the appropriate stoichs.")
+            raise SystemExit()
+
+            assert lhs_stoich * 2 == (
+                l1_stoich * int(l1_prefix[1])
+                + l1_stoich * int(l1_prefix[1])
             )
             yield self._get_rxn_energies(
                 lhs_stoich=lhs_stoich,
@@ -106,29 +113,25 @@ class ExchangeReaction:
 
 
 def main():
-    if (not len(sys.argv) == 1):
-        logging.info(
-            f'Usage: {__file__}\n'
-            '   Expected 1 arguments:'
-        )
+    if not len(sys.argv) == 1:
+        logging.info(f"Usage: {__file__}\n" "   Expected 1 arguments:")
         sys.exit()
     else:
         pass
 
-    _wd = cage_path()
     _cd = calc_path()
     _ld = liga_path()
     dft_directory = dft_path()
 
     het_system = {
-        'cis_l1_la',
-        'cis_l1_lb',
-        'cis_l1_lc',
-        'cis_l1_ld',
-        'cis_l2_ld',
-        'cis_l3_ld',
+        "cis_l1_la",
+        "cis_l1_lb",
+        "cis_l1_lc",
+        "cis_l1_ld",
+        "cis_l2_ld",
+        "cis_l3_ld",
     }
-    methods = ('xtb', 'dft_preopt', 'dft')
+    methods = ("xtb", "dft_preopt", "dft")
 
     for method in methods:
         print(method)
@@ -148,13 +151,13 @@ def main():
             plotting.plot_exchange_reactions(
                 rxns=all_rxns,
                 hs=hs,
-                outname=f'erxns_{hs}',
+                outname=f"erxns_{hs}",
             )
 
 
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s | %(levelname)s | %(message)s',
+        format="%(asctime)s | %(levelname)s | %(message)s",
     )
     main()

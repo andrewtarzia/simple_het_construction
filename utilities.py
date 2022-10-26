@@ -32,7 +32,7 @@ class AromaticCNCFactory(stk.FunctionalGroupFactory):
 
     """
 
-    def __init__(self, bonders=(1, ), deleters=()):
+    def __init__(self, bonders=(1,), deleters=()):
         """
         Initialise :class:`.AromaticCNCFactory`.
 
@@ -43,7 +43,7 @@ class AromaticCNCFactory(stk.FunctionalGroupFactory):
 
     def get_functional_groups(self, molecule):
         generic_functional_groups = stk.SmartsFunctionalGroupFactory(
-            smarts='[#6]~[#7X2]~[#6]',
+            smarts="[#6]~[#7X2]~[#6]",
             bonders=self._bonders,
             deleters=self._deleters,
         ).get_functional_groups(molecule)
@@ -138,9 +138,9 @@ class AromaticCNC(stk.GenericFunctionalGroup):
 
     def __repr__(self):
         return (
-            f'{self.__class__.__name__}('
-            f'{self._carbon1}, {self._nitrogen}, {self._carbon2}, '
-            f'bonders={self._bonders})'
+            f"{self.__class__.__name__}("
+            f"{self._carbon1}, {self._nitrogen}, {self._carbon2}, "
+            f"bonders={self._bonders})"
         )
 
 
@@ -203,18 +203,15 @@ def convert_stk_to_pymatgen(stk_mol):
         Corresponding pymatgen Molecule.
 
     """
-    stk_mol.write('temp.xyz')
-    pmg_mol = pmg.Molecule.from_file('temp.xyz')
-    os.system('rm temp.xyz')
+    stk_mol.write("temp.xyz")
+    pmg_mol = pmg.Molecule.from_file("temp.xyz")
+    os.system("rm temp.xyz")
 
     return pmg_mol
 
 
 def calculate_sites_order_values(
-    molecule,
-    site_idxs,
-    target_species_type=None,
-    neigh_idxs=None
+    molecule, site_idxs, target_species_type=None, neigh_idxs=None
 ):
     """
     Calculate order parameters around metal centres.
@@ -260,7 +257,7 @@ def calculate_sites_order_values(
 
     # Define local order parameters class based on desired types.
     types = [
-        'sq_plan',  # Square planar envs.
+        "sq_plan",  # Square planar envs.
     ]
     loc_ops = LocalStructOrderParams(
         types=types,
@@ -268,9 +265,7 @@ def calculate_sites_order_values(
     if neigh_idxs is None:
         for site in site_idxs:
             site_results = loc_ops.get_order_parameters(
-                structure=molecule,
-                n=site,
-                target_spec=[targ_species]
+                structure=molecule, n=site, target_spec=[targ_species]
             )
             results[site] = {i: j for i, j in zip(types, site_results)}
     else:
@@ -279,7 +274,7 @@ def calculate_sites_order_values(
                 structure=molecule,
                 n=site,
                 indices_neighs=neigh,
-                target_spec=targ_species
+                target_spec=targ_species,
             )
             results[site] = {i: j for i, j in zip(types, site_results)}
 
@@ -349,9 +344,9 @@ def get_order_values(mol, metal, per_site=False):
         results = {
             # OP: (min, max, avg)
             i: {
-                'min': min(OP_lists[i]),
-                'max': max(OP_lists[i]),
-                'avg': np.average(OP_lists[i])
+                "min": min(OP_lists[i]),
+                "max": max(OP_lists[i]),
+                "avg": np.average(OP_lists[i]),
             }
             for i in OP_lists
         }
@@ -424,25 +419,25 @@ def get_organic_linkers(
         atoms = list(cg)
         atom_ids = [i.get_id() for i in atoms]
         cage.write(
-            'temporary_linker.mol',
+            "temporary_linker.mol",
             atom_ids=atom_ids,
         )
         temporary_linker = stk.BuildingBlock.init_from_file(
-            'temporary_linker.mol'
+            "temporary_linker.mol"
         ).with_canonical_atom_ordering()
         smiles_key = stk.Smiles().get_key(temporary_linker)
         if smiles_key not in smiles_keys:
-            smiles_keys[smiles_key] = len(smiles_keys.values())+1
+            smiles_keys[smiles_key] = len(smiles_keys.values()) + 1
         idx = smiles_keys[smiles_key]
         sgt = str(len(atoms))
         # Write to mol file.
         if file_prefix is None:
-            filename_ = f'organic_linker_s{sgt}_{idx}_{i}.mol'
+            filename_ = f"organic_linker_s{sgt}_{idx}_{i}.mol"
         else:
-            filename_ = f'{file_prefix}{sgt}_{idx}_{i}.mol'
+            filename_ = f"{file_prefix}{sgt}_{idx}_{i}.mol"
 
         org_lig[filename_] = temporary_linker
-        os.system('rm temporary_linker.mol')
+        os.system("rm temporary_linker.mol")
         # Rewrite to fix atom ids.
         org_lig[filename_].write(os.path.join(calc_dir, filename_))
         org_lig[filename_] = stk.BuildingBlock.init_from_file(
@@ -453,16 +448,16 @@ def get_organic_linkers(
 
 
 def get_xtb_energy(molecule, name, charge, calc_dir):
-    output_dir = os.path.join(calc_dir, f'{name}_xtbey')
-    output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
+    output_dir = os.path.join(calc_dir, f"{name}_xtbey")
+    output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
     if os.path.exists(output_file):
-        with open(output_file, 'r') as f:
+        with open(output_file, "r") as f:
             lines = f.readlines()
         for line in lines:
             energy = float(line.rstrip())
             break
     else:
-        logging.info(f'xtb energy calculation of {name}')
+        logging.info(f"xtb energy calculation of {name}")
         xtb = stko.XTBEnergy(
             xtb_path=xtb_path(),
             output_dir=output_dir,
@@ -473,23 +468,23 @@ def get_xtb_energy(molecule, name, charge, calc_dir):
             unlimited_memory=True,
         )
         energy = xtb.get_energy(mol=molecule)
-        with open(output_file, 'w') as f:
-            f.write(f'{energy}\n')
+        with open(output_file, "w") as f:
+            f.write(f"{energy}\n")
 
     # In a.u.
     return energy
 
 
 def read_xtb_energy(name, calc_dir):
-    output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
+    output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
     if os.path.exists(output_file):
-        with open(output_file, 'r') as f:
+        with open(output_file, "r") as f:
             lines = f.readlines()
         for line in lines:
             energy = float(line.rstrip())
             break
     else:
-        raise FileNotFoundError(f'{output_file} not found.')
+        raise FileNotFoundError(f"{output_file} not found.")
 
     # In a.u.
     return energy
@@ -497,16 +492,16 @@ def read_xtb_energy(name, calc_dir):
 
 def get_dft_preopt_energy(molecule, name, calc_dir):
     raise NotImplementedError()
-    output_dir = os.path.join(calc_dir, f'{name}_xtbey')
-    output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
+    output_dir = os.path.join(calc_dir, f"{name}_xtbey")
+    output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
     if os.path.exists(output_file):
-        with open(output_file, 'r') as f:
+        with open(output_file, "r") as f:
             lines = f.readlines()
         for line in lines:
             energy = float(line.rstrip())
             break
     else:
-        logging.info(f'xtb energy calculation of {name}')
+        logging.info(f"xtb energy calculation of {name}")
         xtb = stko.XTBEnergy(
             xtb_path=xtb_path(),
             output_dir=output_dir,
@@ -517,8 +512,8 @@ def get_dft_preopt_energy(molecule, name, calc_dir):
             unlimited_memory=True,
         )
         energy = xtb.get_energy(mol=molecule)
-        with open(output_file, 'w') as f:
-            f.write(f'{energy}\n')
+        with open(output_file, "w") as f:
+            f.write(f"{energy}\n")
 
     # In a.u.
     return energy
@@ -526,16 +521,16 @@ def get_dft_preopt_energy(molecule, name, calc_dir):
 
 def get_dft_opt_energy(molecule, name, calc_dir):
     raise NotImplementedError()
-    output_dir = os.path.join(calc_dir, f'{name}_xtbey')
-    output_file = os.path.join(calc_dir, f'{name}_xtb.ey')
+    output_dir = os.path.join(calc_dir, f"{name}_xtbey")
+    output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
     if os.path.exists(output_file):
-        with open(output_file, 'r') as f:
+        with open(output_file, "r") as f:
             lines = f.readlines()
         for line in lines:
             energy = float(line.rstrip())
             break
     else:
-        logging.info(f'xtb energy calculation of {name}')
+        logging.info(f"xtb energy calculation of {name}")
         xtb = stko.XTBEnergy(
             xtb_path=xtb_path(),
             output_dir=output_dir,
@@ -546,8 +541,8 @@ def get_dft_opt_energy(molecule, name, calc_dir):
             unlimited_memory=True,
         )
         energy = xtb.get_energy(mol=molecule)
-        with open(output_file, 'w') as f:
-            f.write(f'{energy}\n')
+        with open(output_file, "w") as f:
+            f.write(f"{energy}\n")
 
     # In a.u.
     return energy
@@ -555,15 +550,16 @@ def get_dft_opt_energy(molecule, name, calc_dir):
 
 def get_stoichiometry(topology_string):
     return {
-        'm2': (4, 0),
-        'm3': (6, 0),
-        'm4': (8, 0),
-        'trans': (4, 0),
-        'cis': (2, 2),
+        "m2": (4, 0),
+        "m3": (6, 0),
+        "m4": (8, 0),
+        "trans": (4, 0),
+        "cis": (2, 2),
     }[topology_string]
 
+
 def name_parser(name):
-    splits = name.split('_')
+    splits = name.split("_")
     if len(splits) == 2:
         topo, ligand1 = splits
         ligand2 = None
@@ -585,9 +581,9 @@ def get_xtb_strain(
     exp_lig,
 ):
 
-    ls_file = os.path.join(calc_dir, f'{name}_strain_xtb.json')
+    ls_file = os.path.join(calc_dir, f"{name}_strain_xtb.json")
     if os.path.exists(ls_file):
-        with open(ls_file, 'r') as f:
+        with open(ls_file, "r") as f:
             strain_energies = json.load(f)
         return strain_energies
     strain_energies = {}
@@ -595,11 +591,11 @@ def get_xtb_strain(
     # Define the free ligand properties.
     topo, ligand1_name, ligand2_name = name_parser(name)
     ligand1 = stk.BuildingBlock.init_from_file(
-        path=str(liga_dir / f'{ligand1_name}_lowe.mol'),
+        path=str(liga_dir / f"{ligand1_name}_lowe.mol"),
     )
     ligand1_free_l_energy = get_xtb_energy(
         molecule=ligand1,
-        name=f'{ligand1_name}_lowe',
+        name=f"{ligand1_name}_lowe",
         charge=0,
         calc_dir=calc_dir,
     )
@@ -607,11 +603,11 @@ def get_xtb_strain(
 
     if ligand2_name is not None:
         ligand2 = stk.BuildingBlock.init_from_file(
-            path=str(liga_dir / f'{ligand2_name}_lowe.mol'),
+            path=str(liga_dir / f"{ligand2_name}_lowe.mol"),
         )
         ligand2_free_l_energy = get_xtb_energy(
             molecule=ligand2,
-            name=f'{ligand2_name}_lowe',
+            name=f"{ligand2_name}_lowe",
             charge=0,
             calc_dir=calc_dir,
         )
@@ -627,27 +623,27 @@ def get_xtb_strain(
 
     org_ligs, smiles_keys = get_organic_linkers(
         cage=molecule,
-        metal_atom_nos=(46, ),
-        file_prefix=f'{name}_sg',
+        metal_atom_nos=(46,),
+        file_prefix=f"{name}_sg",
         calc_dir=calc_dir,
     )
 
     num_unique_ligands = len(set(smiles_keys.values()))
     if num_unique_ligands != exp_lig:
         raise UnexpectedNumLigands(
-            f'{name} had {num_unique_ligands} unique ligands'
-            f', {exp_lig} were expected. Suggests bad '
-            'optimization. Recommend reoptimising structure.'
+            f"{name} had {num_unique_ligands} unique ligands"
+            f", {exp_lig} were expected. Suggests bad "
+            "optimization. Recommend reoptimising structure."
         )
 
     for lfile in org_ligs:
-        lname = lfile.replace('.mol', '')
+        lname = lfile.replace(".mol", "")
         lmol = org_ligs[lfile]
         extracted_smiles = stk.Smiles().get_key(lmol)
         # Extracted ligand energies.
         extracted_energy = get_xtb_energy(
             lmol,
-            f'{lname}_xtb',
+            f"{lname}_xtb",
             0,
             calc_dir,
         )
@@ -658,7 +654,7 @@ def get_xtb_strain(
         strain = extracted_energy - free_l_energy
         strain_energies[lname] = strain
 
-    with open(ls_file, 'w') as f:
+    with open(ls_file, "w") as f:
         json.dump(strain_energies, f, indent=4)
     return strain_energies
 
@@ -719,22 +715,22 @@ def calculate_N_centroid_N_angle(bb):
             fg_counts += 1
             # Get geometrical properties of the FG.
             # Get N position - deleter.
-            N_position, = bb.get_atomic_positions(
+            (N_position,) = bb.get_atomic_positions(
                 atom_ids=fg.get_nitrogen().get_id()
             )
             fg_positions.append(N_position)
 
     if fg_counts != 2:
         raise ValueError(
-            f'{bb} does not have 2 AromaticCNC or AromaticCNN '
-            'functional groups.'
+            f"{bb} does not have 2 AromaticCNC or AromaticCNN "
+            "functional groups."
         )
 
     # Get building block centroid.
     centroid_position = bb.get_centroid()
 
     # Get vectors.
-    fg_vectors = [i-centroid_position for i in fg_positions]
+    fg_vectors = [i - centroid_position for i in fg_positions]
 
     # Calculate the angle between the two vectors.
     angle = np.degrees(angle_between(*fg_vectors))
@@ -750,7 +746,7 @@ def get_furthest_pair_FGs(stk_mol):
     if stk_mol.get_num_functional_groups() == 2:
         return tuple(i for i in stk_mol.get_functional_groups())
     elif stk_mol.get_num_functional_groups() < 2:
-        raise ValueError(f'{stk_mol} does not have at least 2 FGs')
+        raise ValueError(f"{stk_mol} does not have at least 2 FGs")
 
     fg_centroids = [
         (fg, stk_mol.get_centroid(atom_ids=fg.get_placer_ids()))
@@ -763,7 +759,7 @@ def get_furthest_pair_FGs(stk_mol):
             for i, j in combinations(fg_centroids, 2)
         ],
         key=lambda x: x[2],
-        reverse=True
+        reverse=True,
     )
 
     return (fg_dists[0][0], fg_dists[0][1])
