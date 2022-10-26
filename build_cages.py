@@ -42,19 +42,13 @@ def react_factory():
     )
 
 
-def stk_opt():
-    return stk.MCHammer(
-        target_bond_length=2.5,
-    )
-
-
 def homoleptic_m2l4(metal, ligand):
     return stk.cage.M2L4Lantern(
         building_blocks={
             metal: (0, 1),
             ligand: (2, 3, 4, 5),
         },
-        optimizer=stk_opt(),
+        optimizer=stk.MCHammer(target_bond_length=2.5),
         reaction_factory=react_factory(),
     )
 
@@ -65,7 +59,7 @@ def homoleptic_m3l6(metal, ligand):
             metal: (0, 1, 2),
             ligand: range(3, 9),
         },
-        optimizer=stk_opt(),
+        optimizer=stk.MCHammer(target_bond_length=2.5),
         reaction_factory=react_factory(),
     )
 
@@ -76,7 +70,7 @@ def homoleptic_m4l8(metal, ligand):
             metal: (0, 1, 2, 3),
             ligand: range(4, 12),
         },
-        optimizer=stk_opt(),
+        optimizer=stk.MCHammer(target_bond_length=2.5),
         reaction_factory=react_factory(),
     )
 
@@ -87,7 +81,7 @@ def homoleptic_m6l12(metal, ligand):
             metal: range(0, 6),
             ligand: range(6, 18),
         },
-        optimizer=stk_opt(),
+        optimizer=stk.Collapser(),
         reaction_factory=react_factory(),
     )
 
