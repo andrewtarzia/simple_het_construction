@@ -23,6 +23,10 @@ def cage_path():
     return project_path() / "cages"
 
 
+def xtal_path():
+    return project_path() / "xtals"
+
+
 def dft_path():
     return project_path() / "dft"
 
