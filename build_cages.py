@@ -98,7 +98,6 @@ def homoleptic_m12l24(metal, ligand):
             metal: range(0, 12),
             ligand: range(12, 36),
         },
-        optimizer=stk_opt(),
         reaction_factory=react_factory(),
     )
 
@@ -109,18 +108,13 @@ def homoleptic_m24l48(metal, ligand):
             metal: range(0, 24),
             ligand: range(24, 72),
         },
-        optimizer=stk_opt(),
         reaction_factory=react_factory(),
     )
 
 
 def homoleptic_m30l60(metal, ligand):
     return M30L60(
-        building_blocks={
-            metal: range(0, 30),
-            ligand: range(30, 90),
-        },
-        optimizer=stk_opt(),
+        building_blocks=(metal, ligand),
         reaction_factory=react_factory(),
     )
 
@@ -292,8 +286,7 @@ def main():
         logging.info(f"building {cage_name}")
         unopt_mol = stk.ConstructedMolecule(cage_info.tg)
         unopt_mol.write(unopt_file)
-        continue
-        raise SystemExit("check m30")
+
         if not os.path.exists(opt_file):
             logging.info(f"optimising {cage_name}")
             opt_mol = optimisation_sequence(
