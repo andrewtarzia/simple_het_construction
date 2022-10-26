@@ -120,7 +120,7 @@ def heteroleptic_cis(metal, ligand1, ligand2):
             ligand1: (2, 3),
             ligand2: (4, 5),
         },
-        optimizer=stk_opt(),
+        optimizer=stk.MCHammer(target_bond_length=2.5),
         reaction_factory=react_factory(),
     )
 
@@ -132,7 +132,7 @@ def heteroleptic_trans(metal, ligand1, ligand2):
             ligand1: (2, 4),
             ligand2: (3, 5),
         },
-        optimizer=stk_opt(),
+        optimizer=stk.MCHammer(target_bond_length=2.5),
         reaction_factory=react_factory(),
     )
 
