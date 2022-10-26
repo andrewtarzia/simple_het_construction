@@ -9,16 +9,15 @@ Author: Andrew Tarzia
 
 """
 
-import dataclasses
 import logging
 import sys
 import glob
 import os
 import stk
-import numpy as np
 from itertools import combinations
 from dataclasses import dataclass
 
+from topologies import M30L60
 from utilities import (
     AromaticCNCFactory,
     AromaticCNC,
@@ -80,6 +79,50 @@ def homoleptic_m4l8(metal, ligand):
     )
 
 
+def homoleptic_m6l12(metal, ligand):
+    return stk.cage.M6L12Cube(
+        building_blocks={
+            metal: range(0, 6),
+            ligand: range(6, 18),
+        },
+        optimizer=stk_opt(),
+        reaction_factory=react_factory(),
+    )
+
+
+def homoleptic_m12l24(metal, ligand):
+    return stk.cage.M12L24(
+        building_blocks={
+            metal: range(0, 12),
+            ligand: range(12, 36),
+        },
+        optimizer=stk_opt(),
+        reaction_factory=react_factory(),
+    )
+
+
+def homoleptic_m24l48(metal, ligand):
+    return stk.cage.M24L48(
+        building_blocks={
+            metal: range(0, 24),
+            ligand: range(24, 72),
+        },
+        optimizer=stk_opt(),
+        reaction_factory=react_factory(),
+    )
+
+
+def homoleptic_m30l60(metal, ligand):
+    return M30L60(
+        building_blocks={
+            metal: range(0, 30),
+            ligand: range(30, 90),
+        },
+        optimizer=stk_opt(),
+        reaction_factory=react_factory(),
+    )
+
+
 def heteroleptic_cis(metal, ligand1, ligand2):
     return stk.cage.M2L4Lantern(
         building_blocks={
@@ -110,6 +153,18 @@ class CageInfo:
     charge: int
 
 
+def ligand_cage_topologies():
+    return {
+        'l1': ('m6',),
+        'l2': ('m12',),
+        'l3': ('m24','m30'),
+        'la': ('m2', 'm3', 'm4'),
+        'lb': ('m2', 'm3', 'm4'),
+        'lc': ('m2', 'm3', 'm4'),
+        'ld': ('m2', 'm3', 'm4'),
+    }
+
+
 def define_to_build(ligands):
     pd = stk.BuildingBlock(
         smiles='[Pd+2]',
@@ -120,25 +175,54 @@ def define_to_build(ligands):
         position_matrix=[[0, 0, 0]],
     )
 
+    lct = ligand_cage_topologies()
+
     to_build = {}
     for lig in ligands:
-        homo_m2_name = f'm2_{lig}'
-        to_build[homo_m2_name] = CageInfo(
-            tg=homoleptic_m2l4(pd, ligands[lig]),
-            charge=4,
-        )
+        topo_strs = lct[lig]
+        print(topo_strs)
+        if 'm2' in topo_strs:
+            to_build[f'm2_{lig}'] = CageInfo(
+                tg=homoleptic_m2l4(pd, ligands[lig]),
+                charge=4,
+            )
 
-        homo_m3_name = f'm3_{lig}'
-        to_build[homo_m3_name] = CageInfo(
-            tg=homoleptic_m3l6(pd, ligands[lig]),
-            charge=6,
-        )
+        if 'm3' in topo_strs:
+            to_build[f'm3_{lig}'] = CageInfo(
+                tg=homoleptic_m3l6(pd, ligands[lig]),
+                charge=6,
+            )
 
-        homo_m4_name = f'm4_{lig}'
-        to_build[homo_m4_name] = CageInfo(
-            tg=homoleptic_m4l8(pd, ligands[lig]),
-            charge=8,
-        )
+        if 'm4' in topo_strs:
+            to_build[f'm4_{lig}'] = CageInfo(
+                tg=homoleptic_m4l8(pd, ligands[lig]),
+                charge=8,
+            )
+
+        if 'm6' in topo_strs:
+            to_build[f'm6_{lig}'] = CageInfo(
+                tg=homoleptic_m6l12(pd, ligands[lig]),
+                charge=12,
+            )
+
+        if 'm12' in topo_strs:
+            to_build[f'm12_{lig}'] = CageInfo(
+                tg=homoleptic_m12l24(pd, ligands[lig]),
+                charge=24,
+            )
+
+        if 'm24' in topo_strs:
+            to_build[f'm24_{lig}'] = CageInfo(
+                tg=homoleptic_m24l48(pd, ligands[lig]),
+                charge=48,
+            )
+
+        if 'm30' in topo_strs:
+            to_build[f'm30_{lig}'] = CageInfo(
+                tg=homoleptic_m30l60(pd, ligands[lig]),
+                charge=60,
+            )
+
 
     het_to_build = (
         ('l1', 'la'), ('l1', 'lb'), ('l1', 'lc'), ('l1', 'ld'),
@@ -164,6 +248,7 @@ def define_to_build(ligands):
 
     logging.info(f'there are {len(to_build)} cages to build')
     return to_build
+
 
 def main():
     if (not len(sys.argv) == 1):
@@ -212,6 +297,8 @@ def main():
         logging.info(f'building {cage_name}')
         unopt_mol = stk.ConstructedMolecule(cage_info.tg)
         unopt_mol.write(unopt_file)
+        continue
+        raise SystemExit('check m30')
         if not os.path.exists(opt_file):
             logging.info(f'optimising {cage_name}')
             opt_mol = optimisation_sequence(
