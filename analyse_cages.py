@@ -16,20 +16,21 @@ import os
 import json
 import stk
 
-from env_set import cage_path, calc_path, dft_path, liga_path
+from env_set import cage_path, calc_path, liga_path  # dft_path,
 from utilities import (
     get_order_values,
     get_xtb_energy,
-    get_dft_opt_energy,
-    get_dft_preopt_energy,
     AromaticCNCFactory,
     get_furthest_pair_FGs,
     get_xtb_strain,
-    get_dft_strain,
+    # get_dft_opt_energy,
+    # get_dft_preopt_energy,
+    # get_dft_strain,
 )
 from pywindow_module import PyWindow
 from inflation import PoreMapper
 import plotting
+from topologies import ligand_cage_topologies
 
 
 def get_min_order_parameter(molecule):
@@ -65,7 +66,7 @@ def main():
     _wd = cage_path()
     _cd = calc_path()
     _ld = liga_path()
-    dft_directory = dft_path()
+    # dft_directory = dft_path()
 
     property_dictionary = {
         "cis": {
@@ -88,6 +89,22 @@ def main():
             "charge": 8,
             "exp_lig": 1,
         },
+        "m6": {
+            "charge": 12,
+            "exp_lig": 1,
+        },
+        "m12": {
+            "charge": 24,
+            "exp_lig": 1,
+        },
+        "m24": {
+            "charge": 48,
+            "exp_lig": 1,
+        },
+        "m30": {
+            "charge": 60,
+            "exp_lig": 1,
+        },
     }
 
     structure_files = glob.glob(os.path.join(_wd, "*_opt.mol"))
@@ -103,21 +120,33 @@ def main():
     else:
         for s_file in structure_files:
             name = s_file.split("/")[-1].replace("_opt.mol", "")
-            prefix = name.split("_")[0]
+            splits = name.split("_")
+            if len(splits) == 2:
+                prefix, lname = splits
+                if prefix not in ligand_cage_topologies()[lname]:
+                    continue
+            else:
+                prefix = splits[0]
+                lname = None
+
             properties = property_dictionary[prefix]
             charge = properties["charge"]
             exp_lig = properties["exp_lig"]
             molecule = stk.BuildingBlock.init_from_file(s_file)
 
             structure_results[name]["xtb_energy"] = get_xtb_energy(
-                molecule, name, charge, _cd
+                molecule=molecule,
+                name=name,
+                charge=charge,
+                calc_dir=_cd,
             )
-            structure_results[name][
-                "dft_preopt_energy"
-            ] = get_dft_preopt_energy(molecule, name, dft_directory)
-            structure_results[name][
-                "dft_opt_energy"
-            ] = get_dft_opt_energy(molecule, name, dft_directory)
+            # structure_results[name][
+            #     "dft_preopt_energy"
+            # ] = get_dft_preopt_energy(molecule, name, dft_directory)
+            # structure_results[name][
+            #     "dft_opt_energy"
+            # ] = get_dft_opt_energy(molecule, name, dft_directory)
+            logging.info("not doing DFT stuff yet.")
 
             structure_results[name]["xtb_lig_strain"] = get_xtb_strain(
                 molecule=molecule,
@@ -126,9 +155,9 @@ def main():
                 calc_dir=_cd,
                 exp_lig=exp_lig,
             )
-            structure_results[name]["dft_lig_strain"] = get_dft_strain(
-                molecule, name, charge, _cd
-            )
+            # structure_results[name]["dft_lig_strain"] = get_dft_strain(
+            #     molecule, name, charge, _cd
+            # )
 
             min_order_param = get_min_order_parameter(molecule)
             structure_results[name]["min_order_param"] = min_order_param

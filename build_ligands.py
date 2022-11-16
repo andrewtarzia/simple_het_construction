@@ -15,8 +15,9 @@ import os
 import stk
 import stko
 from rdkit.Chem import AllChem as rdkit
+from rdkit.Chem import Draw
 
-from env_set import liga_path, calc_path, xtb_path
+from env_set import liga_path, calc_path, xtb_path, figu_path
 from utilities import (
     AromaticCNCFactory,
     update_from_rdkit_conf,
@@ -24,6 +25,19 @@ from utilities import (
     get_furthest_pair_FGs,
     get_xtb_energy,
 )
+
+
+def draw_grid(names, smiles, image_file):
+    mols = [rdkit.MolFromSmiles(i) for i in smiles]
+    svg = Draw.MolsToGridImage(
+        mols,
+        molsPerRow=3,
+        subImgSize=(300, 100),
+        legends=names,
+        useSVG=True,
+    )
+    with open(image_file, "w") as f:
+        f.write(svg)
 
 
 def select_conformer(molecule, name, lowe_output, calc_dir):
@@ -152,6 +166,12 @@ def main():
                 calc_dir=_cd,
             )
             opt_mol.write(opt_file)
+
+    draw_grid(
+        names=[i for i in ligand_smiles],
+        smiles=[ligand_smiles[i] for i in ligand_smiles],
+        image_file=str(figu_path() / "ligands.svg"),
+    )
 
 
 if __name__ == "__main__":

@@ -11,18 +11,13 @@ Author: Andrew Tarzia
 
 import logging
 import sys
-import os
-import json
 from itertools import product
-from dataclasses import dataclass
 
-from matplotlib.colors import LightSource
-
-from env_set import cage_path, calc_path, dft_path, liga_path
+from env_set import calc_path  # dft_path
 from utilities import (
     read_xtb_energy,
-    get_dft_opt_energy,
-    get_dft_preopt_energy,
+    # get_dft_opt_energy,
+    # get_dft_preopt_energy,
     name_parser,
 )
 from topologies import ligand_cage_topologies
@@ -89,19 +84,20 @@ class ExchangeReaction:
             if l1_prefix == l2_prefix:
                 l1_stoich = 1
                 l2_stoich = 1
-                lhs_stoich = int(l2_prefix[1])
+                lhs_stoich = int(l2_prefix[1:])
             else:
-                l1_stoich = int(l2_prefix[1])
-                l2_stoich = int(l1_prefix[1])
+                l1_stoich = int(l2_prefix[1:])
+                l2_stoich = int(l1_prefix[1:])
                 lhs_stoich = int((l1_stoich * l2_stoich))
 
-            print(lct)
-            print("you need to only use the appropriate stoichs.")
-            raise SystemExit()
+            if l1_prefix not in lct[self._l1_name]:
+                continue
+            if l2_prefix not in lct[self._l2_name]:
+                continue
 
             assert lhs_stoich * 2 == (
-                l1_stoich * int(l1_prefix[1])
-                + l1_stoich * int(l1_prefix[1])
+                l1_stoich * int(l1_prefix[1:])
+                + l2_stoich * int(l2_prefix[1:])
             )
             yield self._get_rxn_energies(
                 lhs_stoich=lhs_stoich,
@@ -109,6 +105,46 @@ class ExchangeReaction:
                 l1_prefix=l1_prefix,
                 l2_stoich=l2_stoich,
                 l2_prefix=l2_prefix,
+            )
+
+
+class HomolepticExchangeReaction(ExchangeReaction):
+    """
+    Define methods to analyse reaction of form zA <-> xB.
+
+    """
+
+    def __init__(self, ligand_name, pot_homo_topos, method, calc_dir):
+        self._ligand_name = ligand_name
+        self._pot_homo_topos = pot_homo_topos
+        self._calc_dir = calc_dir
+        self._method = method
+
+    def _get_rxn_energies(
+        self,
+        l_stoich,
+        l_prefix,
+    ):
+        energy_p_stoich = (
+            self._get_energy(
+                name=f"{l_prefix}_{self._ligand_name}",
+            )
+            / l_stoich
+        )
+        return {
+            "l": self._ligand_name,
+            "l_stoich": l_stoich,
+            "l_prefix": l_prefix,
+            "energy_per_stoich": energy_p_stoich,
+        }
+
+    def get_all_rxn_energies(self):
+        for l_prefix in self._pot_homo_topos:
+            l_stoich = int(l_prefix[1:])
+
+            yield self._get_rxn_energies(
+                l_stoich=l_stoich,
+                l_prefix=l_prefix,
             )
 
 
@@ -120,8 +156,8 @@ def main():
         pass
 
     _cd = calc_path()
-    _ld = liga_path()
-    dft_directory = dft_path()
+    # _ld = liga_path()
+    # dft_directory = dft_path()
 
     het_system = {
         "cis_l1_la",
@@ -131,12 +167,17 @@ def main():
         "cis_l2_ld",
         "cis_l3_ld",
     }
-    methods = ("xtb", "dft_preopt", "dft")
+    lig_system = {
+        "lb": ("m2", "m3", "m4"),
+        "lc": ("m2", "m3", "m4"),
+        "l1": ("m2", "m3", "m4", "m6"),
+        "l2": ("m2", "m3", "m4", "m12"),
+        "l3": ("m2", "m3", "m4", "m24", "m30"),
+    }
+    methods = ("xtb",)  # "dft_preopt", "dft")
 
     for method in methods:
-        print(method)
         for hs in het_system:
-            print(hs)
             topo, l1, l2 = name_parser(hs)
             all_rxns = []
             erxn = ExchangeReaction(
@@ -150,8 +191,23 @@ def main():
 
             plotting.plot_exchange_reactions(
                 rxns=all_rxns,
-                hs=hs,
                 outname=f"erxns_{hs}",
+            )
+
+        for ls in lig_system:
+            all_rxns = []
+            erxn = HomolepticExchangeReaction(
+                ligand_name=ls,
+                method=method,
+                calc_dir=_cd,
+                pot_homo_topos=lig_system[ls],
+            )
+            for rxn in erxn.get_all_rxn_energies():
+                all_rxns.append(rxn)
+
+            plotting.plot_homoleptic_exchange_reactions(
+                rxns=all_rxns,
+                outname=f"erxns_{ls}",
             )
 
 

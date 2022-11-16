@@ -507,7 +507,7 @@ def get_dft_preopt_energy(molecule, name, calc_dir):
             output_dir=output_dir,
             gfn_version=2,
             num_cores=6,
-            charge=charge,
+            # charge=charge,
             num_unpaired_electrons=0,
             unlimited_memory=True,
         )
@@ -536,7 +536,7 @@ def get_dft_opt_energy(molecule, name, calc_dir):
             output_dir=output_dir,
             gfn_version=2,
             num_cores=6,
-            charge=charge,
+            # charge=charge,
             num_unpaired_electrons=0,
             unlimited_memory=True,
         )
