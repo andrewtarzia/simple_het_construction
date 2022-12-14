@@ -12,6 +12,7 @@ Author: Andrew Tarzia
 import logging
 import sys
 import os
+import json
 import stk
 import stko
 from rdkit.Chem import AllChem as rdkit
@@ -22,6 +23,8 @@ from utilities import (
     AromaticCNCFactory,
     update_from_rdkit_conf,
     calculate_N_centroid_N_angle,
+    calculate_NN_distance,
+    calculate_NN_BCN_angles,
     get_furthest_pair_FGs,
     get_xtb_energy,
 )
@@ -40,7 +43,13 @@ def draw_grid(names, smiles, image_file):
         f.write(svg)
 
 
-def select_conformer(molecule, name, lowe_output, calc_dir):
+def select_conformer(
+    molecule,
+    name,
+    lowe_output,
+    conf_data_file,
+    calc_dir,
+):
     """
     Select and optimize a conformer with desired directionality.
 
@@ -49,6 +58,7 @@ def select_conformer(molecule, name, lowe_output, calc_dir):
         N-ligand centroid-N angle.
 
     """
+    lowe_energy_output = str(lowe_output).replace(".mol", "_xtb.ey")
 
     confs = molecule.to_rdkit_mol()
     etkdg = rdkit.srETKDGv3()
@@ -61,7 +71,11 @@ def select_conformer(molecule, name, lowe_output, calc_dir):
 
     min_angle = 10000
     min_energy = 1e24
+    lig_conf_data = {}
     for cid in cids:
+        conf_opt_file_name = str(lowe_output).replace(
+            "_lowe.mol", f"_c{cid}_opt.mol"
+        )
         # Update stk_mol to conformer geometry.
         new_mol = update_from_rdkit_conf(
             stk_mol=molecule, rdk_mol=confs, conf_id=cid
@@ -74,18 +88,25 @@ def select_conformer(molecule, name, lowe_output, calc_dir):
         new_mol = new_mol.with_functional_groups(
             functional_groups=get_furthest_pair_FGs(new_mol)
         )
-        logging.info(f"xtb opt of {name} conformer {cid}")
-        xtb_opt = stko.XTB(
-            xtb_path=xtb_path(),
-            output_dir=calc_dir / f"{name}_{cid}_ligxtb",
-            gfn_version=2,
-            num_cores=6,
-            opt_level="normal",
-            max_runs=1,
-            calculate_hessian=False,
-            unlimited_memory=True,
-        )
-        new_mol = xtb_opt.optimize(mol=new_mol)
+        if os.path.exists(conf_opt_file_name):
+            new_mol = new_mol.with_structure_from_file(
+                path=conf_opt_file_name,
+            )
+        else:
+            logging.info(f"xtb opt of {name} conformer {cid}")
+            xtb_opt = stko.XTB(
+                xtb_path=xtb_path(),
+                output_dir=calc_dir / f"{name}_{cid}_ligxtb",
+                gfn_version=2,
+                num_cores=6,
+                opt_level="normal",
+                max_runs=1,
+                calculate_hessian=False,
+                unlimited_memory=True,
+            )
+            new_mol = xtb_opt.optimize(mol=new_mol)
+            new_mol.write(conf_opt_file_name)
+
         angle = calculate_N_centroid_N_angle(new_mol)
         charge = 0
         cid_name = f"{name}_{cid}_ligey"
@@ -101,8 +122,18 @@ def select_conformer(molecule, name, lowe_output, calc_dir):
             logging.info(f"new lowest energy conformer: {cid}")
             min_energy = energy
             new_mol.write(str(lowe_output))
-            with open(lowe_output.replace(".mol", "_xtb.ey"), "w") as f:
+            with open(lowe_energy_output, "w") as f:
                 f.write(f"{min_energy}\n")
+
+        lig_conf_data[cid] = {
+            "xtb_energy": energy,
+            "NcentroidN_angle": angle,
+            "NN_distance": calculate_NN_distance(new_mol),
+            "NN_BCN_angles": calculate_NN_BCN_angles(new_mol),
+        }
+
+    with open(conf_data_file, "w") as f:
+        json.dump(lig_conf_data, f)
 
     return final_molecule
 
@@ -151,6 +182,7 @@ def main():
         unopt_file = _wd / f"{lig}_unopt.mol"
         opt_file = _wd / f"{lig}_opt.mol"
         lowe_file = _wd / f"{lig}_lowe.mol"
+        conf_data_file = _wd / f"{lig}_conf_data.json"
         unopt_mol = stk.BuildingBlock(
             smiles=ligand_smiles[lig],
             functional_groups=(AromaticCNCFactory(),),
@@ -163,6 +195,7 @@ def main():
                 molecule=unopt_mol,
                 name=lig,
                 lowe_output=lowe_file,
+                conf_data_file=conf_data_file,
                 calc_dir=_cd,
             )
             opt_mol.write(opt_file)

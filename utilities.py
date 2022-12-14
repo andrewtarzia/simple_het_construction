@@ -737,6 +737,90 @@ def calculate_N_centroid_N_angle(bb):
     return angle
 
 
+def calculate_NN_distance(bb):
+    """
+    Calculate the N-N distance of ditopic building block.
+
+    This function will not work for cages built from FGs other than
+    metals + AromaticCNC.
+
+    Parameters
+    ----------
+    bb : :class:`stk.BuildingBlock`
+        stk molecule to analyse.
+
+    Returns
+    -------
+    NN_distance : :class:`float`
+        Distance(s) between [angstrom] N atoms in functional groups.
+
+    """
+
+    fg_counts = 0
+    N_positions = []
+    for fg in bb.get_functional_groups():
+        if isinstance(fg, AromaticCNC):
+            fg_counts += 1
+            # Get geometrical properties of the FG.
+            # Get N position - deleter.
+            (N_position,) = bb.get_atomic_positions(
+                atom_ids=fg.get_nitrogen().get_id()
+            )
+            N_positions.append(N_position)
+
+    if fg_counts != 2:
+        raise ValueError(
+            f"{bb} does not have 2 AromaticCNC functional groups."
+        )
+
+    NN_distance = np.linalg.norm(N_positions[0] - N_positions[1])
+    return NN_distance
+
+
+def calculate_NN_BCN_angles(bb):
+    fg_counts = 0
+    N_positions = []
+    N_C_vectors = []
+    for fg in bb.get_functional_groups():
+        if isinstance(fg, AromaticCNC):
+            fg_counts += 1
+            # Get geometrical properties of the FG.
+            # Get N position - deleter.
+            (N_position,) = bb.get_atomic_positions(
+                atom_ids=fg.get_nitrogen().get_id()
+            )
+            N_positions.append(N_position)
+            C_atom_ids = (
+                fg.get_carbon1().get_id(),
+                fg.get_carbon2().get_id(),
+            )
+            C_centroid = bb.get_centroid(atom_ids=C_atom_ids)
+            N_C_vector = N_position - C_centroid
+            N_C_vectors.append(N_C_vector)
+
+    if fg_counts != 2:
+        raise ValueError(
+            f"{bb} does not have 2 AromaticCNC functional groups."
+        )
+
+    NN_vector = N_positions[1] - N_positions[0]
+
+    NN_BCN_1 = np.degrees(
+        angle_between(
+            N_C_vectors[0],
+            -NN_vector,
+        )
+    )
+    NN_BCN_2 = np.degrees(
+        angle_between(
+            N_C_vectors[1],
+            NN_vector,
+        )
+    )
+
+    return {"NN_BCN1": NN_BCN_1, "NN_BCN2": NN_BCN_2}
+
+
 def get_furthest_pair_FGs(stk_mol):
     """
     Returns the pair of functional groups that are furthest apart.
