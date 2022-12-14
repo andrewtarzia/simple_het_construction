@@ -138,23 +138,8 @@ def select_conformer(
     return final_molecule
 
 
-def main():
-    if not len(sys.argv) == 1:
-        logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
-        sys.exit()
-    else:
-        pass
-
-    _wd = liga_path()
-    _cd = calc_path()
-
-    if not os.path.exists(_wd):
-        os.mkdir(_wd)
-
-    if not os.path.exists(_cd):
-        os.mkdir(_cd)
-
-    ligand_smiles = {
+def ligand_smiles():
+    return {
         # Diverging.
         "l1": "C1=NC=CC(C2=CC=C3OC4C=CC(C5C=CN=CC=5)=CC=4C3=C2)=C1",
         "l2": "C1=CC(=CC(=C1)C2=CC=NC=C2)C3=CC=NC=C3",
@@ -178,7 +163,24 @@ def main():
         ),
     }
 
-    for lig in ligand_smiles:
+
+def main():
+    if not len(sys.argv) == 1:
+        logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
+        sys.exit()
+    else:
+        pass
+
+    _wd = liga_path()
+    _cd = calc_path()
+
+    if not os.path.exists(_wd):
+        os.mkdir(_wd)
+
+    if not os.path.exists(_cd):
+        os.mkdir(_cd)
+
+    for lig in ligand_smiles():
         unopt_file = _wd / f"{lig}_unopt.mol"
         opt_file = _wd / f"{lig}_opt.mol"
         lowe_file = _wd / f"{lig}_lowe.mol"
