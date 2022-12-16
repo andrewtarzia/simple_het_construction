@@ -10,6 +10,8 @@ Author: Andrew Tarzia
 """
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+import numpy as np
 import os
 
 from env_set import figu_path
@@ -49,7 +51,221 @@ def axes_labels(prop):
             (0, 1000),
             sum_strain,
         ),
+        "xtb_energy": (
+            "xtb energy [kJ mol-1]",
+            None,
+            no_conv,
+        ),
+        "NcentroidN_angle": (
+            "N-centroid-N angle [deg]",
+            (90, 180),
+            no_conv,
+        ),
+        "NN_distance": (
+            "N-N distance [A]",
+            (0, 30),
+            no_conv,
+        ),
+        "NN_BCN_angles": (
+            "theta [deg]",
+            (0, 180),
+            no_conv,
+        ),
+        "NCCN_dihedral": (
+            "abs. NCCN dihedral [deg]",
+            (0, 180),
+            no_conv,
+        ),
     }[prop]
+
+
+def plot_ligand_pairing(
+    results_dict,
+    outname,
+):
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    all_scores = []
+    all_xs = []
+    all_ys = []
+    for cids, cidl in results_dict:
+        rdict = results_dict[(cids, cidl)]
+        all_scores.append(rdict["geom_score"])
+        all_xs.append(rdict["sum_angle_dev"] / 180)
+        all_ys.append(rdict["sum_length_dev"] / 20)
+
+    # xwidth = 0.05
+    # xbins = np.arange(
+    #     0 - xwidth,
+    #     5 + xwidth,
+    #     xwidth,
+    # )
+    # axs[1].hist(
+    #     x=all_scores,
+    #     bins=xbins,
+    #     density=False,
+    #     histtype="stepfilled",
+    #     stacked=True,
+    #     linewidth=1.0,
+    #     facecolor="#F97068",
+    #     alpha=1.0,
+    #     edgecolor="k",
+    # )
+
+    # axs[1].tick_params(axis="both", which="major", labelsize=16)
+    # axs[1].set_xlabel("geom score", fontsize=16)
+    # axs[1].set_ylabel("count", fontsize=16)
+    # axs[1].set_xlim(0, 5)
+
+    xlim = (0, 2)
+    ylim = (0, 2)
+    norm = colors.LogNorm()
+    cs = [(1.0, 1.0, 1.0), (255 / 255, 87 / 255, 51 / 255)]
+    cmap = colors.LinearSegmentedColormap.from_list("test", cs, N=10)
+    hist = ax.hist2d(
+        all_xs,
+        all_ys,
+        bins=[40, 40],
+        range=[xlim, ylim],
+        density=False,
+        norm=norm,
+        cmap=cmap,
+    )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel("T1 [deg]", fontsize=16)
+    ax.set_ylabel("T2 [Angstrom]", fontsize=16)
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+    cbar = fig.colorbar(hist[3], ax=ax)
+    cbar.ax.set_ylabel("count", fontsize=16)
+    cbar.ax.tick_params(labelsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}.pdf"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_single_distribution(
+    results_dict,
+    outname,
+    yproperty,
+):
+    lab_prop = axes_labels(yproperty)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    all_values = []
+    for cid in results_dict:
+        if results_dict[cid][yproperty] is None:
+            continue
+
+        if yproperty == "NN_BCN_angles":
+            value = results_dict[cid][yproperty]["NN_BCN1"]
+            all_values.append(value)
+            value = results_dict[cid][yproperty]["NN_BCN2"]
+            all_values.append(value)
+        else:
+            value = results_dict[cid][yproperty]
+            all_values.append(value)
+
+    if yproperty == "xtb_energy":
+        all_values = [i - min(all_values) for i in all_values]
+        all_values = [i * 2625.5 for i in all_values]
+
+    print(len(all_values), outname)
+
+    if lab_prop[1] is None:
+        xbins = 50
+    else:
+        xwidth = 1
+        xbins = np.arange(
+            lab_prop[1][0] - xwidth,
+            lab_prop[1][1] + xwidth,
+            xwidth,
+        )
+    ax.hist(
+        x=all_values,
+        bins=xbins,
+        density=False,
+        histtype="stepfilled",
+        stacked=True,
+        linewidth=1.0,
+        facecolor="#F97068",
+        alpha=1.0,
+        edgecolor="k",
+    )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel(lab_prop[0], fontsize=16)
+    ax.set_ylabel("count", fontsize=16)
+    ax.set_xlim(lab_prop[1])
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}.pdf"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_pair_distribution(
+    results_dict,
+    outname,
+    yproperty,
+):
+    raise NotImplementedError("not using this for this paper, I think.")
+    lab_prop = axes_labels(yproperty)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    all_xvalues = []
+    # all_yvalues = []
+    for cid in results_dict:
+        dictionary = results_dict[cid][yproperty]
+        xvalue = dictionary[""]
+
+        all_xvalues.append(xvalue)
+        # all_yvalues.append(yvalue)
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel(lab_prop[0], fontsize=16)
+    ax.set_ylabel(lab_prop[0], fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}.pdf"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_conf_distribution(
+    results_dict,
+    outname,
+    yproperty,
+):
+
+    # if yproperty in (
+    #     ("NN_BCN_angles", "NN_BCN_angles"),
+    #     (),
+    # ):
+    #     plot_pair_distribution(
+    #         results_dict=results_dict,
+    #         outname=outname,
+    #         yproperty=yproperty,
+    #     )
+    # else:
+    plot_single_distribution(
+        results_dict=results_dict,
+        outname=outname,
+        yproperty=yproperty,
+    )
 
 
 def plot_property(results_dict, outname, yproperty, ignore_topos=None):
