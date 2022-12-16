@@ -847,3 +847,77 @@ def get_furthest_pair_FGs(stk_mol):
     )
 
     return (fg_dists[0][0], fg_dists[0][1])
+
+
+def get_dihedral(pt1, pt2, pt3, pt4):
+    """
+    Calculate the dihedral between four points.
+
+    Uses Praxeolitic formula --> 1 sqrt, 1 cross product
+    Output in range (-pi to pi).
+
+    From: https://stackoverflow.com/questions/20305272/
+    dihedral-torsion-angle-from-four-points-in-cartesian-
+    coordinates-in-python
+    (new_dihedral(p))
+    """
+
+    p0 = np.asarray(pt1)
+    p1 = np.asarray(pt2)
+    p2 = np.asarray(pt3)
+    p3 = np.asarray(pt4)
+
+    b0 = -1.0 * (p1 - p0)
+    b1 = p2 - p1
+    b2 = p3 - p2
+
+    # normalize b1 so that it does not influence magnitude of vector
+    # rejections that come next
+    b1 /= np.linalg.norm(b1)
+
+    # vector rejections
+    # v = projection of b0 onto plane perpendicular to b1
+    #   = b0 minus component that aligns with b1
+    # w = projection of b2 onto plane perpendicular to b1
+    #   = b2 minus component that aligns with b1
+    v = b0 - np.dot(b0, b1) * b1
+    w = b2 - np.dot(b2, b1) * b1
+
+    # angle between v and w in a plane is the torsion angle
+    # v and w may not be normalized but that's fine since tan is y/x
+    x = np.dot(v, w)
+    y = np.dot(np.cross(b1, v), w)
+    return np.degrees(np.arctan2(y, x))
+
+
+def calculate_NCCN_dihedral(bb):
+    fg_counts = 0
+    N_positions = []
+    C_centroids = []
+    for fg in bb.get_functional_groups():
+        if isinstance(fg, AromaticCNC):
+            fg_counts += 1
+            # Get geometrical properties of the FG.
+            # Get N position - deleter.
+            (N_position,) = bb.get_atomic_positions(
+                atom_ids=fg.get_nitrogen().get_id()
+            )
+            N_positions.append(N_position)
+            C_atom_ids = (
+                fg.get_carbon1().get_id(),
+                fg.get_carbon2().get_id(),
+            )
+            C_centroid = bb.get_centroid(atom_ids=C_atom_ids)
+            C_centroids.append(C_centroid)
+
+    if fg_counts != 2:
+        raise ValueError(
+            f"{bb} does not have 2 AromaticCNC functional groups."
+        )
+
+    return get_dihedral(
+        pt1=N_positions[0],
+        pt2=C_centroids[0],
+        pt3=C_centroids[1],
+        pt4=N_positions[1],
+    )
