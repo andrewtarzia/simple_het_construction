@@ -25,6 +25,7 @@ from utilities import (
     calculate_N_centroid_N_angle,
     calculate_NN_distance,
     calculate_NN_BCN_angles,
+    calculate_NCCN_dihedral,
     get_furthest_pair_FGs,
     get_xtb_energy,
 )
@@ -74,7 +75,7 @@ def select_conformer(
     lig_conf_data = {}
     for cid in cids:
         conf_opt_file_name = str(lowe_output).replace(
-            "_lowe.mol", f"_c{cid}_opt.mol"
+            "_lowe.mol", f"_c{cid}_copt.mol"
         )
         # Update stk_mol to conformer geometry.
         new_mol = update_from_rdkit_conf(
@@ -107,6 +108,7 @@ def select_conformer(
             new_mol = xtb_opt.optimize(mol=new_mol)
             new_mol.write(conf_opt_file_name)
 
+        NCCN_dihedral = abs(calculate_NCCN_dihedral(new_mol))
         angle = calculate_N_centroid_N_angle(new_mol)
         charge = 0
         cid_name = f"{name}_{cid}_ligey"
@@ -128,6 +130,7 @@ def select_conformer(
         lig_conf_data[cid] = {
             "xtb_energy": energy,
             "NcentroidN_angle": angle,
+            "NCCN_dihedral": NCCN_dihedral,
             "NN_distance": calculate_NN_distance(new_mol),
             "NN_BCN_angles": calculate_NN_BCN_angles(new_mol),
         }
@@ -180,13 +183,14 @@ def main():
     if not os.path.exists(_cd):
         os.mkdir(_cd)
 
-    for lig in ligand_smiles():
+    lsmiles = ligand_smiles()
+    for lig in lsmiles:
         unopt_file = _wd / f"{lig}_unopt.mol"
         opt_file = _wd / f"{lig}_opt.mol"
         lowe_file = _wd / f"{lig}_lowe.mol"
         conf_data_file = _wd / f"{lig}_conf_data.json"
         unopt_mol = stk.BuildingBlock(
-            smiles=ligand_smiles[lig],
+            smiles=lsmiles[lig],
             functional_groups=(AromaticCNCFactory(),),
         )
         unopt_mol.write(unopt_file)
@@ -203,8 +207,8 @@ def main():
             opt_mol.write(opt_file)
 
     draw_grid(
-        names=[i for i in ligand_smiles],
-        smiles=[ligand_smiles[i] for i in ligand_smiles],
+        names=[i for i in lsmiles],
+        smiles=[lsmiles[i] for i in lsmiles],
         image_file=str(figu_path() / "ligands.svg"),
     )
 
