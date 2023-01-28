@@ -15,7 +15,7 @@ import stk
 
 def ligand_cage_topologies():
     return {
-        "l1": ("m6",),
+        "l1": ("m2", "m3", "m4", "m6",),
         "l2": ("m12",),
         "l3": ("m24", "m30"),
         "la": ("m2", "m3"),
