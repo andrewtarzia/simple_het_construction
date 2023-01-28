@@ -21,6 +21,7 @@ def optimisation_sequence(mol, name, charge, calc_dir):
     gulp2_output = str(calc_dir / f"{name}_gulp2.mol")
     gulpmd_output = str(calc_dir / f"{name}_gulpmd.mol")
     xtbopt_output = str(calc_dir / f"{name}_xtb.mol")
+    xtbsolvopt_output = str(calc_dir / f"{name}_xtb_dmso.mol")
 
     if not os.path.exists(gulp1_output):
         output_dir = os.path.join(calc_dir, f"{name}_gulp1")
@@ -61,14 +62,13 @@ def optimisation_sequence(mol, name, charge, calc_dir):
         gulp2_mol = mol.with_structure_from_file(gulp2_output)
 
     if not os.path.exists(gulpmd_output):
-        output_dir = os.path.join(calc_dir, f"{name}_gulpmd")
 
         logging.info(f"UFF4MOF equilib MD of {name}")
         gulp_MD = stko.GulpUFFMDOptimizer(
             gulp_path=env_set.gulp_path(),
             metal_FF={46: "Pd4+2"},
             metal_ligand_bond_order="",
-            output_dir=os.path.join(calc_dir, f"{name}_gulpmd"),
+            output_dir=os.path.join(calc_dir, f"{name}_gulpmde"),
             integrator="leapfrog verlet",
             ensemble="nvt",
             temperature=1000,
@@ -107,7 +107,7 @@ def optimisation_sequence(mol, name, charge, calc_dir):
 
     if not os.path.exists(xtbopt_output):
         output_dir = os.path.join(calc_dir, f"{name}_xtbopt")
-        logging.info(f"final xtb optimisation of {name}")
+        logging.info(f"xtb optimisation of {name}")
         xtb_opt = stko.XTB(
             xtb_path=env_set.xtb_path(),
             output_dir=output_dir,
@@ -127,5 +127,29 @@ def optimisation_sequence(mol, name, charge, calc_dir):
         logging.info(f"loading {xtbopt_output}")
         xtbopt_mol = mol.with_structure_from_file(xtbopt_output)
 
-    final_mol = mol.with_structure_from_file(xtbopt_output)
+    if not os.path.exists(xtbsolvopt_output):
+        output_dir = os.path.join(calc_dir, f"{name}_xtbsolvopt")
+        logging.info(f"solvated xtb optimisation of {name}")
+        xtb_opt = stko.XTB(
+            xtb_path=env_set.xtb_path(),
+            output_dir=output_dir,
+            gfn_version=2,
+            num_cores=6,
+            charge=charge,
+            opt_level="normal",
+            num_unpaired_electrons=0,
+            max_runs=1,
+            calculate_hessian=False,
+            unlimited_memory=True,
+            solvent_model="alpb",
+            solvent="dmso",
+            solvent_grid="verytight",
+        )
+        xtbsolvopt_mol = xtb_opt.optimize(mol=xtbopt_mol)
+        xtbsolvopt_mol.write(xtbsolvopt_output)
+    else:
+        logging.info(f"loading {xtbsolvopt_output}")
+        xtbsolvopt_mol = mol.with_structure_from_file(xtbsolvopt_output)
+
+    final_mol = mol.with_structure_from_file(xtbsolvopt_output)
     return final_mol
