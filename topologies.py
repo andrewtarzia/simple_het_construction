@@ -13,15 +13,32 @@ Author: Andrew Tarzia
 import stk
 
 
+def heteroleptic_cages():
+    return (
+        ("l1", "la"),
+        ("l1", "lb"),
+        ("l1", "lc"),
+        ("l1", "ld"),
+        ("l2", "la"),
+        ("l2", "lb"),
+        ("l2", "lc"),
+        ("l2", "ld"),
+        ("l3", "la"),
+        ("l3", "lb"),
+        ("l3", "lc"),
+        ("l3", "ld"),
+    )
+
+
 def ligand_cage_topologies():
     return {
-        "l1": ("m2", "m3", "m4", "m6",),
+        "l1": ("m2", "m3", "m4", "m6"),
         "l2": ("m12",),
         "l3": ("m24", "m30"),
-        "la": ("m2", "m3"),
-        "lb": ("m2", "m3"),
-        "lc": ("m2", "m3"),
-        "ld": ("m2", "m3"),
+        "la": ("m2",),
+        "lb": ("m2",),
+        "lc": ("m2",),
+        "ld": ("m2",),
     }
 
 
