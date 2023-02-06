@@ -17,7 +17,11 @@ import stk
 from itertools import combinations
 from dataclasses import dataclass
 
-from topologies import M30L60, ligand_cage_topologies
+from topologies import (
+    M30L60,
+    ligand_cage_topologies,
+    heteroleptic_cages,
+)
 from utilities import (
     AromaticCNCFactory,
     AromaticCNC,
@@ -199,20 +203,7 @@ def define_to_build(ligands):
                 charge=60,
             )
 
-    het_to_build = (
-        ("l1", "la"),
-        ("l1", "lb"),
-        ("l1", "lc"),
-        ("l1", "ld"),
-        ("l2", "la"),
-        ("l2", "lb"),
-        ("l2", "lc"),
-        ("l2", "ld"),
-        ("l3", "la"),
-        ("l3", "lb"),
-        ("l3", "lc"),
-        ("l3", "ld"),
-    )
+    het_to_build = heteroleptic_cages()
     for lig1, lig2 in combinations(ligands, r=2):
         l1, l2 = tuple(sorted((lig1, lig2)))
         if (l1, l2) not in het_to_build:

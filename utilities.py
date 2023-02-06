@@ -466,6 +466,28 @@ def get_organic_linker_atoms(cage, metal_atom_nos):
         atoms = list(cg)
         yield atoms
 
+
+def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
+
+    if solvent is None:
+        solvent_model = "alpb"
+        solvent_str = None
+        solvent_grid = "verytight"
+        solvent_list = "gas"
+        output_dir = os.path.join(calc_dir, f"{name}_xtbey")
+        output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
+    else:
+        solvent_model = "alpb"
+        solvent_str = solvent
+        solvent_grid = "verytight"
+        solvent_list = f"{solvent_str}/{solvent_model}/{solvent_grid}"
+        output_dir = os.path.join(
+            calc_dir, f"{name}_{solvent_str}_xtbey"
+        )
+        output_file = os.path.join(
+            calc_dir, f"{name}_{solvent_str}_xtb.ey"
+        )
+
     if os.path.exists(output_file):
         with open(output_file, "r") as f:
             lines = f.readlines()
@@ -473,7 +495,9 @@ def get_organic_linker_atoms(cage, metal_atom_nos):
             energy = float(line.rstrip())
             break
     else:
-        logging.info(f"xtb energy calculation of {name}")
+        logging.info(
+            f"xtb energy calculation of {name} with {solvent_list}"
+        )
         xtb = stko.XTBEnergy(
             xtb_path=xtb_path(),
             output_dir=output_dir,
@@ -482,6 +506,9 @@ def get_organic_linker_atoms(cage, metal_atom_nos):
             charge=charge,
             num_unpaired_electrons=0,
             unlimited_memory=True,
+            solvent_model=solvent_model,
+            solvent=solvent_str,
+            solvent_grid=solvent_grid,
         )
         energy = xtb.get_energy(mol=molecule)
         with open(output_file, "w") as f:
@@ -492,6 +519,7 @@ def get_organic_linker_atoms(cage, metal_atom_nos):
 
 
 def read_xtb_energy(name, calc_dir):
+    raise SystemExit("handle solvent")
     output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
     if os.path.exists(output_file):
         with open(output_file, "r") as f:
@@ -595,6 +623,7 @@ def get_xtb_strain(
     liga_dir,
     calc_dir,
     exp_lig,
+    solvent,
 ):
 
     ls_file = os.path.join(calc_dir, f"{name}_strain_xtb.json")
@@ -614,6 +643,7 @@ def get_xtb_strain(
         name=f"{ligand1_name}_lowe",
         charge=0,
         calc_dir=calc_dir,
+        solvent=solvent,
     )
     ligand1_smiles = stk.Smiles().get_key(ligand1)
 
@@ -626,6 +656,7 @@ def get_xtb_strain(
             name=f"{ligand2_name}_lowe",
             charge=0,
             calc_dir=calc_dir,
+            solvent=solvent,
         )
         ligand2_smiles = stk.Smiles().get_key(ligand2)
         smiles_map = {
@@ -662,6 +693,7 @@ def get_xtb_strain(
             f"{lname}_xtb",
             0,
             calc_dir,
+            solvent=solvent,
         )
 
         # Free ligand energies.

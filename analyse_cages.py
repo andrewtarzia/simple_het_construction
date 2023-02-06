@@ -23,6 +23,7 @@ from utilities import (
     AromaticCNCFactory,
     get_furthest_pair_FGs,
     get_xtb_strain,
+    calculate_helicities,
     # get_dft_opt_energy,
     # get_dft_preopt_energy,
     # get_dft_strain,
@@ -30,7 +31,7 @@ from utilities import (
 from pywindow_module import PyWindow
 from inflation import PoreMapper
 import plotting
-from topologies import ligand_cage_topologies
+from topologies import ligand_cage_topologies, heteroleptic_cages
 
 
 def get_min_order_parameter(molecule):
@@ -147,11 +148,23 @@ def main():
             exp_lig = properties["exp_lig"]
             molecule = stk.BuildingBlock.init_from_file(s_file)
 
-            structure_results[name]["xtb_energy"] = get_xtb_energy(
+            structure_results[name][
+                "xtb_solv_opt_gasenergy"
+            ] = get_xtb_energy(
                 molecule=molecule,
                 name=name,
                 charge=charge,
                 calc_dir=_cd,
+                solvent=None,
+            )
+            structure_results[name][
+                "xtb_solv_opt_dmsoenergy"
+            ] = get_xtb_energy(
+                molecule=molecule,
+                name=name,
+                charge=charge,
+                calc_dir=_cd,
+                solvent="dmso",
             )
             # structure_results[name][
             #     "dft_preopt_energy"
@@ -159,6 +172,7 @@ def main():
             # structure_results[name][
             #     "dft_opt_energy"
             # ] = get_dft_opt_energy(molecule, name, dft_directory)
+            logging.info("get dft energies from VP files")
 
             if prefix in ("cis", "trans", "m2"):
                 helicity = calculate_helicities(
@@ -176,10 +190,8 @@ def main():
                 liga_dir=_ld,
                 calc_dir=_cd,
                 exp_lig=exp_lig,
+                solvent="dmso",
             )
-            # structure_results[name]["dft_lig_strain"] = get_dft_strain(
-            #     molecule, name, charge, _cd
-            # )
 
             min_order_param = get_min_order_parameter(molecule)
             structure_results[name]["min_order_param"] = min_order_param
@@ -192,13 +204,29 @@ def main():
             ).get_results(molecule)
 
         with open(structure_res_file, "w") as f:
-            json.dump(structure_results, f)
+            json.dump(structure_results, f, indent=4)
 
     plotting.plot_property(
         results_dict=structure_results,
         outname="cage_ops",
         yproperty="min_order_param",
     )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname="cage_ahel",
+        yproperty="avg_heli",
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname="cage_mahel",
+        yproperty="max_heli",
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname="cage_mihel",
+        yproperty="min_heli",
+    )
+
     plotting.plot_property(
         results_dict=structure_results,
         outname="cage_pw_diameter",
@@ -229,6 +257,11 @@ def main():
     )
     plotting.compare_cis_trans(
         results_dict=structure_results,
+        outname="hetcf_cage_xtb_solv_e",
+        yproperty="xtb_solv_opt_dmsoenergy",
+    )
+    plotting.compare_cis_trans(
+        results_dict=structure_results,
         outname="hetcf_cage_xtb_strain",
         yproperty="xtb_lig_strain",
     )
@@ -242,6 +275,7 @@ def main():
         outname="hetcf_cage_pw_diameter",
         yproperty="pore_diameter_opt",
     )
+    raise SystemExit("remove M3 for large")
 
 
 if __name__ == "__main__":

@@ -104,6 +104,9 @@ def select_conformer(
                 max_runs=1,
                 calculate_hessian=False,
                 unlimited_memory=True,
+                solvent_model="alpb",
+                solvent="dmso",
+                solvent_grid="verytight",
             )
             new_mol = xtb_opt.optimize(mol=new_mol)
             new_mol.write(conf_opt_file_name)
@@ -112,7 +115,13 @@ def select_conformer(
         angle = calculate_N_centroid_N_angle(new_mol)
         charge = 0
         cid_name = f"{name}_{cid}_ligey"
-        energy = get_xtb_energy(new_mol, cid_name, charge, calc_dir)
+        energy = get_xtb_energy(
+            molecule=new_mol,
+            name=cid_name,
+            charge=charge,
+            calc_dir=calc_dir,
+            solvent="dmso",
+        )
         if angle < min_angle:
             logging.info(f"new selected conformer: {cid}")
             min_angle = angle
@@ -128,7 +137,7 @@ def select_conformer(
                 f.write(f"{min_energy}\n")
 
         lig_conf_data[cid] = {
-            "xtb_energy": energy,
+            "xtb_dmsoenergy": energy,
             "NcentroidN_angle": angle,
             "NCCN_dihedral": NCCN_dihedral,
             "NN_distance": calculate_NN_distance(new_mol),
