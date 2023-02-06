@@ -60,20 +60,20 @@ def write_top_section(basename, method, solvent):
 
     if method == "sp" or method == "sp_opt":
         string = (
-            f"! DFT SP B97-3c TightSCF printbasis {solvent_s} Grid6 "
-            "NOFINALGRID SlowConv "
+            f"! DFT SP B97-3c TightSCF printbasis {solvent_s} defgrid2 "
+            "SlowConv "
             "\n\n"
             f'%base "{basename}"\n'
-            "%maxcore 3000\n"
+            "%maxcore 20000\n"
             "%scf\n   MaxIter 2000\nend\n"
         )
     elif method == "opt":
         string = (
-            f"! DFT COPT B97-3c TightSCF printbasis {solvent_s} Grid6 "
-            "NOFINALGRID SlowConv "
+            f"! DFT COPT B97-3c TightSCF printbasis {solvent_s} "
+            "defgrid2 SlowConv "
             "\n\n"
             f'%base "{basename}"\n'
-            "%maxcore 3000\n"
+            "%maxcore 20000\n"
             "%scf\n   MaxIter 2000\nend\n"
         )
 
@@ -117,8 +117,49 @@ def write_input_file(
         f.write(string)
 
 
+def write_submit_file(prefix, np, directory, method):
+
+    file_prefix = f"{prefix}_{method}"
+    subfile = f"{prefix}_{method}.sl"
+
+    timing = "24:0:00"
+
+    sbatch = (
+        "#!/bin/bash\n"
+        "#SBATCH --nodes 1\n"
+        f"#SBATCH --ntasks-per-node={np}\n"
+        f"#SBATCH --time={timing}\n"
+        "#SBATCH --mem=375000MB\n"
+        '#SBATCH --error="%x.e%j"\n'
+        '#SBATCH --output="%x.o%j"\n'
+        "#SBATCH --account=IscrC_HETCAGE\n"
+        "#SBATCH --partition=g100_usr_prod\n\n"
+    )
+
+    setups = (
+        "module purge\n"
+        "ml profile/chem-phys\n"
+        "ml --auto  orca/5.0.3--openmpi--4.1.1--gcc--10.2.0\n"
+        "# suppress no cuda error\n"
+        "export OMPI_MCA_opal_warn_on_missing_libcuda=0\n"
+        "export OMP_NUM_THREADS=1\n\n"
+    )
+    run_ = (
+        f"INPUT={file_prefix}\n\n"
+        "# in order to execute orca you need the absolute path !!!\n"
+        "$ORCA_HOME/bin/orca ${INPUT}.in > ${INPUT}.out\n\n"
+        "rm -f ${INPUT}*tmp\n"
+    )
+
+    with open(os.path.join(directory, f"{subfile}"), "w") as f:
+        f.write(sbatch)
+        f.write(setups)
+        f.write(run_)
+
+
 def setup_calculations(structures_to_run, methods, directory):
-    num_proc = 32
+    num_proc = 24
+    sbatch_strings = {}
     for name, s_file, charge in structures_to_run:
         struct = stk.BuildingBlock.init_from_file(str(s_file))
         for method in methods:
@@ -138,6 +179,19 @@ def setup_calculations(structures_to_run, methods, directory):
                 charge=charge,
                 solvent=None,
             )
+
+            write_submit_file(
+                prefix=prefix,
+                np=num_proc,
+                directory=directory,
+                method=method,
+            )
+            if method not in sbatch_strings:
+                sbatch_strings[method] = ""
+            sbatch_strings[method] += f"sbatch {prefix}_{method}.sl\n\n"
+
+    for m in sbatch_strings:
+        print(sbatch_strings[m])
 
 
 def analyse_calculations(structures_to_run, methods, directory):
@@ -192,6 +246,10 @@ def main():
         if state not in ("setup", "analyse"):
             raise ValueError('stage  must be "setup" or "analyse"')
 
+    raise SystemExit(
+        "This script was not used in production in the end."
+    )
+
     li_path = liga_path()
     ca_path = cage_path()
     _wd = dft_path()
@@ -209,27 +267,19 @@ def main():
         ("lb", li_path / "lb_lowe.mol", 0),
         ("lc", li_path / "lc_lowe.mol", 0),
         ("ld", li_path / "ld_lowe.mol", 0),
-        ("m2_l1", ca_path / "m2_l1_opt.mol", 4),
-        ("m2_l2", ca_path / "m2_l2_opt.mol", 4),
-        ("m2_l3", ca_path / "m2_l3_opt.mol", 4),
-        # ('m2_la', ca_path / 'm2_la_opt.mol', 4),
+        ("m6_l1", ca_path / "m6_l1_opt.mol", 12),
+        ("m12_l2", ca_path / "m12_l2_opt.mol", 24),
+        ("m24_l3", ca_path / "m24_l3_opt.mol", 48),
+        ("m30_l3", ca_path / "m30_l3_opt.mol", 60),
+        ("m2_la", ca_path / "m2_la_opt.mol", 4),
+        ("m3_la", ca_path / "m3_la_opt.mol", 6),
         ("m2_lb", ca_path / "m2_lb_opt.mol", 4),
+        ("m3_lb", ca_path / "m3_lb_opt.mol", 6),
         ("m2_lc", ca_path / "m2_lc_opt.mol", 4),
-        # ('m2_ld', ca_path / 'm2_ld_opt.mol', 4),
-        ("m3_l1", ca_path / "m2_l1_opt.mol", 6),
-        ("m3_l2", ca_path / "m2_l2_opt.mol", 6),
-        ("m3_l3", ca_path / "m2_l3_opt.mol", 6),
-        # ('m3_la', ca_path / 'm2_la_opt.mol', 6),
-        ("m3_lb", ca_path / "m2_lb_opt.mol", 6),
-        ("m3_lc", ca_path / "m2_lc_opt.mol", 6),
-        # ('m3_ld', ca_path / 'm2_ld_opt.mol', 6),
-        ("m4_l1", ca_path / "m2_l1_opt.mol", 8),
-        ("m4_l2", ca_path / "m2_l2_opt.mol", 8),
-        ("m4_l3", ca_path / "m2_l3_opt.mol", 8),
-        # ('m4_la', ca_path / 'm2_la_opt.mol', 8),
-        # ('m4_lb', ca_path / 'm2_lb_opt.mol', 8),
-        # ('m4_lc', ca_path / 'm2_lc_opt.mol', 8),
-        # ('m4_ld', ca_path / 'm2_ld_opt.mol', 8),
+        ("m3_lc", ca_path / "m3_lc_opt.mol", 6),
+        ("m4_lc", ca_path / "m4_lc_opt.mol", 8),
+        ("m2_ld", ca_path / "m2_ld_opt.mol", 4),
+        ("m3_ld", ca_path / "m3_ld_opt.mol", 6),
         ("cis_l1_la", ca_path / "cis_l1_la_opt.mol", 4),
         ("cis_l1_lb", ca_path / "cis_l1_lb_opt.mol", 4),
         ("cis_l1_lc", ca_path / "cis_l1_lc_opt.mol", 4),
