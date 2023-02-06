@@ -354,6 +354,34 @@ def get_order_values(mol, metal, per_site=False):
         return results
 
 
+def decompose_cage(cage, metal_atom_nos):
+
+    # Produce a graph from the cage that does not include metals.
+    cage_g = nx.Graph()
+    atom_ids_in_G = set()
+    for atom in cage.get_atoms():
+        if atom.get_atomic_number() in metal_atom_nos:
+            continue
+        cage_g.add_node(atom)
+        atom_ids_in_G.add(atom.get_id())
+
+    # Add edges.
+    for bond in cage.get_bonds():
+        a1id = bond.get_atom1().get_id()
+        a2id = bond.get_atom2().get_id()
+        if a1id in atom_ids_in_G and a2id in atom_ids_in_G:
+            cage_g.add_edge(bond.get_atom1(), bond.get_atom2())
+
+    # Get disconnected subgraphs as molecules.
+    # Sort and sort atom ids to ensure molecules are read by RDKIT
+    # correctly.
+    connected_graphs = [
+        sorted(subgraph, key=lambda a: a.get_id())
+        for subgraph in sorted(nx.connected_components(cage_g))
+    ]
+    return connected_graphs
+
+
 def get_organic_linkers(
     cage,
     metal_atom_nos,
@@ -388,31 +416,8 @@ def get_organic_linkers(
 
     """
 
+    connected_graphs = decompose_cage(cage, metal_atom_nos)
     org_lig = {}
-
-    # Produce a graph from the cage that does not include metals.
-    cage_g = nx.Graph()
-    atom_ids_in_G = set()
-    for atom in cage.get_atoms():
-        if atom.get_atomic_number() in metal_atom_nos:
-            continue
-        cage_g.add_node(atom)
-        atom_ids_in_G.add(atom.get_id())
-
-    # Add edges.
-    for bond in cage.get_bonds():
-        a1id = bond.get_atom1().get_id()
-        a2id = bond.get_atom2().get_id()
-        if a1id in atom_ids_in_G and a2id in atom_ids_in_G:
-            cage_g.add_edge(bond.get_atom1(), bond.get_atom2())
-
-    # Get disconnected subgraphs as molecules.
-    # Sort and sort atom ids to ensure molecules are read by RDKIT
-    # correctly.
-    connected_graphs = [
-        sorted(subgraph, key=lambda a: a.get_id())
-        for subgraph in sorted(nx.connected_components(cage_g))
-    ]
     smiles_keys = {}
     for i, cg in enumerate(connected_graphs):
         # Get atoms from nodes.
@@ -425,6 +430,7 @@ def get_organic_linkers(
         temporary_linker = stk.BuildingBlock.init_from_file(
             "temporary_linker.mol"
         ).with_canonical_atom_ordering()
+        os.system("rm temporary_linker.mol")
         smiles_key = stk.Smiles().get_key(temporary_linker)
         if smiles_key not in smiles_keys:
             smiles_keys[smiles_key] = len(smiles_keys.values()) + 1
@@ -436,20 +442,30 @@ def get_organic_linkers(
         else:
             filename_ = f"{file_prefix}{sgt}_{idx}_{i}.mol"
 
-        org_lig[filename_] = temporary_linker
-        os.system("rm temporary_linker.mol")
-        # Rewrite to fix atom ids.
-        org_lig[filename_].write(os.path.join(calc_dir, filename_))
-        org_lig[filename_] = stk.BuildingBlock.init_from_file(
-            path=os.path.join(calc_dir, filename_)
-        )
+        final_path = os.path.join(calc_dir, filename_)
+        if os.path.exists(final_path):
+            org_lig[filename_] = stk.BuildingBlock.init_from_file(
+                path=final_path,
+            )
+        else:
+            org_lig[filename_] = temporary_linker
+            # Rewrite to fix atom ids.
+            org_lig[filename_].write(os.path.join(calc_dir, filename_))
+            org_lig[filename_] = stk.BuildingBlock.init_from_file(
+                path=final_path,
+            )
 
     return org_lig, smiles_keys
 
 
-def get_xtb_energy(molecule, name, charge, calc_dir):
-    output_dir = os.path.join(calc_dir, f"{name}_xtbey")
-    output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
+def get_organic_linker_atoms(cage, metal_atom_nos):
+
+    connected_graphs = decompose_cage(cage, metal_atom_nos)
+    for i, cg in enumerate(connected_graphs):
+        # Get atoms from nodes.
+        atoms = list(cg)
+        yield atoms
+
     if os.path.exists(output_file):
         with open(output_file, "r") as f:
             lines = f.readlines()
@@ -921,3 +937,51 @@ def calculate_NCCN_dihedral(bb):
         pt3=C_centroids[1],
         pt4=N_positions[1],
     )
+
+
+def calculate_helicities(molecule, name, calc_dir):
+
+    pos_mat = molecule.get_position_matrix()
+    n_bonds = {}
+    for bond in molecule.get_bonds():
+        atom1 = bond.get_atom1()
+        atom2 = bond.get_atom2()
+        if (
+            atom1.get_atomic_number() == 46
+            and atom2.get_atomic_number() == 7
+        ):
+            if atom2.get_id() not in n_bonds:
+                n_bonds[atom2.get_id()] = set()
+            n_bonds[atom2.get_id()].add(atom1.get_id())
+
+        if (
+            atom2.get_atomic_number() == 46
+            and atom1.get_atomic_number() == 7
+        ):
+            if atom1.get_id() in n_bonds:
+                raise ValueError(f"only one Pd bond per N atom! {bond}")
+            n_bonds[atom1.get_id()] = atom2.get_id()
+
+    helicities = []
+    for lig_atoms in get_organic_linker_atoms(
+        cage=molecule,
+        metal_atom_nos=(46,),
+    ):
+        pairs = []
+        for la in lig_atoms:
+            if la.get_id() in n_bonds:
+                pda = n_bonds[la.get_id()]
+                pairs.append((la.get_id(), pda))
+
+        dihedral = abs(
+            get_dihedral(
+                pt1=pos_mat[pairs[0][0]],
+                pt2=pos_mat[pairs[0][1]],
+                pt3=pos_mat[pairs[1][1]],
+                pt4=pos_mat[pairs[1][0]],
+            )
+        )
+
+        helicities.append(dihedral)
+
+    return helicities

@@ -159,7 +159,16 @@ def main():
             # structure_results[name][
             #     "dft_opt_energy"
             # ] = get_dft_opt_energy(molecule, name, dft_directory)
-            logging.info("not doing DFT stuff yet.")
+
+            if prefix in ("cis", "trans", "m2"):
+                helicity = calculate_helicities(
+                    molecule=molecule,
+                    name=name,
+                    calc_dir=_cd,
+                )
+                structure_results[name]["min_heli"] = min(helicity)
+                structure_results[name]["avg_heli"] = sum(helicity) / 4
+                structure_results[name]["max_heli"] = max(helicity)
 
             structure_results[name]["xtb_lig_strain"] = get_xtb_strain(
                 molecule=molecule,
