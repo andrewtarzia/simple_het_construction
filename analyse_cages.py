@@ -107,8 +107,21 @@ def main():
         },
     }
 
-    structure_files = glob.glob(os.path.join(_wd, "*_opt.mol"))
+    structure_files = []
+    hets = heteroleptic_cages()
+    lct = ligand_cage_topologies()
+    for ligname in lct:
+        toptions = lct[ligname]
+        for topt in toptions:
+            sname = _wd / f"{topt}_{ligname}_opt.mol"
+            structure_files.append(str(sname))
+
+    for l1, l2 in hets:
+        for topt in ("cis", "trans"):
+            sname = _wd / f"{topt}_{l1}_{l2}_opt.mol"
+            structure_files.append(str(sname))
     logging.info(f"there are {len(structure_files)} structures.")
+
     structure_results = {
         i.split("/")[-1].replace("_opt.mol", ""): {}
         for i in structure_files
