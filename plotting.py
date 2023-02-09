@@ -45,16 +45,24 @@ def axes_labels(prop):
             r"pywindow pore volume [$\mathrm{\AA}^{3}$]",
             (0, 10),
             no_conv,
+            None,
         ),
         "xtb_lig_strain": (
             "sum strain energy [kJ mol-1]",
             (0, 1000),
             sum_strain,
+            (-50, 50),
         ),
         "xtb_energy": (
             "xtb energy [kJ mol-1]",
             None,
             no_conv,
+        ),
+        "xtb_solv_opt_dmsoenergy": (
+            "xtb/DMSO energy [kJ mol-1]",
+            (-400, -200),
+            no_conv,
+            None,
         ),
         "NcentroidN_angle": (
             "N-centroid-N angle [deg]",
@@ -73,6 +81,21 @@ def axes_labels(prop):
         ),
         "NCCN_dihedral": (
             "abs. NCCN dihedral [deg]",
+            (0, 180),
+            no_conv,
+        ),
+        "avg_heli": (
+            "avg. helicity [deg]",
+            (0, 180),
+            no_conv,
+        ),
+        "min_heli": (
+            "min. helicity [deg]",
+            (0, 180),
+            no_conv,
+        ),
+        "max_heli": (
+            "max. helicity [deg]",
             (0, 180),
             no_conv,
         ),
@@ -173,6 +196,7 @@ def plot_single_distribution(
             value = results_dict[cid][yproperty]
             all_values.append(value)
 
+    raise SystemExit("use dmso energy")
     if yproperty == "xtb_energy":
         all_values = [i - min(all_values) for i in all_values]
         all_values = [i * 2625.5 for i in all_values]
@@ -277,14 +301,14 @@ def plot_property(results_dict, outname, yproperty, ignore_topos=None):
     lab_prop = axes_labels(yproperty)
     conv = lab_prop[2]
 
-    sorted_names = sorted(results_dict.keys())
+    # sorted_names = sorted(results_dict.keys())
 
     fig, ax = plt.subplots(figsize=(16, 5))
 
     x_position = 0
     _x_names = []
     all_values = []
-    for struct in sorted_names:
+    for struct in results_dict:
         topo, l1, l2 = name_parser(struct)
         if topo in ignore_topos:
             continue
@@ -295,7 +319,10 @@ def plot_property(results_dict, outname, yproperty, ignore_topos=None):
         try:
             y = s_values[yproperty]
         except KeyError:
-            y = s_values["pw_results"][yproperty]
+            if yproperty in ("avg_heli", "max_heli", "min_heli"):
+                y = -10
+            else:
+                y = s_values["pw_results"][yproperty]
 
         y = conv(y)
         x_position += 1
@@ -340,14 +367,13 @@ def compare_cis_trans(results_dict, outname, yproperty):
     lab_prop = axes_labels(yproperty)
     conv = lab_prop[2]
 
-    sorted_names = sorted(results_dict.keys())
-
-    fig, ax = plt.subplots(figsize=(5, 5))
+    fig, ax = plt.subplots(figsize=(8, 5))
 
     _x_names = []
-    for struct in sorted_names:
+    _x_posis = []
+    for struct in results_dict:
         topo, l1, l2 = name_parser(struct)
-        name = f"{l1} {l2}"
+        name = f"{l1}+{l2}"
         if topo in ignore_topos:
             continue
         if name in _x_names:
@@ -375,34 +401,29 @@ def compare_cis_trans(results_dict, outname, yproperty):
 
         trans = conv(y)
 
-        # text.
+        if yproperty == "xtb_solv_opt_dmsoenergy":
+            tplot = cis - trans
+            tplot = tplot * 2625.5
+        else:
+            tplot = cis - trans
+
+        xpos = len(_x_names)
         _x_names.append(name)
+        _x_posis.append(xpos)
         ax.scatter(
-            x=trans,
-            y=cis,
+            x=xpos,
+            y=tplot,
             c="gold",
             edgecolors="k",
             s=180,
         )
-        if trans > lab_prop[1][1] or cis > lab_prop[1][1]:
-            continue
-        ax.text(trans, cis, name, fontsize=16)
 
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_xlabel("trans", fontsize=16)
-    ax.set_ylabel("cis", fontsize=16)
+    ax.set_ylabel("cis-trans", fontsize=16)
     ax.set_title(lab_prop[0], fontsize=16)
-
-    ax.plot(
-        (lab_prop[1][0], lab_prop[1][1]),
-        (lab_prop[1][0], lab_prop[1][1]),
-        c="k",
-        alpha=0.2,
-        lw=2,
-        linestyle="--",
-    )
-    ax.set_xlim(lab_prop[1])
-    ax.set_ylim(lab_prop[1])
+    ax.set_xticks(_x_posis)
+    ax.set_xticklabels(_x_names, rotation=45)
+    ax.set_ylim(lab_prop[3])
 
     fig.tight_layout()
     fig.savefig(

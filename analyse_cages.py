@@ -257,25 +257,19 @@ def main():
     )
     plotting.compare_cis_trans(
         results_dict=structure_results,
-        outname="hetcf_cage_xtb_solv_e",
-        yproperty="xtb_solv_opt_dmsoenergy",
-    )
-    plotting.compare_cis_trans(
-        results_dict=structure_results,
         outname="hetcf_cage_xtb_strain",
         yproperty="xtb_lig_strain",
-    )
-    plotting.compare_cis_trans(
-        results_dict=structure_results,
-        outname="hetcf_cage_ops",
-        yproperty="min_order_param",
     )
     plotting.compare_cis_trans(
         results_dict=structure_results,
         outname="hetcf_cage_pw_diameter",
         yproperty="pore_diameter_opt",
     )
-    raise SystemExit("remove M3 for large")
+    plotting.compare_cis_trans(
+        results_dict=structure_results,
+        outname="hetcf_cage_xtb_solv_e",
+        yproperty="xtb_solv_opt_dmsoenergy",
+    )
 
 
 if __name__ == "__main__":
