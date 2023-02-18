@@ -16,7 +16,7 @@ import os
 import json
 import stk
 
-from env_set import cage_path, calc_path, liga_path  # dft_path,
+from env_set import cage_path, calc_path, liga_path, project_path
 from utilities import (
     get_order_values,
     get_xtb_energy,
@@ -24,9 +24,10 @@ from utilities import (
     get_furthest_pair_FGs,
     get_xtb_strain,
     calculate_helicities,
-    # get_dft_opt_energy,
-    # get_dft_preopt_energy,
+    get_dft_energy,
     # get_dft_strain,
+    get_pore_angle,
+    get_mm_distance,
 )
 from pywindow_module import PyWindow
 from inflation import PoreMapper
@@ -67,7 +68,29 @@ def main():
     _wd = cage_path()
     _cd = calc_path()
     _ld = liga_path()
-    # dft_directory = dft_path()
+    _pd = project_path()
+
+    sp_gas_txt = (
+        _pd
+        / "vh_data"
+        / "recieved_170223"
+        / "SP_Final_energies_no_solvent.txt"
+    )
+    sp_dmso_txt = (
+        _pd
+        / "vh_data"
+        / "recieved_170223"
+        / "SP_Final_energies_DMSO.txt"
+    )
+    opt_gas_txt = (
+        _pd
+        / "vh_data"
+        / "recieved_170223"
+        / "OPT_Final_energies_no_solvent.txt"
+    )
+    opt_dmso_txt = (
+        _pd / "vh_data" / "recieved_170223" / "Final_energies_DMSO.txt"
+    )
 
     property_dictionary = {
         "cis": {
@@ -149,7 +172,7 @@ def main():
             molecule = stk.BuildingBlock.init_from_file(s_file)
 
             structure_results[name][
-                "xtb_solv_opt_gasenergy"
+                "xtb_solv_opt_gasenergy_au"
             ] = get_xtb_energy(
                 molecule=molecule,
                 name=name,
@@ -158,7 +181,7 @@ def main():
                 solvent=None,
             )
             structure_results[name][
-                "xtb_solv_opt_dmsoenergy"
+                "xtb_solv_opt_dmsoenergy_au"
             ] = get_xtb_energy(
                 molecule=molecule,
                 name=name,
@@ -166,13 +189,18 @@ def main():
                 calc_dir=_cd,
                 solvent="dmso",
             )
-            # structure_results[name][
-            #     "dft_preopt_energy"
-            # ] = get_dft_preopt_energy(molecule, name, dft_directory)
-            # structure_results[name][
-            #     "dft_opt_energy"
-            # ] = get_dft_opt_energy(molecule, name, dft_directory)
-            logging.info("get dft energies from VP files")
+            structure_results[name][
+                "pbe0_def2svp_sp_gas_kjmol"
+            ] = get_dft_energy(name, sp_gas_txt)
+            structure_results[name][
+                "pbe0_def2svp_sp_dmso_kjmol"
+            ] = get_dft_energy(name, sp_dmso_txt)
+            structure_results[name][
+                "pbe0_def2svp_opt_gas_kjmol"
+            ] = get_dft_energy(name, opt_gas_txt)
+            structure_results[name][
+                "pbe0_def2svp_opt_dmso_kjmol"
+            ] = get_dft_energy(name, opt_dmso_txt)
 
             if prefix in ("cis", "trans", "m2"):
                 helicity = calculate_helicities(
@@ -184,7 +212,20 @@ def main():
                 structure_results[name]["avg_heli"] = sum(helicity) / 4
                 structure_results[name]["max_heli"] = max(helicity)
 
-            structure_results[name]["xtb_lig_strain"] = get_xtb_strain(
+                structure_results[name]["pore_angle"] = get_pore_angle(
+                    molecule=molecule,
+                    metal_atom_num=46,
+                )
+                structure_results[name][
+                    "mm_distance"
+                ] = get_mm_distance(
+                    molecule=molecule,
+                    metal_atom_num=46,
+                )
+
+            structure_results[name][
+                "xtb_lig_strain_au"
+            ] = get_xtb_strain(
                 molecule=molecule,
                 name=name,
                 liga_dir=_ld,
@@ -226,6 +267,16 @@ def main():
         outname="cage_mihel",
         yproperty="min_heli",
     )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname="cage_poreangle",
+        yproperty="pore_angle",
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname="cage_mm_distance",
+        yproperty="mm_distance",
+    )
 
     plotting.plot_property(
         results_dict=structure_results,
@@ -235,30 +286,43 @@ def main():
     plotting.plot_property(
         results_dict=structure_results,
         outname="cage_xtb_strain",
-        yproperty="xtb_lig_strain",
+        yproperty="xtb_lig_strain_au",
     )
     plotting.plot_property(
         results_dict=structure_results,
         outname="het_cage_ops",
         yproperty="min_order_param",
-        ignore_topos=("m3", "m4"),
+        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
     )
     plotting.plot_property(
         results_dict=structure_results,
         outname="het_cage_pw_diameter",
         yproperty="pore_diameter_opt",
-        ignore_topos=("m3", "m4"),
+        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname="het_cage_poreangle",
+        yproperty="pore_angle",
+        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
+        outname="het_cage_mm_distance",
+        yproperty="mm_distance",
+        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
     )
     plotting.plot_property(
         results_dict=structure_results,
         outname="het_cage_xtb_strain",
-        yproperty="xtb_lig_strain",
-        ignore_topos=("m3", "m4"),
+        yproperty="xtb_lig_strain_au",
+        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
     )
+
     plotting.compare_cis_trans(
         results_dict=structure_results,
         outname="hetcf_cage_xtb_strain",
-        yproperty="xtb_lig_strain",
+        yproperty="xtb_lig_strain_au",
     )
     plotting.compare_cis_trans(
         results_dict=structure_results,
@@ -268,7 +332,28 @@ def main():
     plotting.compare_cis_trans(
         results_dict=structure_results,
         outname="hetcf_cage_xtb_solv_e",
-        yproperty="xtb_solv_opt_dmsoenergy",
+        yproperty="xtb_solv_opt_dmsoenergy_au",
+    )
+
+    plotting.compare_cis_trans(
+        results_dict=structure_results,
+        outname="hetcf_cage_dft_sp_gas_e",
+        yproperty="pbe0_def2svp_sp_gas_kjmol",
+    )
+    plotting.compare_cis_trans(
+        results_dict=structure_results,
+        outname="hetcf_cage_dft_sp_dmso_e",
+        yproperty="pbe0_def2svp_sp_dmso_kjmol",
+    )
+    plotting.compare_cis_trans(
+        results_dict=structure_results,
+        outname="hetcf_cage_dft_opt_gas_e",
+        yproperty="pbe0_def2svp_opt_gas_kjmol",
+    )
+    plotting.compare_cis_trans(
+        results_dict=structure_results,
+        outname="hetcf_cage_dft_opt_dmso_e",
+        yproperty="pbe0_def2svp_opt_dmso_kjmol",
     )
 
 

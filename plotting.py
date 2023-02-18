@@ -36,30 +36,54 @@ def axes_labels(prop):
     def no_conv(y):
         return y
 
-    def sum_strain(y):
-        return sum(y.values()) * 2625.5
+    def avg_strain(y):
+        return np.mean(list(y.values())) * 2625.5
 
     return {
         "min_order_param": ("min op.", (0, 1), no_conv),
         "pore_diameter_opt": (
             r"pywindow pore volume [$\mathrm{\AA}^{3}$]",
-            (0, 10),
+            (0, 20),
             no_conv,
             None,
         ),
-        "xtb_lig_strain": (
-            "sum strain energy [kJ mol-1]",
-            (0, 1000),
-            sum_strain,
-            (-50, 50),
+        "xtb_lig_strain_au": (
+            "avg. strain energy [kJ mol-1]",
+            (0, 50),
+            avg_strain,
+            (-20, 20),
         ),
-        "xtb_energy": (
+        "xtb_energy_au": (
             "xtb energy [kJ mol-1]",
             None,
             no_conv,
         ),
-        "xtb_solv_opt_dmsoenergy": (
+        "xtb_solv_opt_dmsoenergy_au": (
             "xtb/DMSO energy [kJ mol-1]",
+            (-400, -200),
+            no_conv,
+            None,
+        ),
+        "pbe0_def2svp_sp_gas_kjmol": (
+            "PBE0/def2-svp/D3?/gas SP energy [kJ mol-1]",
+            (-400, -200),
+            no_conv,
+            None,
+        ),
+        "pbe0_def2svp_sp_dmso_kjmol": (
+            "PBE0/def2-svp/D3?/DMSO SP energy [kJ mol-1]",
+            (-400, -200),
+            no_conv,
+            None,
+        ),
+        "pbe0_def2svp_opt_gas_kjmol": (
+            "PBE0/def2-svp/D3?/gas OPT energy [kJ mol-1]",
+            (-400, -200),
+            no_conv,
+            None,
+        ),
+        "pbe0_def2svp_opt_dmso_kjmol": (
+            "PBE0/def2-svp/D3?/DMSO OPT energy [kJ mol-1]",
             (-400, -200),
             no_conv,
             None,
@@ -96,7 +120,17 @@ def axes_labels(prop):
         ),
         "max_heli": (
             "max. helicity [deg]",
-            (0, 180),
+            (0, 220),
+            no_conv,
+        ),
+        "pore_angle": (
+            "M-centroid-M [deg]",
+            (0, 185),
+            no_conv,
+        ),
+        "mm_distance": (
+            "MM distance [A]",
+            (0, 30),
             no_conv,
         ),
     }[prop]
@@ -319,7 +353,13 @@ def plot_property(results_dict, outname, yproperty, ignore_topos=None):
         try:
             y = s_values[yproperty]
         except KeyError:
-            if yproperty in ("avg_heli", "max_heli", "min_heli"):
+            if yproperty in (
+                "avg_heli",
+                "max_heli",
+                "min_heli",
+                "mm_distance",
+                "pore_angle",
+            ):
                 y = -10
             else:
                 y = s_values["pw_results"][yproperty]
@@ -334,12 +374,20 @@ def plot_property(results_dict, outname, yproperty, ignore_topos=None):
             name = f"{topo} {l1} {l2}"
         _x_names.append((x_position, name))
 
+        ax.plot(
+            [x_position, x_position],
+            [0, y],
+            c=c,
+            lw=2,
+        )
+
     ax.scatter(
         x=[i[0] for i in all_values],
         y=[i[1] for i in all_values],
         c=[i[2] for i in all_values],
         edgecolors="k",
         s=180,
+        zorder=2,
     )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
@@ -418,6 +466,7 @@ def compare_cis_trans(results_dict, outname, yproperty):
             s=180,
         )
 
+    ax.axhline(y=0, lw=2, linestyle="--", c="k")
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.set_ylabel("cis-trans", fontsize=16)
     ax.set_title(lab_prop[0], fontsize=16)

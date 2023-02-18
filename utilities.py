@@ -534,62 +534,18 @@ def read_xtb_energy(name, calc_dir):
     return energy
 
 
-def get_dft_preopt_energy(molecule, name, calc_dir):
-    raise NotImplementedError()
-    output_dir = os.path.join(calc_dir, f"{name}_xtbey")
-    output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
-    if os.path.exists(output_file):
-        with open(output_file, "r") as f:
-            lines = f.readlines()
-        for line in lines:
-            energy = float(line.rstrip())
-            break
-    else:
-        logging.info(f"xtb energy calculation of {name}")
-        xtb = stko.XTBEnergy(
-            xtb_path=xtb_path(),
-            output_dir=output_dir,
-            gfn_version=2,
-            num_cores=6,
-            # charge=charge,
-            num_unpaired_electrons=0,
-            unlimited_memory=True,
-        )
-        energy = xtb.get_energy(mol=molecule)
-        with open(output_file, "w") as f:
-            f.write(f"{energy}\n")
-
-    # In a.u.
-    return energy
-
-
-def get_dft_opt_energy(molecule, name, calc_dir):
-    raise NotImplementedError()
-    output_dir = os.path.join(calc_dir, f"{name}_xtbey")
-    output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
-    if os.path.exists(output_file):
-        with open(output_file, "r") as f:
-            lines = f.readlines()
-        for line in lines:
-            energy = float(line.rstrip())
-            break
-    else:
-        logging.info(f"xtb energy calculation of {name}")
-        xtb = stko.XTBEnergy(
-            xtb_path=xtb_path(),
-            output_dir=output_dir,
-            gfn_version=2,
-            num_cores=6,
-            # charge=charge,
-            num_unpaired_electrons=0,
-            unlimited_memory=True,
-        )
-        energy = xtb.get_energy(mol=molecule)
-        with open(output_file, "w") as f:
-            f.write(f"{energy}\n")
-
-    # In a.u.
-    return energy
+def get_dft_energy(name, txt_file):
+    with open(txt_file, "r") as f:
+        lines = f.readlines()
+    for line in lines:
+        if name in line:
+            number = line.strip().split()[1]
+            if number == "None":
+                return None
+            else:
+                energy = float(number)
+                # kJmol-1
+                return energy
 
 
 def get_stoichiometry(topology_string):
@@ -1017,3 +973,45 @@ def calculate_helicities(molecule, name, calc_dir):
         helicities.append(dihedral)
 
     return helicities
+
+
+def get_pore_angle(molecule, metal_atom_num):
+
+    atom_ids = [
+        i.get_id()
+        for i in molecule.get_atoms()
+        if i.get_atomic_number() == metal_atom_num
+    ]
+    if len(atom_ids) != 2:
+        raise ValueError(
+            f"{len(atom_ids)} metal atoms found. Expecting 2"
+        )
+
+    centroid = molecule.get_centroid()
+    v1, v2 = (
+        i - centroid for i in molecule.get_atomic_positions(atom_ids)
+    )
+    aniso_angle = np.degrees(angle_between(v1, v2))
+
+    return aniso_angle
+
+
+def get_mm_distance(molecule, metal_atom_num):
+
+    atom_ids = [
+        i.get_id()
+        for i in molecule.get_atoms()
+        if i.get_atomic_number() == metal_atom_num
+    ]
+    if len(atom_ids) != 2:
+        raise ValueError(
+            f"{len(atom_ids)} metal atoms found. Expecting 2"
+        )
+
+    position_matrix = molecule.get_position_matrix()
+
+    distance = euclidean(
+        u=position_matrix[atom_ids[0]], v=position_matrix[atom_ids[1]]
+    )
+
+    return float(distance)
