@@ -11,16 +11,13 @@ Author: Andrew Tarzia
 
 import logging
 import sys
+import json
+import os
 from itertools import product
 
-from env_set import calc_path  # dft_path
-from utilities import (
-    read_xtb_energy,
-    # get_dft_opt_energy,
-    # get_dft_preopt_energy,
-    name_parser,
-)
-from topologies import ligand_cage_topologies
+from env_set import calc_path, cage_path
+from utilities import name_parser
+from topologies import erxn_cage_topologies
 import plotting
 
 
@@ -35,18 +32,22 @@ class ExchangeReaction:
         self._l1_name, self._l2_name = reactant_names
         self._calc_dir = calc_dir
         self._method = method
-        self._product_energy = self._get_energy(product_name)
 
-    def _get_energy(self, name):
-        if self._method == "xtb":
-            return read_xtb_energy(
-                name=name,
-                calc_dir=self._calc_dir,
-            )
-        elif self._method == "dft_preopt":
-            raise NotImplementedError()
-        elif self._method == "dft":
-            raise NotImplementedError()
+    def _get_energy(self, name, structure_results):
+        energy = structure_results[name][self._method]
+
+        if energy is None:
+            logging.info("remmove this when you have the data")
+            return None
+            raise ValueError(f"{name} has no {self._method} energy!")
+
+        if self._method in (
+            "xtb_solv_opt_gasenergy_au",
+            "xtb_solv_opt_dmsoenergy_au",
+        ):
+            # To kJmol-1
+            energy *= 2625.5
+        return energy
 
     def _get_rxn_energies(
         self,
@@ -55,7 +56,24 @@ class ExchangeReaction:
         l1_prefix,
         l2_stoich,
         l2_prefix,
+        structure_results,
     ):
+        try:
+            lhs_energy = lhs_stoich * self._get_energy(
+                name=f"{self._product_name}",
+                structure_results=structure_results,
+            )
+            rhs_energy1 = l1_stoich * self._get_energy(
+                name=f"{l1_prefix}_{self._l1_name}",
+                structure_results=structure_results,
+            )
+            rhs_energy2 = l2_stoich * self._get_energy(
+                name=f"{l2_prefix}_{self._l2_name}",
+                structure_results=structure_results,
+            )
+        except TypeError:
+            lhs_energy = 0
+            rhs_energy1 = rhs_energy2 = 0
         return {
             "lhs_stoich": lhs_stoich,
             "l1": self._l1_name,
@@ -64,21 +82,12 @@ class ExchangeReaction:
             "l2_stoich": l2_stoich,
             "l1_prefix": l1_prefix,
             "l2_prefix": l2_prefix,
-            "lhs": lhs_stoich * self._product_energy,
-            "rhs": (
-                l1_stoich
-                * self._get_energy(
-                    name=f"{l1_prefix}_{self._l1_name}",
-                )
-                + l2_stoich
-                * self._get_energy(
-                    name=f"{l2_prefix}_{self._l2_name}",
-                )
-            ),
+            "lhs": lhs_energy,
+            "rhs": (rhs_energy1 + rhs_energy2),
         }
 
-    def get_all_rxn_energies(self):
-        lct = ligand_cage_topologies()
+    def get_all_rxn_energies(self, structure_results):
+        lct = erxn_cage_topologies()
         pot_homo_topos = ("m2", "m3", "m4", "m6", "m12", "m24", "m30")
         for l1_prefix, l2_prefix in product(pot_homo_topos, repeat=2):
             if l1_prefix == l2_prefix:
@@ -90,9 +99,9 @@ class ExchangeReaction:
                 l2_stoich = int(l1_prefix[1:])
                 lhs_stoich = int((l1_stoich * l2_stoich))
 
-            if l1_prefix not in lct[self._l1_name]:
+            if l1_prefix != lct[self._l1_name]:
                 continue
-            if l2_prefix not in lct[self._l2_name]:
+            if l2_prefix != lct[self._l2_name]:
                 continue
 
             assert lhs_stoich * 2 == (
@@ -105,6 +114,7 @@ class ExchangeReaction:
                 l1_prefix=l1_prefix,
                 l2_stoich=l2_stoich,
                 l2_prefix=l2_prefix,
+                structure_results=structure_results,
             )
 
 
@@ -124,10 +134,12 @@ class HomolepticExchangeReaction(ExchangeReaction):
         self,
         l_stoich,
         l_prefix,
+        structure_results,
     ):
         energy_p_stoich = (
             self._get_energy(
                 name=f"{l_prefix}_{self._ligand_name}",
+                structure_results=structure_results,
             )
             / l_stoich
         )
@@ -138,13 +150,14 @@ class HomolepticExchangeReaction(ExchangeReaction):
             "energy_per_stoich": energy_p_stoich,
         }
 
-    def get_all_rxn_energies(self):
+    def get_all_rxn_energies(self, structure_results):
         for l_prefix in self._pot_homo_topos:
             l_stoich = int(l_prefix[1:])
 
             yield self._get_rxn_energies(
                 l_stoich=l_stoich,
                 l_prefix=l_prefix,
+                structure_results=structure_results,
             )
 
 
@@ -156,59 +169,73 @@ def main():
         pass
 
     _cd = calc_path()
-    # _ld = liga_path()
-    # dft_directory = dft_path()
+    _wd = cage_path()
 
-    het_system = {
+    structure_res_file = os.path.join(_wd, "all_structure_res.json")
+    if os.path.exists(structure_res_file):
+        with open(structure_res_file, "r") as f:
+            structure_results = json.load(f)
+
+    het_system = (
         "cis_l1_la",
         "cis_l1_lb",
         "cis_l1_lc",
         "cis_l1_ld",
         "cis_l2_ld",
         "cis_l3_ld",
-    }
+    )
     lig_system = {
-        "lb": ("m2", "m3", "m4"),
-        "lc": ("m2", "m3", "m4"),
+        # "lb": ("m2", "m3", "m4"),
+        # "lc": ("m2", "m3", "m4"),
         "l1": ("m2", "m3", "m4", "m6"),
-        "l2": ("m2", "m3", "m4", "m12"),
-        "l3": ("m2", "m3", "m4", "m24", "m30"),
+        # "l2": ("m2", "m3", "m4", "m12"),
+        # "l3": ("m2", "m3", "m4", "m24", "m30"),
     }
-    methods = ("xtb",)  # "dft_preopt", "dft")
+    methods = (
+        "xtb_solv_opt_gasenergy_au",
+        "xtb_solv_opt_dmsoenergy_au",
+        "pbe0_def2svp_sp_gas_kjmol",
+        "pbe0_def2svp_sp_dmso_kjmol",
+        "pbe0_def2svp_opt_gas_kjmol",
+        "pbe0_def2svp_opt_dmso_kjmol",
+    )
 
-    for method in methods:
-        for hs in het_system:
-            topo, l1, l2 = name_parser(hs)
-            all_rxns = []
+    for hs in het_system:
+        topo, l1, l2 = name_parser(hs)
+        all_rxns = {}
+        for method in methods:
+            all_rxns[method] = []
             erxn = ExchangeReaction(
                 product_name=hs,
                 reactant_names=(l1, l2),
                 method=method,
                 calc_dir=_cd,
             )
-            for rxn in erxn.get_all_rxn_energies():
-                all_rxns.append(rxn)
+            for rxn in erxn.get_all_rxn_energies(structure_results):
+                all_rxns[method].append(rxn)
 
-            plotting.plot_exchange_reactions(
-                rxns=all_rxns,
-                outname=f"erxns_{hs}",
-            )
+        plotting.plot_exchange_reactions(
+            rxns=all_rxns,
+            outname=f"erxns_{hs}",
+        )
 
-        for ls in lig_system:
-            all_rxns = []
+    for ls in lig_system:
+        all_rxns = {}
+        for method in methods:
+            all_rxns[method] = []
             erxn = HomolepticExchangeReaction(
                 ligand_name=ls,
                 method=method,
                 calc_dir=_cd,
                 pot_homo_topos=lig_system[ls],
             )
-            for rxn in erxn.get_all_rxn_energies():
-                all_rxns.append(rxn)
+            for rxn in erxn.get_all_rxn_energies(structure_results):
+                all_rxns[method].append(rxn)
 
-            plotting.plot_homoleptic_exchange_reactions(
-                rxns=all_rxns,
-                outname=f"erxns_{ls}",
-            )
+        plotting.plot_homoleptic_exchange_reactions(
+            rxns=all_rxns,
+            outname=f"erxns_{ls}",
+        )
 
 
 if __name__ == "__main__":

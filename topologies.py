@@ -42,6 +42,18 @@ def ligand_cage_topologies():
     }
 
 
+def erxn_cage_topologies():
+    return {
+        "l1": "m6",
+        "l2": "m12",
+        "l3": "m24",
+        "la": "m2",
+        "lb": "m2",
+        "lc": "m2",
+        "ld": "m2",
+    }
+
+
 class M30L60(stk.cage.Cage):
     def _get_scale(self, building_block_vertices):
         return 0.7

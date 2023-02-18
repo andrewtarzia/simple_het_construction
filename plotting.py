@@ -483,60 +483,94 @@ def compare_cis_trans(results_dict, outname, yproperty):
     plt.close()
 
 
+def method_c_map():
+    methods = {
+        "xtb_solv_opt_gasenergy_au": {
+            # "name": "xtb gas",
+            "name": "x/g",
+        },
+        "xtb_solv_opt_dmsoenergy_au": {
+            # "name": "xtb DMSO",
+            "name": "x/d",
+        },
+        "pbe0_def2svp_sp_gas_kjmol": {
+            # "name": "PBE0/def2-svp/D3?/gas SP",
+            "name": "d/g/s",
+        },
+        "pbe0_def2svp_sp_dmso_kjmol": {
+            # "name": "PBE0/def2-svp/D3?/DMSO SP",
+            "name": "d/d/s",
+        },
+        "pbe0_def2svp_opt_gas_kjmol": {
+            # "name": "PBE0/def2-svp/D3?/gas OPT",
+            "name": "d/g/o",
+        },
+        "pbe0_def2svp_opt_dmso_kjmol": {
+            # "name": "PBE0/def2-svp/D3?/DMSO OPT",
+            "name": "d/d/o",
+        },
+    }
+    return methods
+
+
 def plot_exchange_reactions(rxns, outname):
 
+    _, _, l1, l2 = outname.split("_")
+
     fig, ax = plt.subplots(figsize=(8, 5))
+    methods = method_c_map()
     x_values = []
     y_values = []
-    for i, rxn in enumerate(rxns):
-        print(rxn)
-        # l1_prefix = int(rxn['l1_prefix'][1])
-        # l2_prefix = int(rxn['l2_prefix'][1])
-        # r_string = (
-        #     f"{rxn['lhs_stoich']}[Pd2 L2 L'2] "
-        #     "<-> "
-        #     f"{rxn['l1_stoich']}[Pd{l1_prefix} "
-        #     f"L{l1_prefix*2}] + "
-        #     f"{rxn['l2_stoich']}[Pd{l2_prefix} "
-        #     f"L'{l2_prefix*2}]"
-        # )
+    for i, method in enumerate(methods):
+        method_rxns = rxns[method]
         r_string = (
-            f"Het * {rxn['lhs_stoich']} "
-            "<-> \n"
-            f"{rxn['l1_stoich']} * {rxn['l1_prefix'].upper()} + "
-            f"{rxn['l2_stoich']} * {rxn['l2_prefix'].upper()} "
+            f"{method_rxns[0]['lhs_stoich']} * het. "
+            "<->"
+            f"{method_rxns[0]['l1_stoich']} * "
+            f"{method_rxns[0]['l1_prefix'].upper()}({l1}) + "
+            f"{method_rxns[0]['l2_stoich']} * "
+            f"{method_rxns[0]['l2_prefix'].upper()}({l2}) "
         )
-        print(r_string)
-        r_energy = float(rxn["lhs"]) - float(rxn["rhs"])
-        r_energy = r_energy / int(rxn["lhs_stoich"])
-        r_energy = r_energy * 2625.5
 
-        # ax.text(i-2, r_energy, r_string, fontsize=16)
-        x_values.append((i, r_string))
-        y_values.append(r_energy)
+        for rxn in method_rxns:
+            # l1_prefix = int(rxn['l1_prefix'][1])
+            # l2_prefix = int(rxn['l2_prefix'][1])
 
-    ax.scatter(
-        x=[i[0] for i in x_values],
-        y=[i for i in y_values],
-        c="gold",
-        edgecolors="k",
-        s=180,
-    )
+            if rxn["lhs"] == 0 or rxn["rhs"] == 0:
+                r_energy = 0
+                ax.scatter(i, 0, c="r", marker="X", s=200, zorder=3)
+            else:
+                r_energy = float(rxn["lhs"]) - float(rxn["rhs"])
+
+            r_energy = r_energy / int(rxn["lhs_stoich"])
+
+            # ax.text(i-2, r_energy, r_string, fontsize=16)
+            x_values.append((i, methods[method]["name"]))
+            y_values.append(r_energy)
+
+        ax.bar(
+            x=[i[0] for i in x_values],
+            height=[i for i in y_values],
+            width=0.9,
+            color="#212738",
+            edgecolor="none",
+            linewidth=1,
+        )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_title(f"{rxn['l1']} + {rxn['l2']}", fontsize=16)
-    ax.set_xlabel("reaction", fontsize=16)
+    ax.set_title(r_string, fontsize=16)
+    ax.set_xlabel("method", fontsize=16)
     ax.set_ylabel(
         "energy per het. cage [kJ mol-1]",
         fontsize=16,
     )
-    # ax.axhline(y=0, lw=2, c="k")
-
     ax.set_xticks([i[0] for i in x_values])
-    ax.set_xticklabels([i[1] for i in x_values], rotation=45)
-
+    ax.set_xticklabels([i[1] for i in x_values])
+    # ax.legend(fontsize=16)
     # ax.set_xlim(lab_prop[1])
-    # ax.set_ylim(0, None)
+    ax.set_ylim(-100, 100)
+
+    ax.axhline(y=0, lw=2, c="k", linestyle="--")
 
     fig.tight_layout()
     fig.savefig(
@@ -550,50 +584,44 @@ def plot_exchange_reactions(rxns, outname):
 def plot_homoleptic_exchange_reactions(rxns, outname):
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    x_values = []
-    y_values = []
-    for i, rxn in enumerate(rxns):
-        print(rxn)
-        # l1_prefix = int(rxn['l1_prefix'][1])
-        # l2_prefix = int(rxn['l2_prefix'][1])
-        # r_string = (
-        #     f"{rxn['lhs_stoich']}[Pd2 L2 L'2] "
-        #     "<-> "
-        #     f"{rxn['l1_stoich']}[Pd{l1_prefix} "
-        #     f"L{l1_prefix*2}] + "
-        #     f"{rxn['l2_stoich']}[Pd{l2_prefix} "
-        #     f"L'{l2_prefix*2}]"
-        # )
-        r_string = f"{rxn['l_prefix'].upper()} / {rxn['l_stoich']} "
-        r_energy = float(rxn["energy_per_stoich"])
-        r_energy = r_energy * 2625.5
-        # ax.text(i-2, r_energy, r_string, fontsize=16)
-        x_values.append((i, r_string))
-        y_values.append(r_energy)
-        print(y_values)
+    methods = method_c_map()
+    for i, method in enumerate(methods):
+        method_rxns = rxns[method]
+        x_values = []
+        y_values = []
+        for i, rxn in enumerate(method_rxns):
+            r_string = f"{rxn['l_prefix'].upper()}"
+            if rxn["energy_per_stoich"] != 0:
+                r_energy = float(rxn["energy_per_stoich"])
+                x_values.append((i, r_string))
+                y_values.append(r_energy)
 
-    ax.scatter(
-        x=[i[0] for i in x_values],
-        y=[i - min(y_values) for i in y_values],
-        c="gold",
-        edgecolors="k",
-        s=180,
-    )
+        if "dmso" in method:
+            linestyle = "-"
+        else:
+            linestyle = "--"
+        ax.plot(
+            [i[0] for i in x_values],
+            [i - min(y_values) for i in y_values],
+            linestyle=linestyle,
+            marker="o",
+            markersize=8,
+            lw=3,
+            label=methods[method]["name"],
+        )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.set_title(f"{rxn['l']}", fontsize=16)
     ax.set_xlabel("reaction", fontsize=16)
     ax.set_ylabel(
-        "rel. energy per metal atom [kJ mol-1]",
+        "rel. energy / metal atom [kJ mol-1]",
         fontsize=16,
     )
-    ax.axhline(y=0, lw=2, c="k")
+    ax.axhline(y=0, lw=2, c="k", linestyle="--")
 
     ax.set_xticks([i[0] for i in x_values])
-    ax.set_xticklabels([i[1] for i in x_values], rotation=45)
-
-    # ax.set_xlim(lab_prop[1])
-    # ax.set_ylim(0, None)
+    ax.set_xticklabels([i[1] for i in x_values])
+    ax.legend(fontsize=16)
 
     fig.tight_layout()
     fig.savefig(
