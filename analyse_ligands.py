@@ -31,67 +31,30 @@ def vector_length():
     return 2.05
 
 
-def calculate_ideal_small_NN(large_c_dict, small_c_dict):
-    """
-    Calculate the ideal NN distances of the small molecule.
+def get_test_1(large_c_dict, small_c_dict):
 
-    Based on large molecule and definition ideal trapezoid.
+    l_angle = (large_c_dict["NN_BCN_angles"]["NN_BCN1"] - 90) + (
+        large_c_dict["NN_BCN_angles"]["NN_BCN2"] - 90
+    )
 
-    """
-
-    lNN_dist = large_c_dict["NN_distance"]
-    # Minus 180 to become internal angle of trapezoid.
-    l_angle1 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    l_angle2 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN2"]
-    # Because the binding vector angles are not actually the same
-    # we define the ideal small NN based on both possible binding
-    # vector angles i.e. two different ideal trapezoids.
-    bonding_vector_length = 2 * vector_length()
-    extension_1 = bonding_vector_length * np.cos(np.radians(l_angle1))
-    extension_2 = bonding_vector_length * np.cos(np.radians(l_angle2))
-    ideal_NN1 = lNN_dist - 2 * extension_1
-    ideal_NN2 = lNN_dist - 2 * extension_2
-    return [ideal_NN1, ideal_NN2]
+    s_angle = small_c_dict["bite_angle"]
+    return s_angle / l_angle
 
 
-def get_angle_deviations(large_c_dict, small_c_dict):
-    """
-    Get the closeness of test angles to 180 degrees.
-
-    Calculates the angle deviations as a sum and max of the two
-    ends of the molecules.
-
-    """
-
-    # Minus 180 to become internal angle of trapezoid.
-    l_angle1 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    l_angle2 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN2"]
-    s_angle1 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    s_angle2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
-    angle1_deviation = abs(180 - (l_angle1 + s_angle1))
-    angle2_deviation = abs(180 - (l_angle2 + s_angle2))
-    sum_angle_dev = sum([angle1_deviation, angle2_deviation])
-    return sum_angle_dev
-
-
-def get_ideal_length_deviation(large_c_dict, small_c_dict):
-    """
-    Calculate the diff. between the actual and ideal NN distance.
-
-    Calculates the max and sum of the differences between the
-    actual N-N distance of the small molecule and the idealized
-    distances from trapezoid defined by the two possible binding
-    angles of the large molecule.
-
-    """
+def get_test_2(large_c_dict, small_c_dict):
 
     sNN_dist = small_c_dict["NN_distance"]
-    ideal_NNs = calculate_ideal_small_NN(
-        large_c_dict=large_c_dict,
-        small_c_dict=small_c_dict,
-    )
-    sum_length_dev = sum([abs(sNN_dist - i) for i in ideal_NNs])
-    return sum_length_dev
+    lNN_dist = large_c_dict["NN_distance"]
+    # Minus 180 to become internal angle of trapezoid.
+    s_angle1 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]
+    s_angle2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
+
+    bonding_vector_length = 2 * vector_length()
+    se1 = bonding_vector_length * np.sin(np.radians(s_angle1))
+    se2 = bonding_vector_length * np.sin(np.radians(s_angle2))
+
+    ideal_dist = sNN_dist + se1 + se2
+    return lNN_dist / ideal_dist
 
 
 def test_N_N_lengths(large_c_dict, small_c_dict):
