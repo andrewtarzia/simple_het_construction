@@ -10,7 +10,9 @@ Author: Andrew Tarzia
 """
 
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
+
+# import matplotlib.colors as colors
+import matplotlib as mpl
 import numpy as np
 import os
 
@@ -43,6 +45,12 @@ def axes_labels(prop):
         "min_order_param": ("min op.", (0, 1), no_conv),
         "pore_diameter_opt": (
             r"pywindow pore volume [$\mathrm{\AA}^{3}$]",
+            (0, 20),
+            no_conv,
+            None,
+        ),
+        "xtb_dmsoenergy": (
+            "xtb/DMSO energy [kJmol-1]",
             (0, 20),
             no_conv,
             None,
@@ -103,6 +111,11 @@ def axes_labels(prop):
             (0, 180),
             no_conv,
         ),
+        "bite_angle": (
+            "bite angle [deg]",
+            (-180, 180),
+            no_conv,
+        ),
         "NCCN_dihedral": (
             "abs. NCCN dihedral [deg]",
             (0, 180),
@@ -136,6 +149,56 @@ def axes_labels(prop):
     }[prop]
 
 
+def plot_geom_scores(
+    results_dict,
+    outname,
+):
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    min_small_e = min(
+        [results_dict[i]["small_energy"] for i in results_dict]
+    )
+    min_large_e = min(
+        [results_dict[i]["large_energy"] for i in results_dict]
+    )
+    print(min_large_e, min_small_e)
+
+    all_xs = []
+    all_ys = []
+    for cids, cidl in results_dict:
+        rdict = results_dict[(cids, cidl)]
+        small_strain = (rdict["small_energy"] - min_small_e) * 2625.5
+        large_strain = (rdict["large_energy"] - min_large_e) * 2625.5
+        if rdict["geom_score"] > 0:
+            all_xs.append(rdict["geom_score"])
+            all_ys.append((small_strain + large_strain))
+
+    ax.axvline(x=2, c="gray", linestyle="--")
+    ax.axhline(y=5, lw=2, c="gray", linestyle="--")
+
+    ax.scatter(
+        [i for i in all_xs],
+        [i for i in all_ys],
+        c="teal",
+        s=30,
+        alpha=1.0,
+        edgecolors="none",
+    )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel("geom score", fontsize=16)
+    ax.set_ylabel("strain [kJmol-1]", fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}.pdf"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
 def plot_ligand_pairing(
     results_dict,
     outname,
@@ -143,61 +206,78 @@ def plot_ligand_pairing(
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    all_scores = []
+    min_small_e = min(
+        [results_dict[i]["small_energy"] for i in results_dict]
+    )
+    min_large_e = min(
+        [results_dict[i]["large_energy"] for i in results_dict]
+    )
+    print(min_large_e, min_small_e)
+
     all_xs = []
     all_ys = []
+    all_cs = []
+    num_points_total = 0
+    num_good = 0
     for cids, cidl in results_dict:
         rdict = results_dict[(cids, cidl)]
-        all_scores.append(rdict["geom_score"])
-        all_xs.append(rdict["sum_angle_dev"] / 180)
-        all_ys.append(rdict["sum_length_dev"] / 20)
+        small_strain = (rdict["small_energy"] - min_small_e) * 2625.5
+        large_strain = (rdict["large_energy"] - min_large_e) * 2625.5
+        all_xs.append(rdict["angle_ratio"])
+        all_ys.append(rdict["length_ratio"])
+        all_cs.append((small_strain + large_strain))
+        num_points_total += 1
+        if abs(rdict["geom_score"]) < 2:
+            num_good += 1
 
-    # xwidth = 0.05
-    # xbins = np.arange(
-    #     0 - xwidth,
-    #     5 + xwidth,
-    #     xwidth,
-    # )
-    # axs[1].hist(
-    #     x=all_scores,
-    #     bins=xbins,
-    #     density=False,
-    #     histtype="stepfilled",
-    #     stacked=True,
-    #     linewidth=1.0,
-    #     facecolor="#F97068",
-    #     alpha=1.0,
-    #     edgecolor="k",
-    # )
-
-    # axs[1].tick_params(axis="both", which="major", labelsize=16)
-    # axs[1].set_xlabel("geom score", fontsize=16)
-    # axs[1].set_ylabel("count", fontsize=16)
-    # axs[1].set_xlim(0, 5)
-
-    xlim = (0, 2)
-    ylim = (0, 2)
-    norm = colors.LogNorm()
-    cs = [(1.0, 1.0, 1.0), (255 / 255, 87 / 255, 51 / 255)]
-    cmap = colors.LinearSegmentedColormap.from_list("test", cs, N=10)
-    hist = ax.hist2d(
+    ax.scatter(
         all_xs,
         all_ys,
-        bins=[40, 40],
-        range=[xlim, ylim],
-        density=False,
-        norm=norm,
-        cmap=cmap,
+        c=all_cs,
+        s=20,
+        edgecolor="none",
+        cmap="Blues_r",
+        vmin=0,
+        vmax=5,
     )
+    cbar_ax = fig.add_axes([1.01, 0.15, 0.02, 0.7])
+    cmap = mpl.cm.Blues_r
+    norm = mpl.colors.Normalize(vmin=0, vmax=5)
+    cbar = fig.colorbar(
+        mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+        cax=cbar_ax,
+        orientation="vertical",
+    )
+    cbar.ax.tick_params(labelsize=16)
+    cbar.set_label("strain [kJmol-1]", fontsize=16)
+
+    ax.set_title(f"{num_good} of {num_points_total}", fontsize=16)
+    ax.axhline(y=1, c="gray", lw=1, linestyle="--")
+    ax.axvline(x=1, c="gray", lw=1, linestyle="--")
+
+    # xlim = (0, 2)
+    # ylim = (0, 2)
+    # norm = colors.LogNorm()
+    # cs = [(1.0, 1.0, 1.0), (255 / 255, 87 / 255, 51 / 255)]
+    # cmap = colors.LinearSegmentedColormap.from_list("test", cs, N=10)
+    # hist = ax.hist2d(
+    #     all_xs,
+    #     all_ys,
+    #     bins=[40, 40],
+    #     range=[xlim, ylim],
+    #     density=False,
+    #     norm=norm,
+    #     cmap=cmap,
+    # )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_xlabel("T1 [deg]", fontsize=16)
-    ax.set_ylabel("T2 [Angstrom]", fontsize=16)
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
-    cbar = fig.colorbar(hist[3], ax=ax)
-    cbar.ax.set_ylabel("count", fontsize=16)
-    cbar.ax.tick_params(labelsize=16)
+    ax.set_xlabel("angle ratio []", fontsize=16)
+    ax.set_ylabel("length ratio []", fontsize=16)
+    ax.set_xlim(-180, 180)
+    ax.set_ylim(0, 2)
+    # cbar = fig.colorbar(hist[3], ax=ax)
+    # cbar.ax.set_ylabel("count", fontsize=16)
+    # cbar.ax.tick_params(labelsize=16)
 
     fig.tight_layout()
     fig.savefig(
