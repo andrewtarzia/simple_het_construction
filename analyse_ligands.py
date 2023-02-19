@@ -147,7 +147,6 @@ def main():
         for small_cid, large_cid in itertools.product(
             small_l_dict, large_l_dict
         ):
-
             # Calculate geom score for both sides together.
             large_c_dict = large_l_dict[large_cid]
             small_c_dict = small_l_dict[small_cid]
