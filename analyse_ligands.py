@@ -158,29 +158,45 @@ def main():
                 small_c_dict=small_c_dict,
             )
 
-            # Calculate final geometrical properties.
-            # T1.
-            sum_angle_dev = get_angle_deviations(
-                large_c_dict=large_c_dict,
-                small_c_dict=small_c_dict,
-            )
-            # T2.
-            sum_length_dev = get_ideal_length_deviation(
+            # Check dihedral.
+            test_N_N_lengths(
                 large_c_dict=large_c_dict,
                 small_c_dict=small_c_dict,
             )
 
-            geom_score = sum_angle_dev / 180 + sum_length_dev / 20
-            min_geom_score = min((geom_score, min_geom_score))
+            # Calculate final geometrical properties.
+            # T1.
+            angle_ratio = get_test_1(
+                large_c_dict=large_c_dict,
+                small_c_dict=small_c_dict,
+            )
+            # T2.
+            length_ratio = get_test_2(
+                large_c_dict=large_c_dict,
+                small_c_dict=small_c_dict,
+            )
+            geom_score = (angle_ratio - 1) + (length_ratio - 1)
+            if geom_score > 0:
+                min_geom_score = min((geom_score, min_geom_score))
             pair_info[(small_l, large_l)][(small_cid, large_cid)] = {
                 "geom_score": geom_score,
-                "sum_length_dev": sum_length_dev,
-                "sum_angle_dev": sum_angle_dev,
+                "angle_ratio": angle_ratio,
+                "length_ratio": length_ratio,
+                "small_energy": small_l_dict[small_cid][
+                    "xtb_dmsoenergy"
+                ],
+                "large_energy": large_l_dict[large_cid][
+                    "xtb_dmsoenergy"
+                ],
             }
         min_geom_scores[(small_l, large_l)] = round(min_geom_score, 2)
         plotting.plot_ligand_pairing(
             results_dict=pair_info[(small_l, large_l)],
             outname=f"lp_{small_l}_{large_l}",
+        )
+        plotting.plot_geom_scores(
+            results_dict=pair_info[(small_l, large_l)],
+            outname=f"gs_{small_l}_{large_l}",
         )
 
     logging.info(f"Min. geom scores for each pair:\n {min_geom_scores}")
