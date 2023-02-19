@@ -77,11 +77,12 @@ def main():
     _ld = liga_path()
 
     yproperties = (
-        "xtb_energy",
+        "xtb_dmsoenergy",
         "NcentroidN_angle",
         "NN_distance",
         "NCCN_dihedral",
         "NN_BCN_angles",
+        "bite_angle",
     )
 
     ligand_pairings = (
@@ -110,17 +111,29 @@ def main():
             conf_data_file = _ld / f"{ligand}_conf_data.json"
             with open(conf_data_file, "r") as f:
                 property_dict = json.load(f)
-            for yprop in yproperties:
-                plotting.plot_conf_distribution(
-                    results_dict=property_dict,
-                    outname=f"d_{ligand}_{yprop}",
-                    yproperty=yprop,
-                )
+
+            for cid in property_dict:
+                pdi = property_dict[cid]["NN_BCN_angles"]
+                ba = (90 - pdi["NN_BCN1"]) + (90 - pdi["NN_BCN2"])
+                property_dict[cid]["bite_angle"] = ba
 
             structure_results[ligand] = property_dict
-
         with open(res_file, "w") as f:
-            json.dump(structure_results, f)
+            json.dump(structure_results, f, indent=4)
+
+    for ligand in structure_results:
+        for yprop in yproperties:
+            plotting.plot_single_distribution(
+                results_dict=structure_results[ligand],
+                outname=f"d_{ligand}_{yprop}",
+                yproperty=yprop,
+            )
+            if yprop != "xtb_dmsoenergy":
+                plotting.plot_vs_energy(
+                    results_dict=structure_results[ligand],
+                    outname=f"ve_{ligand}_{yprop}",
+                    yproperty=yprop,
+                )
 
     pair_info = {}
     min_geom_scores = {}
