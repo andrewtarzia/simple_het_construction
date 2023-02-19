@@ -230,12 +230,9 @@ def plot_single_distribution(
             value = results_dict[cid][yproperty]
             all_values.append(value)
 
-    raise SystemExit("use dmso energy")
-    if yproperty == "xtb_energy":
+    if yproperty == "xtb_dmsoenergy":
         all_values = [i - min(all_values) for i in all_values]
         all_values = [i * 2625.5 for i in all_values]
-
-    print(len(all_values), outname)
 
     if lab_prop[1] is None:
         xbins = 50
@@ -253,7 +250,7 @@ def plot_single_distribution(
         histtype="stepfilled",
         stacked=True,
         linewidth=1.0,
-        facecolor="#F97068",
+        facecolor="#212738",
         alpha=1.0,
         edgecolor="k",
     )
@@ -262,6 +259,63 @@ def plot_single_distribution(
     ax.set_xlabel(lab_prop[0], fontsize=16)
     ax.set_ylabel("count", fontsize=16)
     ax.set_xlim(lab_prop[1])
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}.pdf"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_vs_energy(
+    results_dict,
+    outname,
+    yproperty,
+):
+
+    lab_prop = axes_labels(yproperty)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    all_energies = []
+    all_values = []
+    for cid in results_dict:
+        if results_dict[cid][yproperty] is None:
+            continue
+
+        energy = results_dict[cid]["xtb_dmsoenergy"]
+
+        if yproperty == "NN_BCN_angles":
+            value = results_dict[cid][yproperty]["NN_BCN1"]
+            all_energies.append(energy)
+            all_values.append(value)
+            value = results_dict[cid][yproperty]["NN_BCN2"]
+            all_energies.append(energy)
+            all_values.append(value)
+        else:
+            value = results_dict[cid][yproperty]
+            all_energies.append(energy)
+            all_values.append(value)
+
+    all_energies = [i - min(all_energies) for i in all_energies]
+    all_energies = [i * 2625.5 for i in all_energies]
+
+    ax.scatter(
+        [i for i in all_values],
+        [i for i in all_energies],
+        c="k",
+        s=50,
+        alpha=1.0,
+        edgecolors="k",
+    )
+
+    ax.axhline(y=5, lw=2, c="k", linestyle="--")
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel(lab_prop[0], fontsize=16)
+    ax.set_ylabel("rel. xtb/DMSO energy [kJmol-1]", fontsize=16)
+    ax.set_xlim(lab_prop[1])
+    ax.set_ylim(0, 20)
 
     fig.tight_layout()
     fig.savefig(
@@ -303,29 +357,6 @@ def plot_pair_distribution(
     plt.close()
 
 
-def plot_conf_distribution(
-    results_dict,
-    outname,
-    yproperty,
-):
-
-    # if yproperty in (
-    #     ("NN_BCN_angles", "NN_BCN_angles"),
-    #     (),
-    # ):
-    #     plot_pair_distribution(
-    #         results_dict=results_dict,
-    #         outname=outname,
-    #         yproperty=yproperty,
-    #     )
-    # else:
-    plot_single_distribution(
-        results_dict=results_dict,
-        outname=outname,
-        yproperty=yproperty,
-    )
-
-
 def plot_property(results_dict, outname, yproperty, ignore_topos=None):
 
     if ignore_topos is None:
@@ -334,8 +365,6 @@ def plot_property(results_dict, outname, yproperty, ignore_topos=None):
     cms = c_and_m_properties()
     lab_prop = axes_labels(yproperty)
     conv = lab_prop[2]
-
-    # sorted_names = sorted(results_dict.keys())
 
     fig, ax = plt.subplots(figsize=(16, 5))
 
