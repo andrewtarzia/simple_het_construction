@@ -251,7 +251,7 @@ def plot_ligand_pairing(
     cbar.ax.tick_params(labelsize=16)
     cbar.set_label("strain [kJmol-1]", fontsize=16)
 
-    ax.set_title(f"{num_good} of {num_points_total}", fontsize=16)
+    ax.set_title(f"{num_good} good of {num_points_total}", fontsize=16)
     ax.axhline(y=1, c="gray", lw=1, linestyle="--")
     ax.axvline(x=1, c="gray", lw=1, linestyle="--")
 
