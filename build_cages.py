@@ -160,7 +160,11 @@ def define_to_build(ligands):
 
     to_build = {}
     for lig in ligands:
-        topo_strs = lct[lig]
+        try:
+            topo_strs = lct[lig]
+        except KeyError:
+            continue
+
         if "m2" in topo_strs:
             to_build[f"m2_{lig}"] = CageInfo(
                 tg=homoleptic_m2l4(pd, ligands[lig]),
