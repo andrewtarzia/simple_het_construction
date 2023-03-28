@@ -44,7 +44,7 @@ def draw_grid(names, smiles, image_file):
         f.write(svg)
 
 
-def select_conformer(
+def select_conformer_xtb(
     molecule,
     name,
     lowe_output,
@@ -83,11 +83,12 @@ def select_conformer(
         )
         # Need to define the functional groups.
         new_mol = stk.BuildingBlock.init_from_molecule(
-            molecule=new_mol, functional_groups=[AromaticCNCFactory()]
+            molecule=new_mol,
+            functional_groups=[AromaticCNCFactory()],
         )
         # Only get two FGs.
         new_mol = new_mol.with_functional_groups(
-            functional_groups=get_furthest_pair_FGs(new_mol)
+            functional_groups=get_furthest_pair_FGs(new_mol),
         )
         if os.path.exists(conf_opt_file_name):
             new_mol = new_mol.with_structure_from_file(
@@ -123,14 +124,14 @@ def select_conformer(
             solvent="dmso",
         )
         if angle < min_angle:
-            logging.info(f"new selected conformer: {cid}")
+            logging.info(f">> new selected conformer: {cid}")
             min_angle = angle
             final_molecule = stk.BuildingBlock.init_from_molecule(
                 new_mol,
             )
 
         if energy < min_energy:
-            logging.info(f"new lowest energy conformer: {cid}")
+            logging.info(f">> new lowest energy conformer: {cid}")
             min_energy = energy
             new_mol.write(str(lowe_output))
             with open(lowe_energy_output, "w") as f:
@@ -148,6 +149,65 @@ def select_conformer(
         json.dump(lig_conf_data, f)
 
     return final_molecule
+
+
+def select_conformer_uff(
+    molecule,
+    name,
+    lowe_output,
+    conf_data_file,
+    calc_dir,
+):
+    """
+    Build a large conformer ensemble with UFF optimisation.
+
+    """
+    logging.info(f"building conformer ensemble of {name}")
+
+    confs = molecule.to_rdkit_mol()
+    etkdg = rdkit.srETKDGv3()
+    etkdg.randomSeed = 1000
+    cids = rdkit.EmbedMultipleConfs(
+        mol=confs,
+        numConfs=500,
+        params=etkdg,
+        pruneRmsThresh=0.2,
+    )
+
+    lig_conf_data = {}
+    for cid in cids:
+        conf_opt_file_name = str(lowe_output).replace(
+            "_lowe.mol", f"_c{cid}_cuff.mol"
+        )
+        # Update stk_mol to conformer geometry.
+        new_mol = update_from_rdkit_conf(
+            stk_mol=molecule, rdk_mol=confs, conf_id=cid
+        )
+        # Need to define the functional groups.
+        new_mol = stk.BuildingBlock.init_from_molecule(
+            molecule=new_mol,
+            functional_groups=[AromaticCNCFactory()],
+        )
+        # Only get two FGs.
+        new_mol = new_mol.with_functional_groups(
+            functional_groups=get_furthest_pair_FGs(new_mol),
+        )
+
+        new_mol = stko.UFF().optimize(mol=new_mol)
+        new_mol.write(conf_opt_file_name)
+
+        NCCN_dihedral = abs(calculate_NCCN_dihedral(new_mol))
+        angle = calculate_N_centroid_N_angle(new_mol)
+
+        lig_conf_data[cid] = {
+            "NcentroidN_angle": angle,
+            "NCCN_dihedral": NCCN_dihedral,
+            "NN_distance": calculate_NN_distance(new_mol),
+            "NN_BCN_angles": calculate_NN_BCN_angles(new_mol),
+        }
+
+    with open(conf_data_file, "w") as f:
+        json.dump(lig_conf_data, f)
 
 
 def ligand_smiles():
@@ -214,6 +274,10 @@ def ligand_smiles():
             "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
             "CN=CC=5)=C4)=O)=C1)=CC=C2"
         ),
+        "e18": (
+            "C1(=CC=NC=C1)C#CC1=CC2C3C=C(C#CC4=CC=NC=C4)C=CC=3C(OC)=C(O"
+            "C)C=2C=C1"
+        ),
     }
 
 
@@ -239,6 +303,7 @@ def main():
         opt_file = _wd / f"{lig}_opt.mol"
         lowe_file = _wd / f"{lig}_lowe.mol"
         conf_data_file = _wd / f"{lig}_conf_data.json"
+        confuff_data_file = _wd / f"{lig}_conf_uff_data.json"
         unopt_mol = stk.BuildingBlock(
             smiles=lsmiles[lig],
             functional_groups=(AromaticCNCFactory(),),
@@ -247,14 +312,23 @@ def main():
 
         if not os.path.exists(opt_file):
             logging.info(f"selecting construction ligand for {lig}")
-            opt_mol = select_conformer(
+            if lig[0] == "l":
+                opt_mol = select_conformer_xtb(
+                    molecule=unopt_mol,
+                    name=lig,
+                    lowe_output=lowe_file,
+                    conf_data_file=conf_data_file,
+                    calc_dir=_cd,
+                )
+                opt_mol.write(opt_file)
+
+            select_conformer_uff(
                 molecule=unopt_mol,
                 name=lig,
                 lowe_output=lowe_file,
-                conf_data_file=conf_data_file,
+                conf_data_file=confuff_data_file,
                 calc_dir=_cd,
             )
-            opt_mol.write(opt_file)
 
     draw_grid(
         names=[i for i in lsmiles],
