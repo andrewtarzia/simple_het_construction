@@ -1240,7 +1240,79 @@ def plot_all_geom_scores(
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
+
+
+def plot_conformer_props(
+    structure_results,
+    outname,
+    dihedral_cutoff,
+    strain_cutoff,
+    experimental_ligand_outcomes,
+    low_energy_values,
+):
+    logging.info("plotting: plot_conformer_props")
+
+    fig, ax = plt.subplots(figsize=(16, 5))
+
+    categories_num_confs = {}
+    categories_num_strain = {}
+    categories_num_dihedral = {}
+
+    for ligand in structure_results:
+        sres = structure_results[ligand]
+        low_energy = low_energy_values[ligand][1]
+
+        num_confs = 0
+        num_strain = 0
+        num_dihedral = 0
+
+        for cid in sres:
+            num_confs += 1
+            strain = sres[cid]["UFFEnergy;kj/mol"] - low_energy
+            dihedral = sres[cid]["NCCN_dihedral"]
+
+            if strain > strain_cutoff:
+                continue
+            num_strain += 1
+
+            if abs(dihedral) > dihedral_cutoff:
+                continue
+            num_dihedral += 1
+
+        categories_num_confs[ligand] = num_confs
+        categories_num_strain[ligand] = num_strain
+        categories_num_dihedral[ligand] = num_dihedral
+
+    p = ax.bar(
+        categories_num_dihedral.keys(),
+        categories_num_dihedral.values(),
+        color="gold",
+        edgecolor="k",
+        lw=2,
+    )
+    ax.bar_label(
+        p,
+        labels=[
+            round((i / j) * 100, 1)
+            for i, j in zip(
+                categories_num_dihedral.values(),
+                categories_num_confs.values(),
+            )
+        ],
+        label_type="center",
+        padding=3,
+        fontsize=16,
+    )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_ylabel("num. conformers", fontsize=16)
+
+    ax.set_xticks(range(len(categories_num_confs)))
+    ax.set_xticklabels(categories_num_confs.keys(), rotation=45)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}"),
         dpi=720,
         bbox_inches="tight",
     )
