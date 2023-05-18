@@ -151,7 +151,7 @@ def select_conformer_xtb(
     return final_molecule
 
 
-def select_conformer_uff(
+def conformer_generation_uff(
     molecule,
     name,
     lowe_output,
@@ -162,19 +162,22 @@ def select_conformer_uff(
     Build a large conformer ensemble with UFF optimisation.
 
     """
+
     logging.info(f"building conformer ensemble of {name}")
 
     confs = molecule.to_rdkit_mol()
     etkdg = rdkit.srETKDGv3()
     etkdg.randomSeed = 1000
+    etkdg.pruneRmsThresh = 0.2
     cids = rdkit.EmbedMultipleConfs(
         mol=confs,
         numConfs=500,
         params=etkdg,
-        pruneRmsThresh=0.2,
+        # pruneRmsThresh=0.2,
     )
 
     lig_conf_data = {}
+    num_confs = 0
     for cid in cids:
         conf_opt_file_name = str(lowe_output).replace(
             "_lowe.mol", f"_c{cid}_cuff.mol"
@@ -194,6 +197,7 @@ def select_conformer_uff(
         )
 
         new_mol = stko.UFF().optimize(mol=new_mol)
+        energy = stko.UFFEnergy().get_energy(new_mol)
         new_mol.write(conf_opt_file_name)
 
         NCCN_dihedral = abs(calculate_NCCN_dihedral(new_mol))
@@ -204,7 +208,10 @@ def select_conformer_uff(
             "NCCN_dihedral": NCCN_dihedral,
             "NN_distance": calculate_NN_distance(new_mol),
             "NN_BCN_angles": calculate_NN_BCN_angles(new_mol),
+            "UFFEnergy;kj/mol": energy * 4.184,
         }
+        num_confs += 1
+    logging.info(f"{num_confs} conformers generated for {name}")
 
     with open(conf_data_file, "w") as f:
         json.dump(lig_conf_data, f)
@@ -322,7 +329,8 @@ def main():
                 )
                 opt_mol.write(opt_file)
 
-            select_conformer_uff(
+        if not os.path.exists(confuff_data_file):
+            conformer_generation_uff(
                 molecule=unopt_mol,
                 name=lig,
                 lowe_output=lowe_file,
