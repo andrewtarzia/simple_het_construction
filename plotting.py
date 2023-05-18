@@ -357,20 +357,45 @@ def plot_analytical_data_3():
     plt.close()
 
 
+def plot_geom_scores_vs_dihedral_cutoff(
+    results_dict,
+    geom_score_cutoff,
+    outname,
+):
+    logging.info("plotting: plot_geom_scores_vs_dihedral_cutoff")
+
+    fig, axs = plt.subplots(ncols=2, figsize=(16, 5))
+
+    xs = np.linspace(0.2, 180, 60)
+
     for pair_name in results_dict:
         rdict = results_dict[pair_name]
-        if (
-            "l1"
-            not in pair_name
-            # and "l2" not in pair_name
-            # and "e16" not in pair_name
+        if pair_name not in (
+            "e3,e2",
+            "e16,e17",
+            "e16,e14",
+            "e10,e17",
+            "e16,e10",
+            "e1,e4",
+            "e11,e10",
+            "e11,e14",
+            "e12,e14",
+            "e11,e13",
+            "e12,e13",
+            "e15,e14",
+            "e18,e10",
+            "e18,e14",
         ):
             continue
 
         ys = []
+        ys2 = []
         for dihedral_threshold in xs:
-            min_geom_score = 2
+            all_scores = 0
+            less_scores = 0
             for cid_pair in rdict:
+                all_scores += 1
+
                 if (
                     abs(rdict[cid_pair]["large_dihedral"])
                     > dihedral_threshold
@@ -378,28 +403,143 @@ def plot_analytical_data_3():
                     > dihedral_threshold
                 ):
                     continue
-                geom_score = rdict[cid_pair]["geom_score"]
-                if geom_score < min_geom_score:
-                    min_geom_score = geom_score
-            ys.append(min_geom_score)
 
-        ax.plot(
+                geom_score = rdict[cid_pair]["geom_score"]
+
+                if geom_score < geom_score_cutoff:
+                    less_scores += 1
+
+            if all_scores == 0:
+                ys.append(0)
+                ys2.append(0)
+            else:
+                ys.append((less_scores / all_scores) * 100)
+                ys2.append(all_scores)
+
+        axs[0].plot(
             xs,
             ys,
-            lw=2,
+            lw=3,
             label=pair_name,
         )
+        axs[1].plot(
+            xs,
+            ys2,
+            lw=3,
+            # label=pair_name,
+        )
 
-    ax.set_ylim(0, 2)
-    ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_xlabel("dihedral threshold", fontsize=16)
-    ax.set_ylabel("min. geometry score", fontsize=16)
+    axs[0].set_ylim(0, 101)
+    axs[0].tick_params(axis="both", which="major", labelsize=16)
+    axs[0].set_xlabel("dihedral threshold", fontsize=16)
+    axs[0].set_ylabel(r"% good", fontsize=16)
 
-    ax.legend(ncol=4, fontsize=16)
+    axs[1].tick_params(axis="both", which="major", labelsize=16)
+    axs[1].set_xlabel("dihedral threshold", fontsize=16)
+    axs[1].set_ylabel("num. pairs", fontsize=16)
+
+    fig.legend(ncol=4, fontsize=16)
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
+        os.path.join(figu_path(), f"{outname}"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_geom_scores_vs_max_strain(
+    results_dict,
+    dihedral_cutoff,
+    geom_score_cutoff,
+    outname,
+):
+    logging.info("plotting: plot_geom_scores_vs_max_strain")
+    raise NotImplementedError(
+        "no longer needed - strain is removed elsewhere"
+    )
+
+    fig, axs = plt.subplots(ncols=2, figsize=(16, 5))
+
+    xs = np.linspace(0.1, 50, 20)
+
+    for pair_name in results_dict:
+        rdict = results_dict[pair_name]
+
+        if pair_name not in (
+            "e3,e2",
+            "e16,e17",
+            "e16,e14",
+            "e10,e17",
+            "e16,e10",
+            "e1,e4",
+            "e11,e10",
+            "e11,e14",
+            "e12,e14",
+            "e11,e13",
+            "e12,e13",
+            "e15,e14",
+            "e18,e10",
+            "e18,e14",
+        ):
+            continue
+
+        ys = []
+        ys2 = []
+        for max_strain in xs:
+            all_scores = 0
+            less_scores = 0
+            for cid_pair in rdict:
+                all_scores += 1
+
+                if (
+                    abs(rdict[cid_pair]["large_dihedral"])
+                    > dihedral_cutoff
+                    or abs(rdict[cid_pair]["small_dihedral"])
+                    > dihedral_cutoff
+                ):
+                    continue
+
+                geom_score = rdict[cid_pair]["geom_score"]
+
+                if geom_score < geom_score_cutoff:
+                    less_scores += 1
+
+            if all_scores == 0:
+                ys.append(0)
+                ys2.append(0)
+            else:
+                ys.append((less_scores / all_scores) * 100)
+                ys2.append(all_scores)
+
+        axs[0].plot(
+            xs,
+            ys,
+            lw=3,
+            label=pair_name,
+        )
+        axs[1].plot(
+            xs,
+            ys2,
+            lw=3,
+            # label=pair_name,
+        )
+
+    axs[0].set_ylim(0, 101)
+    axs[0].tick_params(axis="both", which="major", labelsize=16)
+    axs[0].set_xlabel("strain threshold [kJ/mol]", fontsize=16)
+    axs[0].set_ylabel(r"% good", fontsize=16)
+
+    axs[1].tick_params(axis="both", which="major", labelsize=16)
+    axs[1].set_xlabel("strain threshold [kJ/mol]", fontsize=16)
+    axs[1].set_ylabel("num. pairs", fontsize=16)
+
+    fig.legend(ncol=4, fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}"),
         dpi=720,
         bbox_inches="tight",
     )
