@@ -191,7 +191,11 @@ def main():
 
             for cid in property_dict:
                 pdi = property_dict[cid]["NN_BCN_angles"]
-                ba = (90 - pdi["NN_BCN1"]) + (90 - pdi["NN_BCN2"])
+                # 180 - angle, to make it the angle toward the binding
+                # interaction. Minus 90  to convert to the bite-angle.
+                ba = ((180 - pdi["NN_BCN1"]) - 90) + (
+                    (180 - pdi["NN_BCN2"]) - 90
+                )
                 property_dict[cid]["bite_angle"] = ba
 
             structure_results[ligand] = property_dict
