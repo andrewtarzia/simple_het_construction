@@ -1240,6 +1240,57 @@ def plot_all_geom_scores(
 
     fig.tight_layout()
     fig.savefig(
+        os.path.join(figu_path(), f"{outname}"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def gs_table(
+    results_dict,
+    dihedral_cutoff,
+    geom_score_cutoff,
+    strain_cutoff,
+):
+    logging.info("plotting: making gs table")
+
+    for pair_name in results_dict:
+        rdict = results_dict[pair_name]
+
+        if "e" in pair_name:
+            continue
+
+        min_geom_score = 1e24
+        good_geoms = 0
+        total_tested = 0
+        geom_scores = []
+        for cid_pair in rdict:
+            total_tested += 1
+
+            if (
+                abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"])
+                > dihedral_cutoff
+            ):
+                continue
+
+            geom_score = rdict[cid_pair]["geom_score"]
+            geom_scores.append(geom_score)
+            if geom_score < min_geom_score:
+                min_geom_score = geom_score
+
+            if geom_score < geom_score_cutoff:
+                good_geoms += 1
+
+        logging.info(
+            (
+                f"{pair_name}: {round(min_geom_score, 2)}, "
+                f"{round((good_geoms/total_tested)*100, 0)} "
+                f"{round(np.mean(geom_scores), 3)} "
+                f"({round(np.std(geom_scores), 3)}) "
+            )
+        )
 
 
 def plot_conformer_props(
