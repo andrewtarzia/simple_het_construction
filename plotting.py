@@ -10,7 +10,9 @@ Author: Andrew Tarzia
 """
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch, Circle
+from matplotlib.patches import Patch
+import matplotlib as mpl
+
 from matplotlib.lines import Line2D
 import logging
 import numpy as np
@@ -549,26 +551,53 @@ def plot_geom_scores_vs_max_strain(
 def plot_geom_scores_vs_threshold(
     results_dict,
     dihedral_cutoff,
+    strain_cutoff,
     outname,
+    experimental_ligand_outcomes,
 ):
+    logging.info("plotting: plot_geom_scores_vs_threshold")
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, axs = plt.subplots(nrows=3, sharey=True, figsize=(8, 12))
 
     xs = np.linspace(0, 1, 30)
+    colour_map = {
+        "yes": "#086788",
+        "no": "#F9A03F",
+        "tested": "#F9A03F",
+    }
 
     for pair_name in results_dict:
         rdict = results_dict[pair_name]
-        if (
-            "e16" not in pair_name
-            and "e18" not in pair_name
-            and "e13" not in pair_name
-        ):
+
+        if "e" in pair_name:
+            ename = pair_name.split(",")
+            if (ename[0], ename[1]) in experimental_ligand_outcomes:
+                edata = experimental_ligand_outcomes[
+                    (ename[0], ename[1])
+                ]
+
+            elif (ename[1], ename[0]) in experimental_ligand_outcomes:
+                edata = experimental_ligand_outcomes[
+                    (ename[1], ename[0])
+                ]
+            else:
+                continue
+            colour = colour_map[edata]
+        else:
             continue
+            colour = colour_map["tested"]
+
         ys = []
-        for gs_threshold in xs:
+        ys_l = []
+        ys_a = []
+        for threshold in xs:
             all_scores = 0
             less_scores = 0
+            less_l_scores = 0
+            less_a_scores = 0
             for cid_pair in rdict:
+                all_scores += 1
+
                 if (
                     abs(rdict[cid_pair]["large_dihedral"])
                     > dihedral_cutoff
@@ -576,29 +605,74 @@ def plot_geom_scores_vs_threshold(
                     > dihedral_cutoff
                 ):
                     continue
-                geom_score = rdict[cid_pair]["geom_score"]
-                all_scores += 1
-                if geom_score < gs_threshold:
-                    less_scores += 1
-            ys.append((less_scores / all_scores) * 100)
 
-        ax.plot(
+                geom_score = rdict[cid_pair]["geom_score"]
+                if geom_score < threshold:
+                    less_scores += 1
+
+                angle_score = rdict[cid_pair]["angle_deviation"]
+                if abs(angle_score - 1) < threshold:
+                    less_a_scores += 1
+
+                length_score = rdict[cid_pair]["length_deviation"]
+                if abs(length_score - 1) < threshold:
+                    less_l_scores += 1
+
+            if all_scores == 0:
+                ys.append(0)
+            else:
+                ys.append((less_scores / all_scores) * 100)
+
+            if all_scores == 0:
+                ys_l.append(0)
+            else:
+                ys_l.append((less_l_scores / all_scores) * 100)
+
+            if all_scores == 0:
+                ys_a.append(0)
+            else:
+                ys_a.append((less_a_scores / all_scores) * 100)
+
+        axs[0].plot(
             xs,
             ys,
             lw=2,
-            label=pair_name,
+            c=colour,
+            # label=pair_name,
+        )
+        axs[1].plot(
+            xs,
+            ys_l,
+            lw=2,
+            c=colour,
+        )
+        axs[2].plot(
+            xs,
+            ys_a,
+            lw=2,
+            c=colour,
         )
 
-    ax.set_ylim(0, 100)
-    ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_xlabel("geom score threshold", fontsize=16)
-    ax.set_ylabel(r"% good", fontsize=16)
+    # axs[0].set_ylim(0, 101)
+    axs[0].tick_params(axis="both", which="major", labelsize=16)
+    axs[0].set_xlabel("geom score threshold", fontsize=16)
+    axs[0].set_ylabel(r"% good", fontsize=16)
 
-    ax.legend(fontsize=16)
+    # axs[1].set_ylim(0, 101)
+    axs[1].tick_params(axis="both", which="major", labelsize=16)
+    axs[1].set_xlabel("length score threshold", fontsize=16)
+    axs[1].set_ylabel(r"% good", fontsize=16)
+
+    # axs[2].set_ylim(0, 101)
+    axs[2].tick_params(axis="both", which="major", labelsize=16)
+    axs[2].set_xlabel("angle score threshold", fontsize=16)
+    axs[2].set_ylabel(r"% good", fontsize=16)
+
+    fig.legend(fontsize=16)
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
+        os.path.join(figu_path(), f"{outname}"),
         dpi=720,
         bbox_inches="tight",
     )
@@ -609,8 +683,11 @@ def plot_all_geom_scores_density(
     results_dict,
     outname,
     dihedral_cutoff,
+    geom_score_cutoff,
+    strain_cutoff,
     experimental_ligand_outcomes,
 ):
+    logging.info("plotting: plot_all_geom_scores_density")
 
     colour_map = {
         "yes": "#086788",
@@ -652,6 +729,8 @@ def plot_all_geom_scores_density(
         all_scores = 0
         less_scores = 0
         for cid_pair in rdict:
+            all_scores += 1
+
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
                 or abs(rdict[cid_pair]["small_dihedral"])
@@ -659,14 +738,19 @@ def plot_all_geom_scores_density(
             ):
                 continue
 
-            all_scores += 1
             geom_score = rdict[cid_pair]["geom_score"]
-            if geom_score < 0.5:
+            if geom_score < geom_score_cutoff:
                 less_scores += 1
 
         categories_gs[pair_name] = (less_scores / all_scores) * 100
 
-    ax.set_title(f"dihedral cut {dihedral_cutoff}", fontsize=16)
+    ax.set_title(
+        (
+            f"dihedral cut {dihedral_cutoff}; "
+            f"strain cut {strain_cutoff} kj/mol"
+        ),
+        fontsize=16,
+    )
     ax.bar(
         categories_gs.keys(),
         categories_gs.values(),
@@ -713,19 +797,25 @@ def plot_all_geom_scores_density(
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
+        os.path.join(figu_path(), f"{outname}"),
         dpi=720,
         bbox_inches="tight",
     )
     plt.close()
 
 
-def plot_all_geom_scores_categorigcal(
+def plot_all_geom_scores_categ(
     results_dict,
     outname,
     dihedral_cutoff,
+    geom_score_cutoff,
+    angle_score_cutoff,
+    length_score_cutoff,
+    strain_cutoff,
     experimental_ligand_outcomes,
 ):
+
+    logging.info("plotting: plot_all_geom_scores_categorical")
 
     colour_map = {
         "yes": "#086788",
@@ -733,9 +823,13 @@ def plot_all_geom_scores_categorigcal(
         "tested": "#F9A03F",
     }
 
-    fig, ax = plt.subplots(figsize=(5, 5))
+    fig, axs = plt.subplots(ncols=2, nrows=1, figsize=(10, 5))
+    flat_axs = axs.flatten()
 
+    categories_gcs = []
     categories_gs = []
+    categories_ls = []
+    categories_as = []
     colour_list = []
     x_list = []
 
@@ -768,40 +862,148 @@ def plot_all_geom_scores_categorigcal(
         if len(rdict) == 0:
             crosses[pair_name] = (colour_list[-1], "X")
             categories_gs.append(-1)
+            categories_gcs.append(-1)
+            categories_ls.append(-1)
+            categories_as.append(-1)
             continue
 
         all_scores = 0
         less_scores = 0
+        less_a_scores = 0
+        less_l_scores = 0
+        min_geom_score = 1e24
+        geom_scores = []
         for cid_pair in rdict:
-            # if (
-            #     abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-            #     or abs(rdict[cid_pair]["small_dihedral"])
-            #     > dihedral_cutoff
-            # ):
-            #     continue
-
             all_scores += 1
+
+            if (
+                abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"])
+                > dihedral_cutoff
+            ):
+                continue
+
             geom_score = rdict[cid_pair]["geom_score"]
-            if geom_score < 0.5:
+            geom_scores.append(geom_score)
+            if geom_score < min_geom_score:
+                min_geom_score = geom_score
+
+            if geom_score < geom_score_cutoff:
                 less_scores += 1
 
-        categories_gs.append((less_scores / all_scores) * 100)
+            angle_score = rdict[cid_pair]["angle_deviation"]
+            if abs(angle_score - 1) < angle_score_cutoff:
+                less_a_scores += 1
 
-    ax.scatter(
+            length_score = rdict[cid_pair]["length_deviation"]
+            if abs(length_score - 1) < length_score_cutoff:
+                less_l_scores += 1
+
+        if all_scores == 0 or min_geom_score == 1e24:
+            categories_gs.append(0)
+            categories_gcs.append(1)
+            categories_as.append(0)
+            categories_ls.append(0)
+        else:
+            # categories_gcs.append(min_geom_score)
+            # categories_gcs.append(np.median(geom_scores))
+            deviations = np.array(geom_scores)
+            categories_gcs.append(
+                np.sqrt(
+                    np.sum(deviations * deviations) / len(geom_scores)
+                )
+            )
+
+            categories_gs.append((less_scores / all_scores) * 100)
+            categories_as.append((less_a_scores / all_scores) * 100)
+            categories_ls.append((less_l_scores / all_scores) * 100)
+
+        flat_axs[0].text(
+            x_list[-1] - 0.5,
+            categories_gcs[-1],
+            s=pair_name,
+        )
+        flat_axs[1].text(
+            x_list[-1] - 0.5,
+            categories_gs[-1],
+            s=pair_name,
+        )
+        # flat_axs[2].text(
+        #     x_list[-1] - 0.5,
+        #     categories_ls[-1],
+        #     s=pair_name,
+        # )
+        # flat_axs[3].text(
+        #     x_list[-1] - 0.5,
+        #     categories_as[-1],
+        #     s=pair_name,
+        # )
+
+    flat_axs[0].scatter(
+        [i + np.random.uniform(-1, 1, 1) * 0.3 for i in x_list],
+        categories_gcs,
+        color=colour_list,
+        edgecolor="k",
+        s=120,
+    )
+    flat_axs[0].axvline(x=1.5, c="gray", linestyle="--")
+    flat_axs[0].axvline(x=2.5, c="gray", linestyle="--")
+    flat_axs[0].tick_params(axis="both", which="major", labelsize=16)
+    # flat_axs[0].set_ylabel("min geometry score", fontsize=16)
+    # flat_axs[0].set_ylabel("median geometry score", fontsize=16)
+    flat_axs[0].set_ylabel("RMSD geometry score", fontsize=16)
+    flat_axs[0].set_xlim(0.5, 3.5)
+    flat_axs[0].set_xticks((1, 2, 3))
+    flat_axs[0].set_xticklabels(("this work", "yes", "no"))
+    flat_axs[0].set_ylim(0, None)
+
+    flat_axs[1].scatter(
         [i + np.random.uniform(-1, 1, 1) * 0.3 for i in x_list],
         categories_gs,
         color=colour_list,
         edgecolor="k",
         s=120,
     )
-    ax.axvline(x=1.5, c="gray", linestyle="--")
-    ax.axvline(x=2.5, c="gray", linestyle="--")
+    flat_axs[1].axvline(x=1.5, c="gray", linestyle="--")
+    flat_axs[1].axvline(x=2.5, c="gray", linestyle="--")
+    flat_axs[1].tick_params(axis="both", which="major", labelsize=16)
+    flat_axs[1].set_ylabel(r"% good geometry score", fontsize=16)
+    flat_axs[1].set_xlim(0.5, 3.5)
+    flat_axs[1].set_xticks((1, 2, 3))
+    flat_axs[1].set_xticklabels(("this work", "yes", "no"))
+    flat_axs[1].set_ylim(0, None)
 
-    ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_ylabel(r"% good geometry score", fontsize=16)
-    ax.set_xlim(0, 4)
-    ax.set_xticks((1, 2, 3))
-    ax.set_xticklabels(("this work", "yes", "no"))
+    # flat_axs[2].scatter(
+    #     [i + np.random.uniform(-1, 1, 1) * 0.3 for i in x_list],
+    #     categories_ls,
+    #     color=colour_list,
+    #     edgecolor="k",
+    #     s=120,
+    # )
+    # flat_axs[2].axvline(x=1.5, c="gray", linestyle="--")
+    # flat_axs[2].axvline(x=2.5, c="gray", linestyle="--")
+    # flat_axs[2].tick_params(axis="both", which="major", labelsize=16)
+    # flat_axs[2].set_ylabel(r"% good length score", fontsize=16)
+    # flat_axs[2].set_xlim(0.5, 3.5)
+    # flat_axs[2].set_xticks((1, 2, 3))
+    # flat_axs[2].set_xticklabels(("this work", "yes", "no"))
+    # flat_axs[2].set_ylim(0, None)
+
+    # flat_axs[3].scatter(
+    #     [i + np.random.uniform(-1, 1, 1) * 0.3 for i in x_list],
+    #     categories_as,
+    #     color=colour_list,
+    #     edgecolor="k",
+    #     s=120,
+    # )
+    # flat_axs[3].axvline(x=1.5, c="gray", linestyle="--")
+    # flat_axs[3].axvline(x=2.5, c="gray", linestyle="--")
+    # flat_axs[3].tick_params(axis="both", which="major", labelsize=16)
+    # flat_axs[3].set_ylabel(r"% good angle score", fontsize=16)
+    # flat_axs[3].set_xlim(0.5, 3.5)
+    # flat_axs[3].set_xticks((1, 2, 3))
+    # flat_axs[3].set_xticklabels(("this work", "yes", "no"))
+    # flat_axs[3].set_ylim(0, None)
 
     # legend_elements = []
     # for i in colour_map:
@@ -818,211 +1020,7 @@ def plot_all_geom_scores_categorigcal(
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
-        dpi=720,
-        bbox_inches="tight",
-    )
-    plt.close()
-
-
-def plot_all_geom_scores_single(
-    results_dict,
-    outname,
-    dihedral_cutoff,
-    experimental_ligand_outcomes,
-):
-
-    colour_map = {
-        "yes": "#086788",
-        "no": "white",
-        "tested": "#F9A03F",
-    }
-
-    fig, axs = plt.subplots(
-        nrows=3,
-        sharex=True,
-        sharey=True,
-        figsize=(16, 10),
-    )
-
-    categories_gs = {}
-    categories_lengths = {}
-    categories_angles = {}
-    colour_list = []
-
-    crosses = {}
-    for pair_name in results_dict:
-        rdict = results_dict[pair_name]
-
-        if "e" in pair_name:
-            ename = pair_name.split(",")
-            if (ename[0], ename[1]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[0], ename[1])
-                ]
-
-            elif (ename[1], ename[0]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[1], ename[0])
-                ]
-            else:
-                continue
-            colour_list.append(colour_map[edata])
-        else:
-            colour_list.append(colour_map["tested"])
-
-        if len(rdict) == 0:
-            crosses[pair_name] = (colour_list[-1], "X")
-            categories_gs[pair_name] = 0
-            categories_lengths[pair_name] = 0
-            categories_angles[pair_name] = 0
-            continue
-
-        min_large_NCN_angle = 1e24
-        min_small_NCN_angle = 1e24
-        min_geom_score = 1e24
-        min_length_score = 1e24
-        min_angle_score = 1e24
-        min_cid_pair = None
-        for cid_pair in rdict:
-            # if (
-            #     abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-            #     or abs(rdict[cid_pair]["small_dihedral"])
-            #     > dihedral_cutoff
-            # ):
-            #     continue
-
-            small_NCN_angle = rdict[cid_pair]["small_NCN_angle"]
-            large_NCN_angle = rdict[cid_pair]["large_NCN_angle"]
-            geom_score = rdict[cid_pair]["geom_score"]
-            angle_score = abs(rdict[cid_pair]["angle_deviation"] - 1)
-            length_score = abs(rdict[cid_pair]["length_deviation"] - 1)
-            if (
-                small_NCN_angle < min_small_NCN_angle
-                or large_NCN_angle < min_large_NCN_angle
-            ):
-                min_cid_pair = cid_pair
-                min_small_NCN_angle = small_NCN_angle
-                min_large_NCN_angle = large_NCN_angle
-                min_geom_score = geom_score
-                min_angle_score = angle_score
-                min_length_score = length_score
-
-        if min_geom_score == 1e24:
-            crosses[pair_name] = (colour_list[-1], "o")
-            categories_gs[pair_name] = 0
-            categories_lengths[pair_name] = 0
-            categories_angles[pair_name] = 0
-            continue
-
-        logging.info(
-            f"for {pair_name}, min small angle: "
-            f"{round(min_small_NCN_angle, 2)}, "
-            f"min large angle: {round(min_large_NCN_angle, 2)} "
-            f"for {min_cid_pair}"
-        )
-
-        categories_gs[pair_name] = min_geom_score
-        categories_lengths[pair_name] = min_length_score
-        categories_angles[pair_name] = min_angle_score
-
-    axs[0].bar(
-        categories_gs.keys(),
-        categories_gs.values(),
-        color=colour_list,
-        edgecolor="k",
-        lw=2,
-    )
-
-    axs[1].bar(
-        categories_gs.keys(),
-        categories_gs.values(),
-        color="gray",
-        edgecolor="k",
-        lw=2,
-        alpha=0.5,
-    )
-    axs[1].bar(
-        categories_lengths.keys(),
-        categories_lengths.values(),
-        color=colour_list,
-        edgecolor="k",
-        lw=2,
-    )
-
-    axs[2].bar(
-        categories_gs.keys(),
-        categories_gs.values(),
-        color="gray",
-        edgecolor="k",
-        lw=2,
-        alpha=0.5,
-    )
-    axs[2].bar(
-        categories_angles.keys(),
-        categories_angles.values(),
-        color=colour_list,
-        edgecolor="k",
-        lw=2,
-    )
-
-    for x, tstr in enumerate(categories_gs):
-        if tstr in crosses:
-            for ax in axs:
-                ax.scatter(
-                    x,
-                    0.2,
-                    c=crosses[tstr][0],
-                    marker=crosses[tstr][1],
-                    edgecolors="k",
-                    s=200,
-                )
-    #     ax.text(
-    #         x=x - 0.3,
-    #         y=categories_gs[tstr] + 0.1,
-    #         s=round(categories_strain[tstr], 0),
-    #         c="k",
-    #         fontsize=16,
-    #     )
-
-    # ax.axvline(x=4.5, linestyle="--", c="gray", lw=2)
-
-    # ax.set_xlabel("topology", fontsize=16)
-    # ax.set_ylim(0, 100)
-    axs[0].tick_params(axis="both", which="major", labelsize=16)
-    axs[0].set_ylabel("geometry score", fontsize=16)
-    # axs[0].set_xticks(range(len(categories_gs)))
-    # axs[0].set_xticklabels(categories_gs.keys(), rotation=45)
-    # axs[0].set_ylim(0, 2)
-
-    axs[1].tick_params(axis="both", which="major", labelsize=16)
-    axs[1].set_ylabel("length deviation ", fontsize=16)
-    # axs[1].set_xticks(range(len(categories_gs)))
-    # axs[1].set_xticklabels(categories_gs.keys(), rotation=45)
-    # axs[1].set_ylim(0, 2)
-
-    axs[2].tick_params(axis="both", which="major", labelsize=16)
-    axs[2].set_ylabel("angle deviation", fontsize=16)
-    axs[2].set_xticks(range(len(categories_gs)))
-    axs[2].set_xticklabels(categories_gs.keys(), rotation=45)
-    # axs[2].set_ylim(0, 2)
-
-    legend_elements = []
-    for i in colour_map:
-        legend_elements.append(
-            Patch(
-                facecolor=colour_map[i],
-                label=i,
-                alpha=1.0,
-                edgecolor="k",
-            ),
-        )
-
-    axs[0].legend(handles=legend_elements, ncol=5, fontsize=16)
-
-    fig.tight_layout()
-    fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
+        os.path.join(figu_path(), f"{outname}"),
         dpi=720,
         bbox_inches="tight",
     )
@@ -1033,8 +1031,10 @@ def plot_all_geom_scores(
     results_dict,
     outname,
     dihedral_cutoff,
+    strain_cutoff,
     experimental_ligand_outcomes,
 ):
+    logging.info("plotting: plot_all_geom_scores")
 
     colour_map = {
         "yes": "#086788",
@@ -1086,16 +1086,11 @@ def plot_all_geom_scores(
         min_length_score = 1e24
         min_angle_score = 1e24
         for cid_pair in rdict:
+
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
                 or abs(rdict[cid_pair]["small_dihedral"])
                 > dihedral_cutoff
-            ):
-                continue
-
-            if (
-                not rdict[cid_pair]["converging"]
-                or not rdict[cid_pair]["diverging"]
             ):
                 continue
 
