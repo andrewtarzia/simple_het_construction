@@ -217,8 +217,22 @@ def main():
         with open(res_file, "w") as f:
             json.dump(structure_results, f, indent=4)
 
+    # Define minimum energies for all ligands.
+    low_energy_values = {}
+    for ligand in structure_results:
+        sres = structure_results[ligand]
+        min_energy = 1e24
+        min_e_cid = 0
+        for cid in sres:
+            energy = sres[cid]["UFFEnergy;kj/mol"]
+            if energy < min_energy:
+                min_energy = energy
+                min_e_cid = cid
+        low_energy_values[ligand] = (min_e_cid, min_energy)
+
     pair_file = os.path.join(_ld, "all_pair_res.json")
     if os.path.exists(pair_file):
+        logging.info(f"loading {pair_file}")
         with open(pair_file, "r") as f:
             pair_info = json.load(f)
     else:
@@ -254,8 +268,8 @@ def main():
                 #     swapped_LS = True
 
                 # Test the angles are converging and diverging.
-                converging = test_converging_angles(large_c_dict)
-                diverging = test_diverging_angles(small_c_dict)
+                # converging = test_converging_angles(large_c_dict)
+                # diverging = test_diverging_angles(small_c_dict)
 
                 # Calculate final geometrical properties.
                 # T1.
@@ -270,30 +284,54 @@ def main():
                 )
                 geom_score = abs(angle_dev - 1) + abs(length_dev - 1)
 
+                if pair_name == "e3,e2":
+                    print(cid_name, geom_score, length_dev, angle_dev)
+                    print(large_c_dict, small_c_dict)
+                    # input()
+
+                small_energy = small_l_dict[small_cid][
+                    "UFFEnergy;kj/mol"
+                ]
+                small_strain = (
+                    small_energy - low_energy_values[small_l][1]
+                )
+                large_energy = large_l_dict[large_cid][
+                    "UFFEnergy;kj/mol"
+                ]
+                large_strain = (
+                    large_energy - low_energy_values[large_l][1]
+                )
+                if (
+                    small_strain > strain_cutoff
+                    or large_strain > strain_cutoff
+                ):
+                    continue
+                total_strain = large_strain + small_strain
+
                 min_geom_score = min((geom_score, min_geom_score))
                 pair_info[pair_name][cid_name] = {
                     "geom_score": geom_score,
                     "swapped_LS": swapped_LS,
-                    "converging": converging,
-                    "diverging": diverging,
+                    # "converging": converging,
+                    # "diverging": diverging,
                     "large_dihedral": large_c_dict["NCCN_dihedral"],
                     "small_dihedral": small_c_dict["NCCN_dihedral"],
                     "angle_deviation": angle_dev,
                     "length_deviation": length_dev,
                     "small_NCN_angle": small_c_dict["NcentroidN_angle"],
                     "large_NCN_angle": large_c_dict["NcentroidN_angle"],
-                    # "small_energy": small_l_dict[small_cid][
-                    #     "xtb_dmsoenergy"
-                    # ],
-                    # "large_energy": large_l_dict[large_cid][
-                    #     "xtb_dmsoenergy"
-                    # ],
+                    "small_energy": small_energy,
+                    "large_energy": large_energy,
+                    "small_strain": small_strain,
+                    "large_strain": large_strain,
+                    "total_strain": total_strain,
                 }
             min_geom_scores[pair_name] = round(min_geom_score, 2)
 
         logging.info(
             f"Min. geom scores for each pair:\n {min_geom_scores}"
         )
+
         with open(pair_file, "w") as f:
             json.dump(pair_info, f, indent=4)
 
