@@ -149,11 +149,213 @@ def axes_labels(prop):
     }[prop]
 
 
-def plot_geom_scores_vs_dihedral_cutoff(results_dict, outname):
+def calculate_adev(a, c):
+    # T1.
+    return (2 * a + 2 * c) / 360
+
+
+def calculate_ldev(a, A, B):
+    # T2.
+    bonding_vector_length = 2 * 2.05
+    se = bonding_vector_length * np.sin(np.radians(a - 90))
+    ideal_dist = A + 2 * se
+    return B / ideal_dist
+
+
+def calculate_strain(a, c, A, B):
+
+    return abs(calculate_adev(a, c) - 1) + abs(
+        calculate_ldev(a, A, B) - 1
+    )
+
+
+def plot_analytical_data_1():
+    logging.info("plotting: plot_analytical_data_1")
+
+    c = 60
+    target_a = (360 - 2 * c) / 2
+    A = 5
+    target_e = 2 * 2.05 * np.sin(np.radians(target_a - 90))
+    B = A + 2 * target_e
+
+    a = np.linspace(90, 160, 100)
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    xs = np.linspace(0, 20, 20)
+    xs = []
+    ys1 = []
+    ys2 = []
+    ys3 = []
+    for aa in a:
+        xs.append(aa)
+        ys1.append(calculate_strain(aa, c, A, B))
+        ys2.append(calculate_adev(aa, c))
+        ys3.append(calculate_ldev(aa, A, B))
+
+    ax.scatter(
+        xs,
+        ys1,
+        label="strain",
+    )
+    ax.scatter(
+        xs,
+        ys2,
+        label="angle deviation",
+    )
+    ax.scatter(
+        xs,
+        ys3,
+        label="length deviation",
+    )
+    ax.axvline(x=target_a, c="gray", linestyle="--")
+    ax.axhline(y=1, c="gray", linestyle="--")
+
+    ax.legend(fontsize=16)
+    ax.set_ylim(0, None)
+    ax.set_xlabel("a values", fontsize=16)
+    ax.set_ylabel("strain ; deviation", fontsize=16)
+    ax.set_title(
+        f"effect of mismatch in a: (c:{c}, A:{A}, B:{round(B, 2)})"
+    )
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), "alytl_1.png"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_analytical_data_2():
+    logging.info("plotting: plot_analytical_data_2")
+
+    c = 50
+    a = (360 - 2 * c) / 2
+    A = 8
+    e = 2 * 2.05 * np.sin(np.radians(a - 90))
+    target_B = A + 2 * e
+
+    B = np.linspace(1, 20, 100)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    xs = []
+    ys1 = []
+    ys2 = []
+    ys3 = []
+    for BB in B:
+        xs.append(BB)
+        ys1.append(calculate_strain(a, c, A, BB))
+        ys2.append(calculate_adev(a, c))
+        ys3.append(calculate_ldev(a, A, BB))
+
+    ax.scatter(
+        xs,
+        ys1,
+        label="strain",
+    )
+    ax.scatter(
+        xs,
+        ys2,
+        label="angle deviation",
+    )
+    ax.scatter(
+        xs,
+        ys3,
+        label="length deviation",
+    )
+    ax.axvline(x=target_B, c="gray", linestyle="--")
+    ax.axhline(y=1, c="gray", linestyle="--")
+
+    ax.legend(fontsize=16)
+    ax.set_ylim(0, None)
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel("B values", fontsize=16)
+    ax.set_ylabel("strain ; deviation", fontsize=16)
+    ax.set_title(f"effect of mismatch in B: (a: {a}, c:{c}, A:{A})")
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), "alytl_2.png"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_analytical_data_3():
+    logging.info("plotting: plot_analytical_data_3")
+
+    c = 50
+    A = 8
+
+    a = np.linspace(90, 160, 50)
+    B = np.linspace(1, 20, 50)
+
+    fig, axs = plt.subplots(ncols=2, figsize=(16, 5))
+
+    xs = []
+    ys = []
+    lds = []
+    ads = []
+    cs = []
+    for BB in B:
+        for aa in a:
+            xs.append(BB)
+            ys.append(aa)
+            lds.append(calculate_ldev(aa, A, BB))
+            ads.append(calculate_adev(aa, c))
+            cs.append(calculate_strain(aa, c, A, BB))
+
+    vmin = 0
+    vmax = 0.5
+    axs[0].scatter(
+        xs,
+        ys,
+        c=cs,
+        vmin=vmin,
+        vmax=vmax,
+        cmap="Blues_r",
+    )
+    axs[1].scatter(
+        lds,
+        ads,
+        c=cs,
+        vmin=vmin,
+        vmax=vmax,
+        cmap="Blues_r",
+    )
+    cbar_ax = fig.add_axes([1.01, 0.15, 0.02, 0.7])
+    cmap = mpl.cm.Blues_r
+    norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+    cbar = fig.colorbar(
+        mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+        cax=cbar_ax,
+        orientation="vertical",
+    )
+    cbar.ax.tick_params(labelsize=16)
+    cbar.set_label("strain", fontsize=16)
+
+    axs[0].tick_params(axis="both", which="major", labelsize=16)
+    axs[1].tick_params(axis="both", which="major", labelsize=16)
+    axs[0].set_xlabel("B values", fontsize=16)
+    axs[0].set_ylabel("a values", fontsize=16)
+    axs[1].set_xlabel("length deviation", fontsize=16)
+    axs[1].set_ylabel("angle deviation", fontsize=16)
+    axs[0].set_title(f"effect of mismatch in B, a: (c:{c}, A:{A})")
+    axs[1].set_title(f"effect of mismatch in B, a: (c:{c}, A:{A})")
+    axs[1].set_xlim(0, 2)
+    axs[1].set_ylim(0, 2)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), "alytl_3.png"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
 
     for pair_name in results_dict:
         rdict = results_dict[pair_name]

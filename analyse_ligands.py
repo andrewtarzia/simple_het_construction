@@ -108,6 +108,11 @@ def main():
 
     _ld = liga_path()
 
+    dihedral_cutoff = 10
+    strain_cutoff = 5
+
+    run_analytical_calculations()
+
     yproperties = (
         # "xtb_dmsoenergy",
         "NcentroidN_angle",
