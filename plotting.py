@@ -1319,7 +1319,13 @@ def plot_conformer_props(
     plt.close()
 
 
-def plot_geom_scores(results_dict, max_dihedral, outname):
+def plot_geom_scores(
+    results_dict,
+    dihedral_cutoff,
+    geom_score_cutoff,
+    outname,
+):
+    logging.info("plotting: plot_geom_scores")
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
@@ -1328,14 +1334,13 @@ def plot_geom_scores(results_dict, max_dihedral, outname):
     for pair_name in results_dict:
         rdict = results_dict[pair_name]
 
-        if rdict["geom_score"] > 0:
-            all_xs.append(rdict["geom_score"])
-            all_ys.append(
-                max(
-                    abs(rdict["large_dihedral"]),
-                    abs(rdict["small_dihedral"]),
-                )
+        all_xs.append(rdict["geom_score"])
+        all_ys.append(
+            max(
+                abs(rdict["large_dihedral"]),
+                abs(rdict["small_dihedral"]),
             )
+        )
 
     if len(all_ys) != 0:
 
@@ -1349,8 +1354,8 @@ def plot_geom_scores(results_dict, max_dihedral, outname):
         )
         fig.colorbar(hb, ax=ax, label="log10(N)")
 
-    ax.axvline(x=0.5, lw=2, c="gray", linestyle="--")
-    ax.axhline(y=10, lw=2, c="gray", linestyle="--")
+    ax.axvline(x=geom_score_cutoff, lw=2, c="gray", linestyle="--")
+    ax.axhline(y=dihedral_cutoff, lw=2, c="gray", linestyle="--")
 
     # ax.scatter(
     #     [i for i in all_xs],
@@ -1367,14 +1372,24 @@ def plot_geom_scores(results_dict, max_dihedral, outname):
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
+        os.path.join(figu_path(), f"{outname}"),
         dpi=720,
         bbox_inches="tight",
     )
     plt.close()
 
 
-def plot_ligand_pairing(results_dict, max_dihedral, outname):
+def plot_ligand_pairing(
+    results_dict,
+    dihedral_cutoff,
+    geom_score_cutoff,
+    length_score_cutoff,
+    angle_score_cutoff,
+    strain_cutoff,
+    outname,
+):
+    name = outname.replace(".png", "")
+    logging.info(f"plotting: plot_ligand_pairing of {name}")
 
     xmin = ymin = 0
     xmax = ymax = 2
@@ -1385,19 +1400,23 @@ def plot_ligand_pairing(results_dict, max_dihedral, outname):
     all_ys = []
     num_points_total = 0
     num_good = 0
+    num_points_tested = 0
     for pair_name in results_dict:
         rdict = results_dict[pair_name]
+        num_points_total += 1
+
         if (
-            abs(rdict["large_dihedral"]) > max_dihedral
-            or abs(rdict["small_dihedral"]) > max_dihedral
+            abs(rdict["large_dihedral"]) > dihedral_cutoff
+            or abs(rdict["small_dihedral"]) > dihedral_cutoff
         ):
             continue
 
         all_xs.append(rdict["angle_deviation"])
         all_ys.append(rdict["length_deviation"])
 
-        num_points_total += 1
-        if abs(rdict["geom_score"]) < 0.5:
+        num_points_tested += 1
+
+        if rdict["geom_score"] < geom_score_cutoff:
             num_good += 1
 
     if len(all_ys) != 0:
@@ -1412,99 +1431,56 @@ def plot_ligand_pairing(results_dict, max_dihedral, outname):
         cbar = fig.colorbar(hb, ax=ax)
         cbar.ax.tick_params(labelsize=16)
         cbar.ax.set_title("log10(N)", fontsize=16)
+
+        name = name.split("_")[1] + "+" + name.split("_")[2]
         ax.set_title(
-            f"all; {num_good} good of {num_points_total}",
+            (
+                f"{name}: {num_good} good of {num_points_tested} of "
+                f"{num_points_total}"
+            ),
             fontsize=16,
         )
 
-    artist = Circle(
-        xy=(1, 1),
-        radius=0.5,
-        facecolor="none",
-        edgecolor="k",
+    ax.plot(
+        (
+            1 - geom_score_cutoff,
+            1,
+            1 + geom_score_cutoff,
+            1,
+            1 - geom_score_cutoff,
+        ),
+        (1, 1 + geom_score_cutoff, 1, 1 - geom_score_cutoff, 1),
         linestyle="--",
+        linewidth=2,
+        c="k",
     )
-    ax.add_artist(artist)
 
-    # if len(all_ys_unstrained) != 0:
-    #     hb = axs[1].hexbin(
-    #         [j for i, j in enumerate(all_xs_unstrained)],
-    #         [j for i, j in enumerate(all_ys_unstrained)],
-    #         gridsize=40,
-    #         extent=(xmin, xmax, ymin, ymax),
-    #         cmap="inferno",
-    #         bins="log",
-    #     )
-    #     cbar = fig.colorbar(hb, ax=axs[1])
-    #     cbar.ax.tick_params(labelsize=16)
-    #     cbar.ax.set_title("log10(N)", fontsize=16)
-    #     axs[1].set_title(
-    #         (
-    #             f"strain < {max_strain}; {num_good_unstrained} good of "
-    #             f"{num_points_total}"
-    #         ),
-    #         fontsize=16,
-    #     )
-
-    # ax.scatter(
-    #     all_xs,
-    #     all_ys,
-    #     c=all_cs,
-    #     s=20,
-    #     edgecolor="none",
-    #     cmap="Blues_r",
-    #     vmin=0,
-    #     vmax=5,
-    # )
-    # cbar_ax = fig.add_axes([1.01, 0.15, 0.02, 0.7])
-    # cmap = mpl.cm.Blues_r
-    # norm = mpl.colors.Normalize(vmin=0, vmax=5)
-    # cbar = fig.colorbar(
-    #     mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
-    #     cax=cbar_ax,
-    #     orientation="vertical",
-    # )
-    # cbar.ax.tick_params(labelsize=16)
-    # cbar.set_label("strain [kJmol-1]", fontsize=16)
-
-    # ax.set_title(f"{num_good} good of {num_points_total}", fontsize=16)
     ax.axhline(y=1, c="gray", lw=1, linestyle="--")
     ax.axvline(x=1, c="gray", lw=1, linestyle="--")
-    # axs[1].axhline(y=1, c="gray", lw=1, linestyle="--")
-    # axs[1].axvline(x=1, c="gray", lw=1, linestyle="--")
 
-    # xlim = (0, 2)
-    # ylim = (0, 2)
-    # norm = colors.LogNorm()
-    # cs = [(1.0, 1.0, 1.0), (255 / 255, 87 / 255, 51 / 255)]
-    # cmap = colors.LinearSegmentedColormap.from_list("test", cs, N=10)
-    # hist = ax.hist2d(
-    #     all_xs,
-    #     all_ys,
-    #     bins=[40, 40],
-    #     range=[xlim, ylim],
-    #     density=False,
-    #     norm=norm,
-    #     cmap=cmap,
-    # )
+    ax.axvline(
+        x=1 - angle_score_cutoff, c="gray", lw=0.5, linestyle="--"
+    )
+    ax.axvline(
+        x=1 + angle_score_cutoff, c="gray", lw=0.5, linestyle="--"
+    )
+
+    ax.axhline(
+        y=1 - length_score_cutoff, c="gray", lw=0.5, linestyle="--"
+    )
+    ax.axhline(
+        y=1 + length_score_cutoff, c="gray", lw=0.5, linestyle="--"
+    )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.set_xlabel("angle deviation []", fontsize=16)
     ax.set_ylabel("length deviation []", fontsize=16)
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
-    # axs[1].tick_params(axis="both", which="major", labelsize=16)
-    # axs[1].set_xlabel("angle deviation []", fontsize=16)
-    # axs[1].set_ylabel("length deviation []", fontsize=16)
-    # axs[1].set_xlim(xmin, xmax)
-    # axs[1].set_ylim(ymin, ymax)
-    # cbar = fig.colorbar(hist[3], ax=ax)
-    # cbar.ax.set_ylabel("count", fontsize=16)
-    # cbar.ax.tick_params(labelsize=16)
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
+        os.path.join(figu_path(), f"{outname}"),
         dpi=720,
         bbox_inches="tight",
     )
