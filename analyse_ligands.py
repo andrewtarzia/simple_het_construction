@@ -394,9 +394,26 @@ def main():
         )
         plotting.plot_geom_scores(
             results_dict=pair_info[pair_name],
-            max_dihedral=dihedral_cutoff,
-            outname=f"gs_{small_l}_{large_l}",
-        )
+    raise SystemExit()
+
+    plotting.plot_geom_scores_vs_dihedral_cutoff(
+        results_dict=pair_info,
+        geom_score_cutoff=geom_score_cutoff,
+        outname="dihedral_cutoff.png",
+    )
+    # plotting.plot_geom_scores_vs_max_strain(
+    #     results_dict=pair_info,
+    #     dihedral_cutoff=dihedral_cutoff,
+    #     geom_score_cutoff=geom_score_cutoff,
+    #     outname="max_strain.png",
+    # )
+
+    # plotting.plot_all_geom_scores_single(
+    #     results_dict=pair_info,
+    #     outname="all_pairs_single.png",
+    #     dihedral_cutoff=dihedral_cutoff,
+    #     experimental_ligand_outcomes=experimental_ligand_outcomes,
+    # )
 
 
 if __name__ == "__main__":
