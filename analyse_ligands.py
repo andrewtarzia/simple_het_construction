@@ -44,6 +44,8 @@ def get_test_1(large_c_dict, small_c_dict):
     # return (s_angle + l_angle) / 180
 
     # Version 3.
+    # 180 - angle, to make it the angle toward the binding interaction.
+    # E.g. To become internal angle of trapezoid.
     l_angle_1 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN1"]
     l_angle_2 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN2"]
 
@@ -51,7 +53,6 @@ def get_test_1(large_c_dict, small_c_dict):
     s_angle_2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
 
     interior_angles = l_angle_1 + l_angle_2 + s_angle_1 + s_angle_2
-
     return interior_angles / 360
 
 
@@ -59,7 +60,8 @@ def get_test_2(large_c_dict, small_c_dict):
 
     sNN_dist = small_c_dict["NN_distance"]
     lNN_dist = large_c_dict["NN_distance"]
-    # Minus 180 to become internal angle of trapezoid.
+    # 180 - angle, to make it the angle toward the binding interaction.
+    # E.g. To become internal angle of trapezoid.
     s_angle1 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]
     s_angle2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
 
