@@ -84,7 +84,9 @@ def test_N_N_lengths(large_c_dict, small_c_dict):
 
 
 def test_converging_angles(large_c_dict):
-    # Minus 180 to become internal angle of trapezoid.
+    raise NotImplementedError("I do not think this works")
+    # 180 - angle, to make it the angle toward the binding interaction.
+    # E.g. To become internal angle of trapezoid.
     l_angle1 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN1"]
     l_angle2 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN2"]
     if l_angle1 > 90 or l_angle2 > 90:
@@ -93,7 +95,9 @@ def test_converging_angles(large_c_dict):
 
 
 def test_diverging_angles(small_c_dict):
-    # Minus 180 to become internal angle of trapezoid.
+    raise NotImplementedError("I do not think this works")
+    # 180 - angle, to make it the angle toward the binding interaction.
+    # E.g. To become internal angle of trapezoid.
     s_angle1 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]
     s_angle2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
     if s_angle1 < 90 or s_angle2 < 90:
