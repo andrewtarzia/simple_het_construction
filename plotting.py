@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import matplotlib as mpl
 
-from matplotlib.lines import Line2D
+# from matplotlib.lines import Line2D
 import logging
 import numpy as np
 import os
@@ -804,6 +804,194 @@ def plot_all_geom_scores_density(
     plt.close()
 
 
+def plot_all_geom_scores_mean(
+    results_dict,
+    outname,
+    dihedral_cutoff,
+    strain_cutoff,
+    experimental_ligand_outcomes,
+):
+    logging.info("plotting: plot_all_geom_scores_mean")
+
+    colour_map = {
+        "forms cis-cage": "#086788",
+        "does not form cis-cage": "white",
+        "this work": "#F9A03F",
+    }
+
+    fig, axs = plt.subplots(
+        nrows=3,
+        sharex=True,
+        sharey=True,
+        figsize=(16, 10),
+    )
+
+    categories_gs = {}
+    categories_lengths = {}
+    categories_angles = {}
+    categories_gs_stds = {}
+    categories_lengths_stds = {}
+    categories_angles_stds = {}
+    colour_list = []
+
+    crosses = {}
+    for pair_name in results_dict:
+        rdict = results_dict[pair_name]
+
+        if "e" in pair_name:
+            ename = pair_name.split(",")
+            if (ename[0], ename[1]) in experimental_ligand_outcomes:
+                edata = experimental_ligand_outcomes[
+                    (ename[0], ename[1])
+                ]
+
+            elif (ename[1], ename[0]) in experimental_ligand_outcomes:
+                edata = experimental_ligand_outcomes[
+                    (ename[1], ename[0])
+                ]
+            else:
+                continue
+            if edata == "yes":
+                colour_list.append(colour_map["forms cis-cage"])
+            elif edata == "no":
+                colour_list.append(colour_map["does not form cis-cage"])
+        else:
+            colour_list.append(colour_map["this work"])
+
+        geom_scores = []
+        angle_scores = []
+        length_scores = []
+        for cid_pair in rdict:
+
+            if (
+                abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"])
+                > dihedral_cutoff
+            ):
+                continue
+
+            geom_score = rdict[cid_pair]["geom_score"]
+            angle_score = abs(rdict[cid_pair]["angle_deviation"] - 1)
+            length_score = abs(rdict[cid_pair]["length_deviation"] - 1)
+            geom_scores.append(geom_score)
+            length_scores.append(length_score)
+            angle_scores.append(angle_score)
+
+        categories_gs[pair_name] = np.mean(geom_scores)
+        categories_lengths[pair_name] = np.mean(length_scores)
+        categories_angles[pair_name] = np.mean(angle_scores)
+        categories_gs_stds[pair_name] = np.std(geom_scores)
+        categories_lengths_stds[pair_name] = np.std(length_scores)
+        categories_angles_stds[pair_name] = np.std(angle_scores)
+
+    axs[0].bar(
+        categories_gs.keys(),
+        categories_gs.values(),
+        yerr=categories_gs_stds.values(),
+        color=colour_list,
+        edgecolor="k",
+        lw=2,
+    )
+
+    axs[1].bar(
+        categories_gs.keys(),
+        categories_gs.values(),
+        color="gray",
+        edgecolor="k",
+        lw=2,
+        alpha=0.5,
+    )
+    axs[1].bar(
+        categories_lengths.keys(),
+        categories_lengths.values(),
+        yerr=categories_lengths_stds.values(),
+        color=colour_list,
+        edgecolor="k",
+        lw=2,
+    )
+
+    axs[2].bar(
+        categories_gs.keys(),
+        categories_gs.values(),
+        color="gray",
+        edgecolor="k",
+        lw=2,
+        alpha=0.5,
+    )
+    axs[2].bar(
+        categories_angles.keys(),
+        categories_angles.values(),
+        yerr=categories_angles_stds.values(),
+        color=colour_list,
+        edgecolor="k",
+        lw=2,
+    )
+
+    for x, tstr in enumerate(categories_gs):
+        if tstr in crosses:
+            for ax in axs:
+                ax.scatter(
+                    x,
+                    0.2,
+                    c=crosses[tstr][0],
+                    marker=crosses[tstr][1],
+                    edgecolors="k",
+                    s=200,
+                )
+    #     ax.text(
+    #         x=x - 0.3,
+    #         y=categories_gs[tstr] + 0.1,
+    #         s=round(categories_strain[tstr], 0),
+    #         c="k",
+    #         fontsize=16,
+    #     )
+
+    # ax.axvline(x=4.5, linestyle="--", c="gray", lw=2)
+
+    # ax.set_xlabel("topology", fontsize=16)
+    # ax.set_ylim(0, 100)
+    axs[0].tick_params(axis="both", which="major", labelsize=16)
+    axs[0].set_ylabel(r"$g_{\mathrm{avg}}$", fontsize=16)
+    # axs[0].set_xticks(range(len(categories_gs)))
+    # axs[0].set_xticklabels(categories_gs.keys(), rotation=45)
+    # axs[0].set_ylim(0, 2)
+
+    axs[1].tick_params(axis="both", which="major", labelsize=16)
+    # axs[1].set_ylabel("length deviation ", fontsize=16)
+    axs[1].set_ylabel("average($|l-1|$)", fontsize=16)
+    # axs[1].set_xticks(range(len(categories_gs)))
+    # axs[1].set_xticklabels(categories_gs.keys(), rotation=45)
+    # axs[1].set_ylim(0, 2)
+
+    axs[2].tick_params(axis="both", which="major", labelsize=16)
+    # axs[2].set_ylabel("angle deviation", fontsize=16)
+    axs[2].set_ylabel("average($|a-1|$)", fontsize=16)
+    axs[2].set_xticks(range(len(categories_gs)))
+    axs[2].set_xticklabels(categories_gs.keys(), rotation=45)
+    # axs[2].set_ylim(0, 2)
+
+    legend_elements = []
+    for i in colour_map:
+        legend_elements.append(
+            Patch(
+                facecolor=colour_map[i],
+                label=i,
+                alpha=1.0,
+                edgecolor="k",
+            ),
+        )
+
+    axs[0].legend(handles=legend_elements, ncol=5, fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
 def plot_all_geom_scores_categ(
     results_dict,
     outname,
@@ -1037,9 +1225,9 @@ def plot_all_geom_scores(
     logging.info("plotting: plot_all_geom_scores")
 
     colour_map = {
-        "yes": "#086788",
-        "no": "white",
-        "tested": "#F9A03F",
+        "forms cis-cage": "#086788",
+        "does not form cis-cage": "white",
+        "this work": "#F9A03F",
     }
 
     fig, axs = plt.subplots(
@@ -1071,9 +1259,12 @@ def plot_all_geom_scores(
                 ]
             else:
                 continue
-            colour_list.append(colour_map[edata])
+            if edata == "yes":
+                colour_list.append(colour_map["forms cis-cage"])
+            elif edata == "no":
+                colour_list.append(colour_map["does not form cis-cage"])
         else:
-            colour_list.append(colour_map["tested"])
+            colour_list.append(colour_map["this work"])
 
         if len(rdict) == 0:
             crosses[pair_name] = (colour_list[-1], "X")
@@ -1177,19 +1368,21 @@ def plot_all_geom_scores(
     # ax.set_xlabel("topology", fontsize=16)
     # ax.set_ylim(0, 100)
     axs[0].tick_params(axis="both", which="major", labelsize=16)
-    axs[0].set_ylabel("geometry score", fontsize=16)
+    axs[0].set_ylabel(r"$g_{\mathrm{min}}$", fontsize=16)
     # axs[0].set_xticks(range(len(categories_gs)))
     # axs[0].set_xticklabels(categories_gs.keys(), rotation=45)
     # axs[0].set_ylim(0, 2)
 
     axs[1].tick_params(axis="both", which="major", labelsize=16)
-    axs[1].set_ylabel("length deviation ", fontsize=16)
+    # axs[1].set_ylabel("length deviation ", fontsize=16)
+    axs[1].set_ylabel("$|l-1|$", fontsize=16)
     # axs[1].set_xticks(range(len(categories_gs)))
     # axs[1].set_xticklabels(categories_gs.keys(), rotation=45)
     # axs[1].set_ylim(0, 2)
 
     axs[2].tick_params(axis="both", which="major", labelsize=16)
-    axs[2].set_ylabel("angle deviation", fontsize=16)
+    # axs[2].set_ylabel("angle deviation", fontsize=16)
+    axs[2].set_ylabel("$|a-1|$", fontsize=16)
     axs[2].set_xticks(range(len(categories_gs)))
     axs[2].set_xticklabels(categories_gs.keys(), rotation=45)
     # axs[2].set_ylim(0, 2)
@@ -1205,18 +1398,18 @@ def plot_all_geom_scores(
             ),
         )
 
-    legend_elements.append(
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            color="w",
-            label="failed",
-            markerfacecolor="k",
-            markersize=15,
-            markeredgecolor="k",
-        ),
-    )
+    # legend_elements.append(
+    #     Line2D(
+    #         [0],
+    #         [0],
+    #         marker="o",
+    #         color="w",
+    #         label="failed",
+    #         markerfacecolor="k",
+    #         markersize=15,
+    #         markeredgecolor="k",
+    #     ),
+    # )
 
     # legend_elements.append(
     #     Line2D(
@@ -1487,36 +1680,36 @@ def plot_ligand_pairing(
             fontsize=16,
         )
 
-    ax.plot(
-        (
-            1 - geom_score_cutoff,
-            1,
-            1 + geom_score_cutoff,
-            1,
-            1 - geom_score_cutoff,
-        ),
-        (1, 1 + geom_score_cutoff, 1, 1 - geom_score_cutoff, 1),
-        linestyle="--",
-        linewidth=2,
-        c="k",
-    )
+    # ax.plot(
+    #     (
+    #         1 - geom_score_cutoff,
+    #         1,
+    #         1 + geom_score_cutoff,
+    #         1,
+    #         1 - geom_score_cutoff,
+    #     ),
+    #     (1, 1 + geom_score_cutoff, 1, 1 - geom_score_cutoff, 1),
+    #     linestyle="--",
+    #     linewidth=2,
+    #     c="k",
+    # )
 
-    ax.axhline(y=1, c="gray", lw=1, linestyle="--")
-    ax.axvline(x=1, c="gray", lw=1, linestyle="--")
+    ax.axhline(y=1, c="gray", lw=2, linestyle="--")
+    ax.axvline(x=1, c="gray", lw=2, linestyle="--")
 
-    ax.axvline(
-        x=1 - angle_score_cutoff, c="gray", lw=0.5, linestyle="--"
-    )
-    ax.axvline(
-        x=1 + angle_score_cutoff, c="gray", lw=0.5, linestyle="--"
-    )
+    # ax.axvline(
+    #     x=1 - angle_score_cutoff, c="gray", lw=0.5, linestyle="--"
+    # )
+    # ax.axvline(
+    #     x=1 + angle_score_cutoff, c="gray", lw=0.5, linestyle="--"
+    # )
 
-    ax.axhline(
-        y=1 - length_score_cutoff, c="gray", lw=0.5, linestyle="--"
-    )
-    ax.axhline(
-        y=1 + length_score_cutoff, c="gray", lw=0.5, linestyle="--"
-    )
+    # ax.axhline(
+    #     y=1 - length_score_cutoff, c="gray", lw=0.5, linestyle="--"
+    # )
+    # ax.axhline(
+    #     y=1 + length_score_cutoff, c="gray", lw=0.5, linestyle="--"
+    # )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.set_xlabel("angle deviation []", fontsize=16)

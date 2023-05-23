@@ -341,14 +341,21 @@ def main():
         with open(pair_file, "w") as f:
             json.dump(pair_info, f, indent=4)
 
-    dihedral_cutoff = 10
-    plotting.plot_all_geom_scores_categorigcal(
+    plotting.plot_all_geom_scores(
         results_dict=pair_info,
-        outname="all_pairs_categorical",
+        outname="all_pairs.png",
         dihedral_cutoff=dihedral_cutoff,
+        strain_cutoff=strain_cutoff,
         experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
-    plotting.plot_geom_scores_vs_threshold(
+    plotting.plot_all_geom_scores_mean(
+        results_dict=pair_info,
+        outname="all_pairs_mean.png",
+        dihedral_cutoff=dihedral_cutoff,
+        strain_cutoff=strain_cutoff,
+        experimental_ligand_outcomes=experimental_ligand_outcomes,
+    )
+
         results_dict=pair_info,
         dihedral_cutoff=dihedral_cutoff,
         outname="gs_cutoff",
