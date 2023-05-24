@@ -13,6 +13,7 @@ import logging
 import sys
 import numpy as np
 import itertools
+import math
 import os
 import json
 
@@ -105,6 +106,65 @@ def test_diverging_angles(small_c_dict):
     return True
 
 
+def get_gs_cutoff(
+    results_dict,
+    dihedral_cutoff,
+    experimental_ligand_outcomes,
+):
+
+    max_min_gs = 0
+    for pair_name in results_dict:
+        rdict = results_dict[pair_name]
+
+        if "e" in pair_name:
+            ename = pair_name.split(",")
+            if (ename[0], ename[1]) in experimental_ligand_outcomes:
+                edata = experimental_ligand_outcomes[
+                    (ename[0], ename[1])
+                ]
+
+            elif (ename[1], ename[0]) in experimental_ligand_outcomes:
+                edata = experimental_ligand_outcomes[
+                    (ename[1], ename[0])
+                ]
+            else:
+                continue
+
+            if edata != "yes":
+                continue
+        else:
+            continue
+
+        min_geom_score = 1e24
+        for cid_pair in rdict:
+
+            if (
+                abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"])
+                > dihedral_cutoff
+            ):
+                continue
+
+            geom_score = rdict[cid_pair]["geom_score"]
+            if geom_score < min_geom_score:
+                min_geom_score = geom_score
+
+        max_min_gs = max([min_geom_score, max_min_gs])
+
+    return max_min_gs
+
+
+def round_up(n, decimals=0):
+    multiplier = 10**decimals
+    return math.ceil(n * multiplier) / multiplier
+
+
+def run_analytical_calculations():
+    plotting.plot_analytical_data_1()
+    plotting.plot_analytical_data_2()
+    plotting.plot_analytical_data_3()
+
+
 def main():
     if not len(sys.argv) == 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
@@ -149,23 +209,25 @@ def main():
     # )
     experimental_ligand_outcomes = {
         # Small, large.
-        ("e1", "e3"): "no",
-        ("e3", "e2"): "no",
-        ("e1", "e4"): "no",
-        ("e1", "e6"): "no",
         ("e11", "e10"): "yes",
-        ("e13", "e14"): "no",
+        ("e12", "e10"): "yes",
         ("e11", "e14"): "yes",
         ("e12", "e14"): "yes",
         ("e11", "e13"): "yes",
         ("e12", "e13"): "yes",
-        ("e15", "e14"): "yes",
         ("e16", "e17"): "yes",
         ("e16", "e10"): "yes",
-        ("e10", "e17"): "no",
-        ("e18", "e10"): "yes",
+        ("e13", "e14"): "no",
         ("e16", "e14"): "yes",
         ("e18", "e14"): "yes",
+        ("e1", "e3"): "no",
+        ("e1", "e4"): "no",
+        ("e1", "e6"): "no",
+        ("e3", "e2"): "no",
+        ("e3", "e9"): "no",
+        ("e10", "e17"): "no",
+        # ("e15", "e14"): "yes",
+        ("e18", "e10"): "yes",
     }
     ligand_pairings = [
         # Small, large.
@@ -356,44 +418,76 @@ def main():
         experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
 
+    # Get geoms core cutoff from the max, min geomscore in experimental
+    # successes.
+    geom_score_max = get_gs_cutoff(
         results_dict=pair_info,
         dihedral_cutoff=dihedral_cutoff,
-        outname="gs_cutoff",
+        experimental_ligand_outcomes=experimental_ligand_outcomes,
+    )
+    geom_score_cutoff = round_up(geom_score_max, 2)
+    logging.info(f"found a gs cutoff of: {geom_score_cutoff}")
+
+    plotting.plot_geom_scores_vs_threshold(
+        results_dict=pair_info,
+        dihedral_cutoff=dihedral_cutoff,
+        outname="gs_cutoff.png",
+        experimental_ligand_outcomes=experimental_ligand_outcomes,
+    )
+
+    plotting.gs_table(
+        results_dict=pair_info,
+        dihedral_cutoff=dihedral_cutoff,
+        geom_score_cutoff=geom_score_cutoff,
+        strain_cutoff=strain_cutoff,
+    )
+
+    plotting.plot_conformer_props(
+        structure_results=structure_results,
+        outname="conformer_properties.png",
+        dihedral_cutoff=dihedral_cutoff,
+        strain_cutoff=strain_cutoff,
+        experimental_ligand_outcomes=experimental_ligand_outcomes,
+        low_energy_values=low_energy_values,
     )
 
     plotting.plot_all_geom_scores_density(
         results_dict=pair_info,
-        outname="all_pairs_density",
+        outname="all_pairs_density.png",
         dihedral_cutoff=dihedral_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
-    plotting.plot_all_geom_scores_single(
-        results_dict=pair_info,
-        outname="all_pairs_single",
-        dihedral_cutoff=dihedral_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
-    plotting.plot_all_geom_scores(
-        results_dict=pair_info,
-        outname="all_pairs",
-        dihedral_cutoff=dihedral_cutoff,
+        geom_score_cutoff=geom_score_cutoff,
         experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
 
-    plotting.plot_geom_scores_vs_dihedral_cutoff(
+    plotting.plot_all_geom_scores_categ(
         results_dict=pair_info,
-        outname="dihedral_cutoff",
+        outname="all_pairs_categorical.png",
+        dihedral_cutoff=dihedral_cutoff,
+        geom_score_cutoff=geom_score_cutoff,
+        length_score_cutoff=geom_score_cutoff,
+        angle_score_cutoff=geom_score_cutoff,
+        strain_cutoff=strain_cutoff,
+        experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
 
     for pair_name in pair_info:
         small_l, large_l = pair_name.split(",")
         plotting.plot_ligand_pairing(
             results_dict=pair_info[pair_name],
-            max_dihedral=dihedral_cutoff,
-            outname=f"lp_{small_l}_{large_l}",
+            dihedral_cutoff=dihedral_cutoff,
+            geom_score_cutoff=geom_score_cutoff,
+            length_score_cutoff=0.3,
+            angle_score_cutoff=0.3,
+            strain_cutoff=strain_cutoff,
+            outname=f"lp_{small_l}_{large_l}.png",
         )
+
         plotting.plot_geom_scores(
             results_dict=pair_info[pair_name],
+            dihedral_cutoff=dihedral_cutoff,
+            geom_score_cutoff=geom_score_cutoff,
+            outname=f"gs_{small_l}_{large_l}.png",
+        )
     raise SystemExit()
 
     plotting.plot_geom_scores_vs_dihedral_cutoff(

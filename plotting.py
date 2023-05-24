@@ -551,19 +551,24 @@ def plot_geom_scores_vs_max_strain(
 def plot_geom_scores_vs_threshold(
     results_dict,
     dihedral_cutoff,
-    strain_cutoff,
     outname,
     experimental_ligand_outcomes,
 ):
     logging.info("plotting: plot_geom_scores_vs_threshold")
 
-    fig, axs = plt.subplots(nrows=3, sharey=True, figsize=(8, 12))
+    fig, axs = plt.subplots(
+        ncols=2,
+        sharex=True,
+        sharey=True,
+        figsize=(10, 5),
+    )
+    # fig, ax = plt.subplots(figsize=(8, 5))
 
     xs = np.linspace(0, 1, 30)
     colour_map = {
-        "yes": "#086788",
-        "no": "#F9A03F",
-        "tested": "#F9A03F",
+        "forms cis-cage": "#086788",
+        "does not form cis-cage": "#F9A03F",
+        "this work": "k",
     }
 
     for pair_name in results_dict:
@@ -582,19 +587,24 @@ def plot_geom_scores_vs_threshold(
                 ]
             else:
                 continue
-            colour = colour_map[edata]
+            if edata == "yes":
+                colour = colour_map["forms cis-cage"]
+                ax = axs[1]
+            elif edata == "no":
+                colour = colour_map["does not form cis-cage"]
+                ax = axs[1]
         else:
-            continue
-            colour = colour_map["tested"]
+            colour = colour_map["this work"]
+            ax = axs[0]
 
         ys = []
-        ys_l = []
-        ys_a = []
+        # ys_l = []
+        # ys_a = []
         for threshold in xs:
             all_scores = 0
             less_scores = 0
-            less_l_scores = 0
-            less_a_scores = 0
+            # less_l_scores = 0
+            # less_a_scores = 0
             for cid_pair in rdict:
                 all_scores += 1
 
@@ -610,65 +620,83 @@ def plot_geom_scores_vs_threshold(
                 if geom_score < threshold:
                     less_scores += 1
 
-                angle_score = rdict[cid_pair]["angle_deviation"]
-                if abs(angle_score - 1) < threshold:
-                    less_a_scores += 1
+                # angle_score = rdict[cid_pair]["angle_deviation"]
+                # if abs(angle_score - 1) < threshold:
+                #     less_a_scores += 1
 
-                length_score = rdict[cid_pair]["length_deviation"]
-                if abs(length_score - 1) < threshold:
-                    less_l_scores += 1
+                # length_score = rdict[cid_pair]["length_deviation"]
+                # if abs(length_score - 1) < threshold:
+                #     less_l_scores += 1
 
             if all_scores == 0:
                 ys.append(0)
             else:
                 ys.append((less_scores / all_scores) * 100)
 
-            if all_scores == 0:
-                ys_l.append(0)
-            else:
-                ys_l.append((less_l_scores / all_scores) * 100)
+            # if all_scores == 0:
+            #     ys_l.append(0)
+            # else:
+            #     ys_l.append((less_l_scores / all_scores) * 100)
 
-            if all_scores == 0:
-                ys_a.append(0)
-            else:
-                ys_a.append((less_a_scores / all_scores) * 100)
+            # if all_scores == 0:
+            #     ys_a.append(0)
+            # else:
+            #     ys_a.append((less_a_scores / all_scores) * 100)
 
-        axs[0].plot(
+        ax.plot(
             xs,
             ys,
             lw=2,
             c=colour,
             # label=pair_name,
         )
-        axs[1].plot(
-            xs,
-            ys_l,
-            lw=2,
-            c=colour,
-        )
-        axs[2].plot(
-            xs,
-            ys_a,
-            lw=2,
-            c=colour,
-        )
+        logging.info(f"{pair_name} has max gpercent {max(ys)}")
+        # axs[1].plot(
+        #     xs,
+        #     ys_l,
+        #     lw=2,
+        #     c=colour,
+        # )
+        # axs[2].plot(
+        #     xs,
+        #     ys_a,
+        #     lw=2,
+        #     c=colour,
+        # )
 
     # axs[0].set_ylim(0, 101)
     axs[0].tick_params(axis="both", which="major", labelsize=16)
-    axs[0].set_xlabel("geom score threshold", fontsize=16)
-    axs[0].set_ylabel(r"% good", fontsize=16)
+    axs[0].set_xlabel(r"$g_{\mathrm{threshold}}$", fontsize=16)
+    # ax.set_ylabel(r"% $g$ < $g_{\mathrm{threshold}}$", fontsize=16)
+    axs[0].set_ylabel(r"$g_{\mathrm{percent}}$", fontsize=16)
+    axs[0].axvline(x=0.45, c="gray", linestyle="--", lw=1)
 
-    # axs[1].set_ylim(0, 101)
     axs[1].tick_params(axis="both", which="major", labelsize=16)
-    axs[1].set_xlabel("length score threshold", fontsize=16)
-    axs[1].set_ylabel(r"% good", fontsize=16)
+    axs[1].set_xlabel(r"$g_{\mathrm{threshold}}$", fontsize=16)
+    axs[1].set_ylabel(r"$g_{\mathrm{percent}}$", fontsize=16)
+    axs[1].axvline(x=0.45, c="gray", linestyle="--", lw=1)
 
-    # axs[2].set_ylim(0, 101)
-    axs[2].tick_params(axis="both", which="major", labelsize=16)
-    axs[2].set_xlabel("angle score threshold", fontsize=16)
-    axs[2].set_ylabel(r"% good", fontsize=16)
+    # # axs[1].set_ylim(0, 101)
+    # axs[1].tick_params(axis="both", which="major", labelsize=16)
+    # axs[1].set_xlabel("length score threshold", fontsize=16)
+    # axs[1].set_ylabel(r"% good", fontsize=16)
 
-    fig.legend(fontsize=16)
+    # # axs[2].set_ylim(0, 101)
+    # axs[2].tick_params(axis="both", which="major", labelsize=16)
+    # axs[2].set_xlabel("angle score threshold", fontsize=16)
+    # axs[2].set_ylabel(r"% good", fontsize=16)
+    legend_elements = []
+    for i in colour_map:
+        legend_elements.append(
+            Patch(
+                facecolor=colour_map[i],
+                label=i,
+                alpha=1.0,
+                edgecolor="k",
+            ),
+        )
+
+    axs[0].legend(handles=legend_elements, fontsize=16)
 
     fig.tight_layout()
     fig.savefig(
@@ -684,15 +712,14 @@ def plot_all_geom_scores_density(
     outname,
     dihedral_cutoff,
     geom_score_cutoff,
-    strain_cutoff,
     experimental_ligand_outcomes,
 ):
     logging.info("plotting: plot_all_geom_scores_density")
 
     colour_map = {
-        "yes": "#086788",
-        "no": "white",
-        "tested": "#F9A03F",
+        "forms cis-cage": "#086788",
+        "does not form cis-cage": "white",
+        "this work": "#F9A03F",
     }
 
     fig, ax = plt.subplots(figsize=(16, 5))
@@ -717,9 +744,12 @@ def plot_all_geom_scores_density(
                 ]
             else:
                 continue
-            colour_list.append(colour_map[edata])
+            if edata == "yes":
+                colour_list.append(colour_map["forms cis-cage"])
+            elif edata == "no":
+                colour_list.append(colour_map["does not form cis-cage"])
         else:
-            colour_list.append(colour_map["tested"])
+            colour_list.append(colour_map["this work"])
 
         if len(rdict) == 0:
             crosses[pair_name] = (colour_list[-1], "X")
@@ -744,13 +774,6 @@ def plot_all_geom_scores_density(
 
         categories_gs[pair_name] = (less_scores / all_scores) * 100
 
-    ax.set_title(
-        (
-            f"dihedral cut {dihedral_cutoff}; "
-            f"strain cut {strain_cutoff} kj/mol"
-        ),
-        fontsize=16,
-    )
     ax.bar(
         categories_gs.keys(),
         categories_gs.values(),
@@ -778,7 +801,7 @@ def plot_all_geom_scores_density(
     #     )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_ylabel(r"% good geometry score", fontsize=16)
+    ax.set_ylabel(r"$g_{\mathrm{percent}}$", fontsize=16)
     ax.set_xticks(range(len(categories_gs)))
     ax.set_xticklabels(categories_gs.keys(), rotation=45)
 
@@ -1006,9 +1029,9 @@ def plot_all_geom_scores_categ(
     logging.info("plotting: plot_all_geom_scores_categorical")
 
     colour_map = {
-        "yes": "#086788",
-        "no": "white",
-        "tested": "#F9A03F",
+        "forms cis-cage": "#086788",
+        "does not form cis-cage": "white",
+        "this work": "#F9A03F",
     }
 
     fig, axs = plt.subplots(ncols=2, nrows=1, figsize=(10, 5))
@@ -1038,13 +1061,14 @@ def plot_all_geom_scores_categ(
                 ]
             else:
                 continue
-            colour_list.append(colour_map[edata])
             if edata == "yes":
+                colour_list.append(colour_map["forms cis-cage"])
                 x_list.append(2)
             elif edata == "no":
+                colour_list.append(colour_map["does not form cis-cage"])
                 x_list.append(3)
         else:
-            colour_list.append(colour_map["tested"])
+            colour_list.append(colour_map["this work"])
             x_list.append(1)
 
         if len(rdict) == 0:
@@ -1094,13 +1118,13 @@ def plot_all_geom_scores_categ(
             categories_ls.append(0)
         else:
             # categories_gcs.append(min_geom_score)
-            # categories_gcs.append(np.median(geom_scores))
-            deviations = np.array(geom_scores)
-            categories_gcs.append(
-                np.sqrt(
-                    np.sum(deviations * deviations) / len(geom_scores)
-                )
-            )
+            categories_gcs.append(np.mean(geom_scores))
+            # deviations = np.array(geom_scores)
+            # categories_gcs.append(
+            #     np.sqrt(
+            #         np.sum(deviations * deviations) / len(geom_scores)
+            #     )
+            # )
 
             categories_gs.append((less_scores / all_scores) * 100)
             categories_as.append((less_a_scores / all_scores) * 100)
@@ -1139,10 +1163,10 @@ def plot_all_geom_scores_categ(
     flat_axs[0].tick_params(axis="both", which="major", labelsize=16)
     # flat_axs[0].set_ylabel("min geometry score", fontsize=16)
     # flat_axs[0].set_ylabel("median geometry score", fontsize=16)
-    flat_axs[0].set_ylabel("RMSD geometry score", fontsize=16)
+    flat_axs[0].set_ylabel(r"$g_{\mathrm{avg}}$", fontsize=16)
     flat_axs[0].set_xlim(0.5, 3.5)
     flat_axs[0].set_xticks((1, 2, 3))
-    flat_axs[0].set_xticklabels(("this work", "yes", "no"))
+    flat_axs[0].set_xticklabels(("this work", "forms", "does not form"))
     flat_axs[0].set_ylim(0, None)
 
     flat_axs[1].scatter(
@@ -1155,10 +1179,10 @@ def plot_all_geom_scores_categ(
     flat_axs[1].axvline(x=1.5, c="gray", linestyle="--")
     flat_axs[1].axvline(x=2.5, c="gray", linestyle="--")
     flat_axs[1].tick_params(axis="both", which="major", labelsize=16)
-    flat_axs[1].set_ylabel(r"% good geometry score", fontsize=16)
+    flat_axs[1].set_ylabel(r"$g_{\mathrm{percent}}$", fontsize=16)
     flat_axs[1].set_xlim(0.5, 3.5)
     flat_axs[1].set_xticks((1, 2, 3))
-    flat_axs[1].set_xticklabels(("this work", "yes", "no"))
+    flat_axs[1].set_xticklabels(("this work", "forms", "does not form"))
     flat_axs[1].set_ylim(0, None)
 
     # flat_axs[2].scatter(
@@ -1475,8 +1499,8 @@ def gs_table(
             (
                 f"{pair_name}: {round(min_geom_score, 2)}, "
                 f"{round((good_geoms/total_tested)*100, 0)} "
-                f"{round(np.mean(geom_scores), 3)} "
-                f"({round(np.std(geom_scores), 3)}) "
+                f"{round(np.mean(geom_scores), 2)} "
+                f"({round(np.std(geom_scores), 2)}) "
             )
         )
 
@@ -1564,7 +1588,7 @@ def plot_geom_scores(
     geom_score_cutoff,
     outname,
 ):
-    logging.info("plotting: plot_geom_scores")
+    logging.info(f"plotting: plot_geom_scores of {outname}")
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
@@ -1590,8 +1614,12 @@ def plot_geom_scores(
             # extent=(-2, 2, -2, 2),
             cmap="inferno",
             bins="log",
+            vmin=1e1,
+            vmax=1e4,
         )
-        fig.colorbar(hb, ax=ax, label="log10(N)")
+        cbar = fig.colorbar(hb, ax=ax)
+        cbar.ax.tick_params(labelsize=16)
+        cbar.set_label(label="log$_{10}$(N)", fontsize=16)
 
     ax.axvline(x=geom_score_cutoff, lw=2, c="gray", linestyle="--")
     ax.axhline(y=dihedral_cutoff, lw=2, c="gray", linestyle="--")
@@ -1638,7 +1666,6 @@ def plot_ligand_pairing(
     all_xs = []
     all_ys = []
     num_points_total = 0
-    num_good = 0
     num_points_tested = 0
     for pair_name in results_dict:
         rdict = results_dict[pair_name]
@@ -1655,9 +1682,6 @@ def plot_ligand_pairing(
 
         num_points_tested += 1
 
-        if rdict["geom_score"] < geom_score_cutoff:
-            num_good += 1
-
     if len(all_ys) != 0:
         hb = ax.hexbin(
             [i for i in all_xs],
@@ -1666,17 +1690,17 @@ def plot_ligand_pairing(
             extent=(xmin, xmax, ymin, ymax),
             cmap="inferno",
             bins="log",
+            vmin=1e1,
+            vmax=1e4,
         )
         cbar = fig.colorbar(hb, ax=ax)
         cbar.ax.tick_params(labelsize=16)
-        cbar.ax.set_title("log10(N)", fontsize=16)
+        cbar.set_label(label="log$_{10}$(N)", fontsize=16)
+        # cbar.ax.set_title("log10(N)", fontsize=16)
 
         name = name.split("_")[1] + "+" + name.split("_")[2]
         ax.set_title(
-            (
-                f"{name}: {num_good} good of {num_points_tested} of "
-                f"{num_points_total}"
-            ),
+            (f"{name}: {num_points_tested} of " f"{num_points_total}"),
             fontsize=16,
         )
 
@@ -1712,8 +1736,8 @@ def plot_ligand_pairing(
     # )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_xlabel("angle deviation []", fontsize=16)
-    ax.set_ylabel("length deviation []", fontsize=16)
+    ax.set_xlabel("$a$", fontsize=16)
+    ax.set_ylabel("$l$", fontsize=16)
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
 
