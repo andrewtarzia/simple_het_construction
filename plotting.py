@@ -58,8 +58,8 @@ def axes_labels(prop):
             None,
         ),
         "xtb_lig_strain_au": (
-            "avg. strain energy [kJ mol-1]",
-            (0, 50),
+            "avg. xtb/DMSO strain energy [kJ mol-1]",
+            (0, 20),
             avg_strain,
             (-20, 20),
         ),

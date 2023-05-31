@@ -254,6 +254,12 @@ def main():
     )
     plotting.plot_property(
         results_dict=structure_results,
+        outname="cage_xtb_strain",
+        yproperty="xtb_lig_strain_au",
+        ignore_topos=("m4", "m3", "m12", "m24", "m30", "trans"),
+    )
+    plotting.plot_property(
+        results_dict=structure_results,
         outname="cage_ahel",
         yproperty="avg_heli",
     )
