@@ -75,25 +75,25 @@ def axes_labels(prop):
             None,
         ),
         "pbe0_def2svp_sp_gas_kjmol": (
-            "PBE0/def2-svp/D3?/gas SP energy [kJ mol-1]",
+            "PBE0/def2-svp/GD3BJ/gas SP energy [kJ mol-1]",
             (-400, -200),
             no_conv,
             None,
         ),
         "pbe0_def2svp_sp_dmso_kjmol": (
-            "PBE0/def2-svp/D3?/DMSO SP energy [kJ mol-1]",
+            "PBE0/def2-svp/GD3BJ/DMSO SP energy [kJ mol-1]",
             (-400, -200),
             no_conv,
             None,
         ),
         "pbe0_def2svp_opt_gas_kjmol": (
-            "PBE0/def2-svp/D3?/gas OPT energy [kJ mol-1]",
+            "PBE0/def2-svp/GD3BJ/gas OPT energy [kJ mol-1]",
             (-400, -200),
             no_conv,
             None,
         ),
         "pbe0_def2svp_opt_dmso_kjmol": (
-            "PBE0/def2-svp/D3?/DMSO OPT energy [kJ mol-1]",
+            "PBE0/def2-svp/GD3BJ/DMSO OPT energy [kJ mol-1]",
             (-400, -200),
             no_conv,
             None,
@@ -2024,7 +2024,10 @@ def compare_cis_trans(results_dict, outname, yproperty):
             tplot = cis - trans
             tplot = tplot * 2625.5
         else:
-            tplot = cis - trans
+            if cis is None or trans is None:
+                tplot = None
+            else:
+                tplot = cis - trans
 
         xpos = len(_x_names)
         _x_names.append(name)
@@ -2059,26 +2062,32 @@ def method_c_map():
         "xtb_solv_opt_gasenergy_au": {
             # "name": "xtb gas",
             "name": "x/g",
+            "long-name": "xTB/gas",
         },
         "xtb_solv_opt_dmsoenergy_au": {
             # "name": "xtb DMSO",
             "name": "x/d",
+            "long-name": "xtb/DMSO",
         },
         "pbe0_def2svp_sp_gas_kjmol": {
-            # "name": "PBE0/def2-svp/D3?/gas SP",
+            # "name": "PBE0/def2-svp/GD3BJ/gas SP",
             "name": "d/g/s",
+            "long-name": "xTB/PBE0/def2-svp/GD3BJ/gas",
         },
         "pbe0_def2svp_sp_dmso_kjmol": {
-            # "name": "PBE0/def2-svp/D3?/DMSO SP",
+            # "name": "PBE0/def2-svp/GD3BJ/DMSO SP",
             "name": "d/d/s",
+            "long-name": "xTB/PBE0/def2-svp/GD3BJ/DMSO",
         },
         "pbe0_def2svp_opt_gas_kjmol": {
-            # "name": "PBE0/def2-svp/D3?/gas OPT",
+            # "name": "PBE0/def2-svp/GD3BJ/gas OPT",
             "name": "d/g/o",
+            "long-name": "PBE0/PBE0/def2-svp/GD3BJ/gas",
         },
         "pbe0_def2svp_opt_dmso_kjmol": {
-            # "name": "PBE0/def2-svp/D3?/DMSO OPT",
+            # "name": "PBE0/def2-svp/GD3BJ/DMSO OPT",
             "name": "d/d/o",
+            "long-name": "PBE0/PBE0/def2-svp/GD3BJ/DMSO",
         },
     }
     return methods
@@ -2143,6 +2152,65 @@ def plot_exchange_reactions(rxns, outname):
 
     ax.axhline(y=0, lw=2, c="k", linestyle="--")
 
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}.pdf"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_all_exchange_reactions(all_rxns, outname):
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    methods = method_c_map()
+
+    x_shifts = (-0.3, 0, 0.3)
+    width = 0.15
+
+    x_positions = [i for i in range(len(all_rxns))]
+    x_names = [i for i in all_rxns]
+    plotted = 0
+    for method in methods:
+        if "gas" in method:
+            continue
+        x_shift = x_shifts[plotted]
+        plotted += 1
+        method_y_values = []
+        for hs in all_rxns:
+            rxns = all_rxns[hs]
+            method_rxn = rxns[method][0]
+            if method_rxn["lhs"] == 0 or method_rxn["rhs"] == 0:
+                r_energy = 0
+            else:
+                r_energy = float(method_rxn["lhs"]) - float(
+                    method_rxn["rhs"]
+                )
+            r_energy = r_energy / int(method_rxn["lhs_stoich"])
+            method_y_values.append(r_energy)
+
+        ax.bar(
+            x=[i + x_shift for i in x_positions],
+            height=[i for i in method_y_values],
+            width=width,
+            # color="#212738",
+            edgecolor="none",
+            linewidth=1,
+            label=methods[method]["long-name"],
+        )
+    for xpos in x_positions[:-1]:
+        ax.axvline(x=xpos + 0.5, lw=2, c="gray", linestyle="--")
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_ylabel(
+        "energy per het. cage [kJ mol-1]",
+        fontsize=16,
+    )
+    ax.set_xticks([i for i in x_positions])
+    ax.set_xticklabels([i for i in x_names])
+    ax.axhline(y=0, lw=2, c="k", linestyle="--")
+    ax.legend(fontsize=16)
     fig.tight_layout()
     fig.savefig(
         os.path.join(figu_path(), f"{outname}.pdf"),

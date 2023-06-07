@@ -188,7 +188,7 @@ def main():
         # "lb": ("m2", "m3", "m4"),
         # "lc": ("m2", "m3", "m4"),
         "l1": ("m2", "m3", "m4", "m6"),
-        # "l2": ("m2", "m3", "m4", "m12"),
+        # "l2": ("m12",),
         # "l3": ("m2", "m3", "m4", "m24", "m30"),
     }
     methods = (
@@ -200,6 +200,7 @@ def main():
         "pbe0_def2svp_opt_dmso_kjmol",
     )
 
+    all_het_exchanges = {}
     for hs in het_system:
         topo, l1, l2 = name_parser(hs)
         all_rxns = {}
@@ -218,6 +219,12 @@ def main():
             rxns=all_rxns,
             outname=f"erxns_{hs}",
         )
+        all_het_exchanges[hs] = all_rxns
+
+    plotting.plot_all_exchange_reactions(
+        all_rxns=all_het_exchanges,
+        outname="erxns_all",
+    )
 
     for ls in lig_system:
         all_rxns = {}
