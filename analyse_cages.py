@@ -70,7 +70,7 @@ def main():
     _ld = liga_path()
     _pd = project_path()
 
-    dft_data_dir = _pd / "vh_data" / "recieved_050523"
+    dft_data_dir = _pd / "vh_data" / "recieved_100723"
     # These need to do be manually extracted from Excel files.
     sp_gas_txt = dft_data_dir / "SP_Final_energies_no_solvent.txt"
     sp_dmso_txt = dft_data_dir / "SP_Final_energies_DMSO.txt"
