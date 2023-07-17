@@ -11,6 +11,8 @@ Author: Andrew Tarzia
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
+import matplotlib
 import matplotlib as mpl
 
 # from matplotlib.lines import Line2D
@@ -1499,6 +1501,367 @@ def gs_table(
             (
                 f"{pair_name}: {round(min_geom_score, 2)}, "
                 f"{round((good_geoms/total_tested)*100, 0)} "
+                f"{round(np.mean(geom_scores), 2)} "
+                f"({round(np.std(geom_scores), 2)}) "
+            )
+        )
+
+
+def heatmap(
+    data,
+    row_labels,
+    col_labels,
+    ax=None,
+    cbar_kw=None,
+    cbarlabel="",
+    **kwargs,
+):
+    """
+    Create a heatmap from a numpy array and two lists of labels.
+
+    Parameters
+    ----------
+    data
+        A 2D numpy array of shape (M, N).
+    row_labels
+        A list or array of length M with the labels for the rows.
+    col_labels
+        A list or array of length N with the labels for the columns.
+    ax
+        A `matplotlib.axes.Axes` instance to which the heatmap is plotted.  If
+        not provided, use current axes or create a new one.  Optional.
+    cbar_kw
+        A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
+    cbarlabel
+        The label for the colorbar.  Optional.
+    **kwargs
+        All other arguments are forwarded to `imshow`.
+    """
+
+    if ax is None:
+        ax = plt.gca()
+
+    if cbar_kw is None:
+        cbar_kw = {}
+
+    # Plot the heatmap
+    im = ax.imshow(data, **kwargs)
+
+    # Create colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+
+    # Show all ticks and label them with the respective list entries.
+    ax.set_xticks(np.arange(data.shape[1]), labels=col_labels)
+    ax.set_yticks(np.arange(data.shape[0]), labels=row_labels)
+
+    # Let the horizontal axes labeling appear on top.
+    ax.tick_params(
+        top=True, bottom=False, labeltop=True, labelbottom=False
+    )
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(
+        ax.get_xticklabels(),
+        rotation=-30,
+        ha="right",
+        rotation_mode="anchor",
+    )
+
+    # Turn spines off and create white grid.
+    ax.spines[:].set_visible(False)
+
+    ax.set_xticks(np.arange(data.shape[1] + 1) - 0.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0] + 1) - 0.5, minor=True)
+    ax.grid(which="minor", color="w", linestyle="-", linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    return im, cbar
+
+
+def annotate_heatmap(
+    im,
+    data=None,
+    valfmt="{x:.2f}",
+    textcolors=("black", "white"),
+    threshold=None,
+    **textkw,
+):
+    """
+    A function to annotate a heatmap.
+
+    Parameters
+    ----------
+    im
+        The AxesImage to be labeled.
+    data
+        Data used to annotate.  If None, the image's data is used.  Optional.
+    valfmt
+        The format of the annotations inside the heatmap.  This should either
+        use the string format method, e.g. "$ {x:.2f}", or be a
+        `matplotlib.ticker.Formatter`.  Optional.
+    textcolors
+        A pair of colors.  The first is used for values below a threshold,
+        the second for those above.  Optional.
+    threshold
+        Value in data units according to which the colors from textcolors are
+        applied.  If None (the default) uses the middle of the colormap as
+        separation.  Optional.
+    **kwargs
+        All other arguments are forwarded to each call to `text` used to create
+        the text labels.
+    """
+
+    if not isinstance(data, (list, np.ndarray)):
+        data = im.get_array()
+
+    # Normalize the threshold to the images color range.
+    if threshold is not None:
+        threshold = im.norm(threshold)
+    else:
+        threshold = im.norm(data.max()) / 2.0
+
+    # Set default alignment to center, but allow it to be
+    # overwritten by textkw.
+    kw = dict(horizontalalignment="center", verticalalignment="center")
+    kw.update(textkw)
+
+    # Get the formatter in case a string is supplied
+    if isinstance(valfmt, str):
+        valfmt = matplotlib.ticker.StrMethodFormatter(valfmt)
+
+    # Loop over the data and create a `Text` for each "pixel".
+    # Change the text's color depending on the data.
+    texts = []
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            kw.update(
+                color=textcolors[int(im.norm(data[i, j]) > threshold)]
+            )
+            text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
+            texts.append(text)
+
+    return texts
+
+
+def gs_table_plot(
+    results_dict,
+    dihedral_cutoff,
+    geom_score_cutoff,
+    strain_cutoff,
+):
+    logging.info("plotting: gs table")
+
+    colour_map = {
+        "forms cis-cage": "#086788",
+        "does not": "white",
+    }
+
+    marker_map = {
+        "l1": "o",
+        "l2": "s",
+        "l3": "P",
+    }
+
+    fig, axs = plt.subplots(ncols=2, nrows=2, figsize=(8, 8))
+    flat_axs = axs.flatten()
+
+    matrix1 = np.zeros(shape=(3, 4))
+    matrix2 = np.zeros(shape=(3, 4))
+    for pair_name in results_dict:
+        rdict = results_dict[pair_name]
+
+        if "e" in pair_name:
+            continue
+        else:
+            if pair_name in ("l1,lb", "l1,lc"):
+                colour = colour_map["forms cis-cage"]
+                x = 1
+            else:
+                colour = colour_map["does not"]
+                x = 2
+            if "l1" in pair_name:
+                marker = marker_map["l1"]
+                m_i = 0
+            elif "l2" in pair_name:
+                marker = marker_map["l2"]
+                m_i = 1
+            elif "l3" in pair_name:
+                marker = marker_map["l3"]
+                m_i = 2
+            if "la" in pair_name:
+                m_j = 0
+            elif "lb" in pair_name:
+                m_j = 1
+            elif "lc" in pair_name:
+                m_j = 2
+            elif "ld" in pair_name:
+                m_j = 3
+
+        min_geom_score = 1e24
+        good_geoms = 0
+        total_tested = 0
+        geom_scores = []
+        for cid_pair in rdict:
+            total_tested += 1
+
+            if (
+                abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"])
+                > dihedral_cutoff
+            ):
+                continue
+
+            geom_score = rdict[cid_pair]["geom_score"]
+            geom_scores.append(geom_score)
+            if geom_score < min_geom_score:
+                min_geom_score = geom_score
+
+            if geom_score < geom_score_cutoff:
+                good_geoms += 1
+
+        matrix1[m_i][m_j] = min_geom_score
+        matrix2[m_i][m_j] = np.mean(geom_scores)
+
+        flat_axs[0].text(
+            x - 0.5,
+            min_geom_score,
+            s=pair_name,
+            fontsize=16,
+        )
+        flat_axs[1].text(
+            x - 0.5,
+            np.mean(geom_scores),
+            s=pair_name,
+            fontsize=16,
+        )
+
+        flat_axs[0].scatter(
+            x + np.random.uniform(-1, 1, 1) * 0.3,
+            min_geom_score,
+            color=colour,
+            edgecolor="k",
+            marker=marker,
+            s=160,
+        )
+
+        flat_axs[1].scatter(
+            x + np.random.uniform(-1, 1, 1) * 0.3,
+            np.mean(geom_scores),
+            color=colour,
+            edgecolor="k",
+            marker=marker,
+            s=160,
+        )
+
+    flat_axs[0].axvline(x=1.5, c="gray", linestyle="--")
+    flat_axs[0].tick_params(axis="both", which="major", labelsize=16)
+    flat_axs[0].set_ylabel(r"$g_{\mathrm{min}}$", fontsize=16)
+    flat_axs[0].set_xlim(0.5, 2.5)
+    flat_axs[0].set_xticks((1, 2))
+    flat_axs[0].set_xticklabels(("forms", "does not form"))
+    flat_axs[0].set_ylim(0, None)
+
+    flat_axs[1].axvline(x=1.5, c="gray", linestyle="--")
+    flat_axs[1].tick_params(axis="both", which="major", labelsize=16)
+    flat_axs[1].set_ylabel(r"$g_{\mathrm{avg}}$", fontsize=16)
+    flat_axs[1].set_xlim(0.5, 2.5)
+    flat_axs[1].set_xticks((1, 2))
+    flat_axs[1].set_xticklabels(("forms", "does not form"))
+    flat_axs[1].set_ylim(0, None)
+
+    legend_elements = []
+    # for i in colour_map:
+    for m in marker_map:
+        legend_elements.append(
+            Line2D(
+                [0],
+                [0],
+                color="w",
+                markerfacecolor="w",
+                label=f"{m}",
+                alpha=1.0,
+                markeredgecolor="k",
+                marker=marker_map[m],
+                markersize=8,
+            ),
+        )
+
+    flat_axs[0].legend(handles=legend_elements, fontsize=16)
+
+    print(matrix1)
+    print(matrix2)
+    rows = ["l1", "l2", "l3"]
+    cols = ["la", "lb", "lc", "ld"]
+    im, cbar = heatmap(
+        matrix1,
+        rows,
+        cols,
+        ax=flat_axs[2],
+        cmap="magma_r",
+        cbarlabel=r"$g_{\mathrm{min}}$",
+    )
+    _ = annotate_heatmap(im, valfmt="{x:.2f}")
+    im, cbar = heatmap(
+        matrix2,
+        rows,
+        cols,
+        ax=flat_axs[3],
+        cmap="magma_r",
+        cbarlabel=r"$g_{\mathrm{avg}}$",
+    )
+    _ = annotate_heatmap(im, valfmt="{x:.2f}")
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), "g_tables.pdf"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+    raise SystemExit()
+
+
+def previous_lit_table(
+    results_dict,
+    dihedral_cutoff,
+    geom_score_cutoff,
+    strain_cutoff,
+):
+    logging.info("plotting: making gs table")
+
+    for pair_name in results_dict:
+        rdict = results_dict[pair_name]
+
+        if "e" not in pair_name:
+            continue
+
+        min_geom_score = 1e24
+        good_geoms = 0
+        total_tested = 0
+        geom_scores = []
+        for cid_pair in rdict:
+            total_tested += 1
+
+            if (
+                abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"])
+                > dihedral_cutoff
+            ):
+                continue
+
+            geom_score = rdict[cid_pair]["geom_score"]
+            geom_scores.append(geom_score)
+            if geom_score < min_geom_score:
+                min_geom_score = geom_score
+
+            if geom_score < geom_score_cutoff:
+                good_geoms += 1
+
+        logging.info(
+            (
+                f"{pair_name}: {round(min_geom_score, 2)}, "
+                f"{round((good_geoms/total_tested)*100, 0)}, "
                 f"{round(np.mean(geom_scores), 2)} "
                 f"({round(np.std(geom_scores), 2)}) "
             )

@@ -403,6 +403,22 @@ def main():
         with open(pair_file, "w") as f:
             json.dump(pair_info, f, indent=4)
 
+    # Get geoms core cutoff from the max, min geomscore in experimental
+    # successes.
+    geom_score_max = get_gs_cutoff(
+        results_dict=pair_info,
+        dihedral_cutoff=dihedral_cutoff,
+        experimental_ligand_outcomes=experimental_ligand_outcomes,
+    )
+    geom_score_cutoff = round_up(geom_score_max, 2)
+    logging.info(f"found a gs cutoff of: {geom_score_cutoff}")
+    plotting.gs_table_plot(
+        results_dict=pair_info,
+        dihedral_cutoff=dihedral_cutoff,
+        geom_score_cutoff=geom_score_cutoff,
+        strain_cutoff=strain_cutoff,
+    )
+
     plotting.plot_all_geom_scores(
         results_dict=pair_info,
         outname="all_pairs.png",
@@ -417,16 +433,6 @@ def main():
         strain_cutoff=strain_cutoff,
         experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
-
-    # Get geoms core cutoff from the max, min geomscore in experimental
-    # successes.
-    geom_score_max = get_gs_cutoff(
-        results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
-    geom_score_cutoff = round_up(geom_score_max, 2)
-    logging.info(f"found a gs cutoff of: {geom_score_cutoff}")
 
     plotting.plot_geom_scores_vs_threshold(
         results_dict=pair_info,
@@ -488,6 +494,13 @@ def main():
             geom_score_cutoff=geom_score_cutoff,
             outname=f"gs_{small_l}_{large_l}.png",
         )
+
+    plotting.previous_lit_table(
+        results_dict=pair_info,
+        dihedral_cutoff=dihedral_cutoff,
+        geom_score_cutoff=geom_score_cutoff,
+        strain_cutoff=strain_cutoff,
+    )
     raise SystemExit()
 
     plotting.plot_geom_scores_vs_dihedral_cutoff(
