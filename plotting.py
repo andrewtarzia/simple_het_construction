@@ -1789,8 +1789,6 @@ def gs_table_plot(
 
     flat_axs[0].legend(handles=legend_elements, fontsize=16)
 
-    print(matrix1)
-    print(matrix2)
     rows = ["l1", "l2", "l3"]
     cols = ["la", "lb", "lc", "ld"]
     im, cbar = heatmap(
@@ -1800,6 +1798,8 @@ def gs_table_plot(
         ax=flat_axs[2],
         cmap="magma_r",
         cbarlabel=r"$g_{\mathrm{min}}$",
+        vmin=0,
+        vmax=2,
     )
     _ = annotate_heatmap(im, valfmt="{x:.2f}")
     im, cbar = heatmap(
@@ -1809,6 +1809,8 @@ def gs_table_plot(
         ax=flat_axs[3],
         cmap="magma_r",
         cbarlabel=r"$g_{\mathrm{avg}}$",
+        vmin=0,
+        vmax=2,
     )
     _ = annotate_heatmap(im, valfmt="{x:.2f}")
 
@@ -2340,6 +2342,118 @@ def plot_property(results_dict, outname, yproperty, ignore_topos=None):
         bbox_inches="tight",
     )
     plt.close()
+
+
+def plot_qsqp(results_dict, outname, yproperty, ignore_topos=None):
+
+    if ignore_topos is None:
+        ignore_topos = ()
+
+    cms = c_and_m_properties()
+    lab_prop = axes_labels(yproperty)
+    conv = lab_prop[2]
+
+    to_plot = (
+        "m6_l1",
+        "m12_l2",
+        "m24_l3",
+        "m30_l3",
+        "m2_la",
+        "m2_lb",
+        "m2_lc",
+        "m2_ld",
+        "m4_ls",
+        "m2_ll1",
+        "m2_ll2",
+        "cis_l1_la",
+        "cis_l1_lb",
+        "cis_l1_lc",
+        "cis_l1_ld",
+        "cis_l2_la",
+        "cis_l2_lb",
+        "cis_l2_lc",
+        "cis_l2_ld",
+        "cis_l3_la",
+        "cis_l3_lb",
+        "cis_l3_lc",
+        "cis_l3_ld",
+        "cis_ls_ll1",
+        "cis_ls_ll2",
+    )
+
+    fig, ax = plt.subplots(figsize=(16, 5))
+
+    x_position = 0
+    _x_names = []
+    all_values = []
+    for struct in results_dict:
+        if struct not in to_plot:
+            continue
+
+        topo, l1, l2 = name_parser(struct)
+        if topo in ignore_topos:
+            continue
+        s_values = results_dict[struct]
+        if len(s_values) == 0:
+            continue
+
+        try:
+            y = s_values[yproperty]
+        except KeyError:
+            if yproperty in (
+                "avg_heli",
+                "max_heli",
+                "min_heli",
+                "mm_distance",
+                "pore_angle",
+            ):
+                y = -10
+            else:
+                y = s_values["pw_results"][yproperty]
+
+        y = conv(y)
+        x_position += 1
+        c = cms[topo][0]
+        all_values.append((x_position, y, c))
+        if l2 is None:
+            name = f"{topo} {l1}"
+        else:
+            name = f"{topo} {l1} {l2}"
+        _x_names.append((x_position, name))
+
+        ax.plot(
+            [x_position, x_position],
+            [0, y],
+            c=c,
+            lw=2,
+        )
+
+    ax.scatter(
+        x=[i[0] for i in all_values],
+        y=[i[1] for i in all_values],
+        c=[i[2] for i in all_values],
+        edgecolors="k",
+        s=180,
+        zorder=2,
+    )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel("structure", fontsize=16)
+    ax.set_ylabel(lab_prop[0], fontsize=16)
+
+    # ax.set_xlim((0, 1))
+    ax.set_ylim(0.90, 1.01)
+    ax.set_xticks([i[0] for i in _x_names])
+    ax.set_xticklabels([i[1] for i in _x_names], rotation=90)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}.pdf"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+    raise SystemExit()
 
 
 def compare_cis_trans(results_dict, outname, yproperty):

@@ -232,6 +232,11 @@ def main():
         with open(structure_res_file, "w") as f:
             json.dump(structure_results, f, indent=4)
 
+    plotting.plot_qsqp(
+        results_dict=structure_results,
+        outname="cage_qsqp",
+        yproperty="min_order_param",
+    )
     plotting.plot_property(
         results_dict=structure_results,
         outname="cage_ops",
