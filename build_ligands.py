@@ -240,6 +240,19 @@ def ligand_smiles():
             "C1C2=C(C(=CC=C2)C2C=CC(C#CC3=CC=C(C#CC4C=CC(C5C6=C(C=CN=C"
             "6)C=CC=5)=CC=4)S3)=CC=2)C=NC=1"
         ),
+        # Experimental, but assembly tested.
+        "ll1": (
+            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN="
+            "C1"
+        ),
+        "ls": (
+            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC"
+            "=C1"
+        ),
+        "ll2": (
+            "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
+            "CN=CC=5)=C4)=O)=C1)=CC=C2"
+        ),
         # Experimental.
         "e1": "N1C=C(C2=CC(C3C=CC=NC=3)=CC=C2)C=CC=1",
         "e2": "C1C=CN=CC=1C#CC1C=CC=C(C#CC2C=CC=NC=2)C=1",
