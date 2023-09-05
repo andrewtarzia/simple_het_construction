@@ -27,6 +27,8 @@ def heteroleptic_cages():
         ("l3", "lb"),
         ("l3", "lc"),
         ("l3", "ld"),
+        ("ll1", "ls"),
+        ("ll2", "ls"),
     )
 
 
@@ -39,6 +41,9 @@ def ligand_cage_topologies():
         "lb": ("m2",),
         "lc": ("m2",),
         "ld": ("m2",),
+        "ls": ("m4",),
+        "ll1": ("m2",),
+        "ll2": ("m2",),
     }
 
 
@@ -51,6 +56,9 @@ def erxn_cage_topologies():
         "lb": "m2",
         "lc": "m2",
         "ld": "m2",
+        "ls": "m4",
+        "ll1": "m2",
+        "ll2": "m2",
     }
 
 

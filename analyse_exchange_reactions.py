@@ -105,8 +105,7 @@ class ExchangeReaction:
                 continue
 
             assert lhs_stoich * 2 == (
-                l1_stoich * int(l1_prefix[1:])
-                + l2_stoich * int(l2_prefix[1:])
+                l1_stoich * int(l1_prefix[1:]) + l2_stoich * int(l2_prefix[1:])
             )
             yield self._get_rxn_energies(
                 lhs_stoich=lhs_stoich,
@@ -183,6 +182,8 @@ def main():
         "cis_l1_ld",
         "cis_l2_ld",
         "cis_l3_ld",
+        # "cis_ll1_ls",
+        # "cis_ll2_ls",
     )
     lig_system = {
         # "lb": ("m2", "m3", "m4"),

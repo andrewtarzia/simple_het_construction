@@ -26,6 +26,18 @@ import json
 from env_set import xtb_path
 
 
+def name_conversion():
+    return {
+        "l1": r"1$^{\mathrm{DBF}}$",
+        "l2": r"1$^{\mathrm{Ph}}$",
+        "l3": r"1$^{\mathrm{Th}}$",
+        "la": r"2$^{\mathrm{DBF}}$",
+        "lb": r"2$^{\mathrm{Py}}$",
+        "lc": r"2$^{\mathrm{Ph}}$",
+        "ld": r"2$^{\mathrm{Th}}$",
+    }
+
+
 class AromaticCNCFactory(stk.FunctionalGroupFactory):
     """
     A subclass of stk.SmartsFunctionalGroupFactory.
@@ -481,12 +493,8 @@ def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
         solvent_str = solvent
         solvent_grid = "verytight"
         solvent_list = f"{solvent_str}/{solvent_model}/{solvent_grid}"
-        output_dir = os.path.join(
-            calc_dir, f"{name}_{solvent_str}_xtbey"
-        )
-        output_file = os.path.join(
-            calc_dir, f"{name}_{solvent_str}_xtb.ey"
-        )
+        output_dir = os.path.join(calc_dir, f"{name}_{solvent_str}_xtbey")
+        output_file = os.path.join(calc_dir, f"{name}_{solvent_str}_xtb.ey")
 
     if os.path.exists(output_file):
         with open(output_file, "r") as f:
@@ -495,9 +503,7 @@ def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
             energy = float(line.rstrip())
             break
     else:
-        logging.info(
-            f"xtb energy calculation of {name} with {solvent_list}"
-        )
+        logging.info(f"xtb energy calculation of {name} with {solvent_list}")
         xtb = stko.XTBEnergy(
             xtb_path=xtb_path(),
             output_dir=output_dir,
@@ -934,18 +940,12 @@ def calculate_helicities(molecule, name, calc_dir):
     for bond in molecule.get_bonds():
         atom1 = bond.get_atom1()
         atom2 = bond.get_atom2()
-        if (
-            atom1.get_atomic_number() == 46
-            and atom2.get_atomic_number() == 7
-        ):
+        if atom1.get_atomic_number() == 46 and atom2.get_atomic_number() == 7:
             if atom2.get_id() not in n_bonds:
                 n_bonds[atom2.get_id()] = set()
             n_bonds[atom2.get_id()].add(atom1.get_id())
 
-        if (
-            atom2.get_atomic_number() == 46
-            and atom1.get_atomic_number() == 7
-        ):
+        if atom2.get_atomic_number() == 46 and atom1.get_atomic_number() == 7:
             if atom1.get_id() in n_bonds:
                 raise ValueError(f"only one Pd bond per N atom! {bond}")
             n_bonds[atom1.get_id()] = atom2.get_id()
@@ -983,14 +983,10 @@ def get_pore_angle(molecule, metal_atom_num):
         if i.get_atomic_number() == metal_atom_num
     ]
     if len(atom_ids) != 2:
-        raise ValueError(
-            f"{len(atom_ids)} metal atoms found. Expecting 2"
-        )
+        raise ValueError(f"{len(atom_ids)} metal atoms found. Expecting 2")
 
     centroid = molecule.get_centroid()
-    v1, v2 = (
-        i - centroid for i in molecule.get_atomic_positions(atom_ids)
-    )
+    v1, v2 = (i - centroid for i in molecule.get_atomic_positions(atom_ids))
     aniso_angle = np.degrees(angle_between(v1, v2))
 
     return aniso_angle
@@ -1004,9 +1000,7 @@ def get_mm_distance(molecule, metal_atom_num):
         if i.get_atomic_number() == metal_atom_num
     ]
     if len(atom_ids) != 2:
-        raise ValueError(
-            f"{len(atom_ids)} metal atoms found. Expecting 2"
-        )
+        raise ValueError(f"{len(atom_ids)} metal atoms found. Expecting 2")
 
     position_matrix = molecule.get_position_matrix()
 

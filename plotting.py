@@ -21,7 +21,7 @@ import numpy as np
 import os
 
 from env_set import figu_path
-from utilities import name_parser
+from utilities import name_parser, name_conversion
 
 
 def c_and_m_properties():
@@ -168,9 +168,7 @@ def calculate_ldev(a, A, B):
 
 def calculate_strain(a, c, A, B):
 
-    return abs(calculate_adev(a, c) - 1) + abs(
-        calculate_ldev(a, A, B) - 1
-    )
+    return abs(calculate_adev(a, c) - 1) + abs(calculate_ldev(a, A, B) - 1)
 
 
 def plot_analytical_data_1():
@@ -218,9 +216,7 @@ def plot_analytical_data_1():
     ax.set_ylim(0, None)
     ax.set_xlabel("a values", fontsize=16)
     ax.set_ylabel("strain ; deviation", fontsize=16)
-    ax.set_title(
-        f"effect of mismatch in a: (c:{c}, A:{A}, B:{round(B, 2)})"
-    )
+    ax.set_title(f"effect of mismatch in a: (c:{c}, A:{A}, B:{round(B, 2)})")
 
     fig.tight_layout()
     fig.savefig(
@@ -401,8 +397,7 @@ def plot_geom_scores_vs_dihedral_cutoff(
                 all_scores += 1
 
                 if (
-                    abs(rdict[cid_pair]["large_dihedral"])
-                    > dihedral_threshold
+                    abs(rdict[cid_pair]["large_dihedral"]) > dihedral_threshold
                     or abs(rdict[cid_pair]["small_dihedral"])
                     > dihedral_threshold
                 ):
@@ -460,9 +455,7 @@ def plot_geom_scores_vs_max_strain(
     outname,
 ):
     logging.info("plotting: plot_geom_scores_vs_max_strain")
-    raise NotImplementedError(
-        "no longer needed - strain is removed elsewhere"
-    )
+    raise NotImplementedError("no longer needed - strain is removed elsewhere")
 
     fig, axs = plt.subplots(ncols=2, figsize=(16, 5))
 
@@ -498,10 +491,8 @@ def plot_geom_scores_vs_max_strain(
                 all_scores += 1
 
                 if (
-                    abs(rdict[cid_pair]["large_dihedral"])
-                    > dihedral_cutoff
-                    or abs(rdict[cid_pair]["small_dihedral"])
-                    > dihedral_cutoff
+                    abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
+                    or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
                 ):
                     continue
 
@@ -579,14 +570,10 @@ def plot_geom_scores_vs_threshold(
         if "e" in pair_name:
             ename = pair_name.split(",")
             if (ename[0], ename[1]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[0], ename[1])
-                ]
+                edata = experimental_ligand_outcomes[(ename[0], ename[1])]
 
             elif (ename[1], ename[0]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[1], ename[0])
-                ]
+                edata = experimental_ligand_outcomes[(ename[1], ename[0])]
             else:
                 continue
             if edata == "yes":
@@ -611,10 +598,8 @@ def plot_geom_scores_vs_threshold(
                 all_scores += 1
 
                 if (
-                    abs(rdict[cid_pair]["large_dihedral"])
-                    > dihedral_cutoff
-                    or abs(rdict[cid_pair]["small_dihedral"])
-                    > dihedral_cutoff
+                    abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
+                    or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
                 ):
                     continue
 
@@ -736,14 +721,10 @@ def plot_all_geom_scores_density(
         if "e" in pair_name:
             ename = pair_name.split(",")
             if (ename[0], ename[1]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[0], ename[1])
-                ]
+                edata = experimental_ligand_outcomes[(ename[0], ename[1])]
 
             elif (ename[1], ename[0]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[1], ename[0])
-                ]
+                edata = experimental_ligand_outcomes[(ename[1], ename[0])]
             else:
                 continue
             if edata == "yes":
@@ -765,8 +746,7 @@ def plot_all_geom_scores_density(
 
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-                or abs(rdict[cid_pair]["small_dihedral"])
-                > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
             ):
                 continue
 
@@ -866,14 +846,10 @@ def plot_all_geom_scores_mean(
         if "e" in pair_name:
             ename = pair_name.split(",")
             if (ename[0], ename[1]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[0], ename[1])
-                ]
+                edata = experimental_ligand_outcomes[(ename[0], ename[1])]
 
             elif (ename[1], ename[0]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[1], ename[0])
-                ]
+                edata = experimental_ligand_outcomes[(ename[1], ename[0])]
             else:
                 continue
             if edata == "yes":
@@ -890,8 +866,7 @@ def plot_all_geom_scores_mean(
 
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-                or abs(rdict[cid_pair]["small_dihedral"])
-                > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
             ):
                 continue
 
@@ -1053,14 +1028,10 @@ def plot_all_geom_scores_categ(
         if "e" in pair_name:
             ename = pair_name.split(",")
             if (ename[0], ename[1]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[0], ename[1])
-                ]
+                edata = experimental_ligand_outcomes[(ename[0], ename[1])]
 
             elif (ename[1], ename[0]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[1], ename[0])
-                ]
+                edata = experimental_ligand_outcomes[(ename[1], ename[0])]
             else:
                 continue
             if edata == "yes":
@@ -1092,8 +1063,7 @@ def plot_all_geom_scores_categ(
 
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-                or abs(rdict[cid_pair]["small_dihedral"])
-                > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
             ):
                 continue
 
@@ -1275,14 +1245,10 @@ def plot_all_geom_scores(
         if "e" in pair_name:
             ename = pair_name.split(",")
             if (ename[0], ename[1]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[0], ename[1])
-                ]
+                edata = experimental_ligand_outcomes[(ename[0], ename[1])]
 
             elif (ename[1], ename[0]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[
-                    (ename[1], ename[0])
-                ]
+                edata = experimental_ligand_outcomes[(ename[1], ename[0])]
             else:
                 continue
             if edata == "yes":
@@ -1306,8 +1272,7 @@ def plot_all_geom_scores(
 
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-                or abs(rdict[cid_pair]["small_dihedral"])
-                > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
             ):
                 continue
 
@@ -1484,8 +1449,7 @@ def gs_table(
 
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-                or abs(rdict[cid_pair]["small_dihedral"])
-                > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
             ):
                 continue
 
@@ -1556,9 +1520,7 @@ def heatmap(
     ax.set_yticks(np.arange(data.shape[0]), labels=row_labels)
 
     # Let the horizontal axes labeling appear on top.
-    ax.tick_params(
-        top=True, bottom=False, labeltop=True, labelbottom=False
-    )
+    ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
 
     # Rotate the tick labels and set their alignment.
     plt.setp(
@@ -1635,9 +1597,7 @@ def annotate_heatmap(
     texts = []
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
-            kw.update(
-                color=textcolors[int(im.norm(data[i, j]) > threshold)]
-            )
+            kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold)])
             text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
             texts.append(text)
 
@@ -1707,8 +1667,7 @@ def gs_table_plot(
 
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-                or abs(rdict[cid_pair]["small_dihedral"])
-                > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
             ):
                 continue
 
@@ -1847,8 +1806,7 @@ def previous_lit_table(
 
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-                or abs(rdict[cid_pair]["small_dihedral"])
-                > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
             ):
                 continue
 
@@ -2377,8 +2335,8 @@ def plot_qsqp(results_dict, outname, yproperty, ignore_topos=None):
         "cis_l3_lb",
         "cis_l3_lc",
         "cis_l3_ld",
-        "cis_ls_ll1",
-        "cis_ls_ll2",
+        "cis_ll1_ls",
+        "cis_ll2_ls",
     )
 
     fig, ax = plt.subplots(figsize=(16, 5))
@@ -2453,7 +2411,6 @@ def plot_qsqp(results_dict, outname, yproperty, ignore_topos=None):
         bbox_inches="tight",
     )
     plt.close()
-    raise SystemExit()
 
 
 def compare_cis_trans(results_dict, outname, yproperty):
@@ -2647,7 +2604,13 @@ def plot_all_exchange_reactions(all_rxns, outname):
     width = 0.15
 
     x_positions = [i for i in range(len(all_rxns))]
-    x_names = [i for i in all_rxns]
+    x_names = [
+        name_conversion()[i.split("_")[1]]
+        + " + "
+        + name_conversion()[i.split("_")[2]]
+        for i in all_rxns
+    ]
+    print(x_names)
     plotted = 0
     for method in methods:
         if "gas" in method:
@@ -2661,9 +2624,7 @@ def plot_all_exchange_reactions(all_rxns, outname):
             if method_rxn["lhs"] == 0 or method_rxn["rhs"] == 0:
                 r_energy = 0
             else:
-                r_energy = float(method_rxn["lhs"]) - float(
-                    method_rxn["rhs"]
-                )
+                r_energy = float(method_rxn["lhs"]) - float(method_rxn["rhs"])
             r_energy = r_energy / int(method_rxn["lhs_stoich"])
             method_y_values.append(r_energy)
 
@@ -2685,7 +2646,7 @@ def plot_all_exchange_reactions(all_rxns, outname):
         fontsize=16,
     )
     ax.set_xticks([i for i in x_positions])
-    ax.set_xticklabels([i for i in x_names])
+    ax.set_xticklabels([i for i in x_names], rotation=45)
     ax.axhline(y=0, lw=2, c="k", linestyle="--")
     ax.legend(fontsize=16)
     fig.tight_layout()
