@@ -30,7 +30,8 @@ from utilities import (
     get_mm_distance,
 )
 from pywindow_module import PyWindow
-from inflation import PoreMapper
+
+# from inflation import PoreMapper
 import plotting
 from topologies import ligand_cage_topologies, heteroleptic_cages
 
@@ -70,7 +71,7 @@ def main():
     _ld = liga_path()
     _pd = project_path()
 
-    dft_data_dir = _pd / "vh_data" / "recieved_100723"
+    dft_data_dir = _pd / "vh_data" / "recieved_210723"
     # These need to do be manually extracted from Excel files.
     sp_gas_txt = dft_data_dir / "SP_Final_energies_no_solvent.txt"
     sp_dmso_txt = dft_data_dir / "SP_Final_energies_DMSO.txt"
@@ -225,9 +226,9 @@ def main():
             structure_results[name]["pw_results"] = PyWindow(
                 name, _cd
             ).get_results(molecule)
-            structure_results[name]["pm_results"] = PoreMapper(
-                name, _cd
-            ).get_results(molecule)
+            # structure_results[name]["pm_results"] = PoreMapper(
+            #     name, _cd
+            # ).get_results(molecule)
 
         with open(structure_res_file, "w") as f:
             json.dump(structure_results, f, indent=4)

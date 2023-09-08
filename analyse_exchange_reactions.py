@@ -227,6 +227,11 @@ def main():
         outname="erxns_all",
     )
 
+    plotting.plot_all_exchange_reactions_production(
+        all_rxns=all_het_exchanges,
+        outname="erxns_mainpaper",
+    )
+
     for ls in lig_system:
         all_rxns = {}
         for method in methods:
