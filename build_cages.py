@@ -16,17 +16,14 @@ import os
 import stk
 from itertools import combinations
 from dataclasses import dataclass
+import bbprep
 
 from topologies import (
     M30L60,
     ligand_cage_topologies,
     heteroleptic_cages,
 )
-from utilities import (
-    AromaticCNCFactory,
-    AromaticCNC,
-    get_furthest_pair_FGs,
-)
+from utilities import AromaticCNCFactory, AromaticCNC
 from env_set import cage_path, calc_path, liga_path
 from optimisation import optimisation_sequence
 
@@ -248,8 +245,9 @@ def main():
         for i in glob.glob(str(li_path / f"*{li_suffix}"))
     }
     ligands = {
-        i: ligands[i].with_functional_groups(
-            functional_groups=get_furthest_pair_FGs(ligands[i])
+        i: bbprep.FurthestFGs().modify(
+            building_block=ligands[i],
+            desired_functional_groups=2,
         )
         for i in ligands
     }
