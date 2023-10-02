@@ -12,9 +12,9 @@ Author: Andrew Tarzia
 import logging
 import sys
 import os
-import json
 import stk
 import stko
+import bbprep
 from rdkit.Chem import AllChem as rdkit
 from rdkit.Chem import Draw
 
@@ -23,10 +23,6 @@ from utilities import (
     AromaticCNCFactory,
     update_from_rdkit_conf,
     calculate_N_centroid_N_angle,
-    calculate_NN_distance,
-    calculate_NN_BCN_angles,
-    calculate_NCCN_dihedral,
-    get_furthest_pair_FGs,
     get_xtb_energy,
 )
 
@@ -44,13 +40,7 @@ def draw_grid(names, smiles, image_file):
         f.write(svg)
 
 
-def select_conformer_xtb(
-    molecule,
-    name,
-    lowe_output,
-    conf_data_file,
-    calc_dir,
-):
+def select_conformer_xtb(molecule, name, lowe_output, calc_dir):
     """
     Select and optimize a conformer with desired directionality.
 
@@ -72,7 +62,6 @@ def select_conformer_xtb(
 
     min_angle = 10000
     min_energy = 1e24
-    lig_conf_data = {}
     for cid in cids:
         conf_opt_file_name = str(lowe_output).replace(
             "_lowe.mol", f"_c{cid}_copt.mol"
@@ -87,8 +76,9 @@ def select_conformer_xtb(
             functional_groups=[AromaticCNCFactory()],
         )
         # Only get two FGs.
-        new_mol = new_mol.with_functional_groups(
-            functional_groups=get_furthest_pair_FGs(new_mol),
+        new_mol = bbprep.FurthestFGs().modify(
+            building_block=new_mol,
+            desired_functional_groups=2,
         )
         if os.path.exists(conf_opt_file_name):
             new_mol = new_mol.with_structure_from_file(
@@ -112,7 +102,6 @@ def select_conformer_xtb(
             new_mol = xtb_opt.optimize(mol=new_mol)
             new_mol.write(conf_opt_file_name)
 
-        NCCN_dihedral = abs(calculate_NCCN_dihedral(new_mol))
         angle = calculate_N_centroid_N_angle(new_mol)
         charge = 0
         cid_name = f"{name}_{cid}_ligey"
@@ -137,84 +126,7 @@ def select_conformer_xtb(
             with open(lowe_energy_output, "w") as f:
                 f.write(f"{min_energy}\n")
 
-        lig_conf_data[cid] = {
-            "xtb_dmsoenergy": energy,
-            "NcentroidN_angle": angle,
-            "NCCN_dihedral": NCCN_dihedral,
-            "NN_distance": calculate_NN_distance(new_mol),
-            "NN_BCN_angles": calculate_NN_BCN_angles(new_mol),
-        }
-
-    with open(conf_data_file, "w") as f:
-        json.dump(lig_conf_data, f)
-
     return final_molecule
-
-
-def conformer_generation_uff(
-    molecule,
-    name,
-    lowe_output,
-    conf_data_file,
-    calc_dir,
-):
-    """
-    Build a large conformer ensemble with UFF optimisation.
-
-    """
-
-    logging.info(f"building conformer ensemble of {name}")
-
-    confs = molecule.to_rdkit_mol()
-    etkdg = rdkit.srETKDGv3()
-    etkdg.randomSeed = 1000
-    etkdg.pruneRmsThresh = 0.2
-    cids = rdkit.EmbedMultipleConfs(
-        mol=confs,
-        numConfs=500,
-        params=etkdg,
-        # pruneRmsThresh=0.2,
-    )
-
-    lig_conf_data = {}
-    num_confs = 0
-    for cid in cids:
-        conf_opt_file_name = str(lowe_output).replace(
-            "_lowe.mol", f"_c{cid}_cuff.mol"
-        )
-        # Update stk_mol to conformer geometry.
-        new_mol = update_from_rdkit_conf(
-            stk_mol=molecule, rdk_mol=confs, conf_id=cid
-        )
-        # Need to define the functional groups.
-        new_mol = stk.BuildingBlock.init_from_molecule(
-            molecule=new_mol,
-            functional_groups=[AromaticCNCFactory()],
-        )
-        # Only get two FGs.
-        new_mol = new_mol.with_functional_groups(
-            functional_groups=get_furthest_pair_FGs(new_mol),
-        )
-
-        new_mol = stko.UFF().optimize(mol=new_mol)
-        energy = stko.UFFEnergy().get_energy(new_mol)
-        new_mol.write(conf_opt_file_name)
-
-        NCCN_dihedral = abs(calculate_NCCN_dihedral(new_mol))
-        angle = calculate_N_centroid_N_angle(new_mol)
-
-        lig_conf_data[cid] = {
-            "NcentroidN_angle": angle,
-            "NCCN_dihedral": NCCN_dihedral,
-            "NN_distance": calculate_NN_distance(new_mol),
-            "NN_BCN_angles": calculate_NN_BCN_angles(new_mol),
-            "UFFEnergy;kj/mol": energy * 4.184,
-        }
-        num_confs += 1
-    logging.info(f"{num_confs} conformers generated for {name}")
-
-    with open(conf_data_file, "w") as f:
-        json.dump(lig_conf_data, f)
 
 
 def ligand_smiles():
@@ -242,12 +154,10 @@ def ligand_smiles():
         ),
         # Experimental, but assembly tested.
         "ll1": (
-            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN="
-            "C1"
+            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=" "C1"
         ),
         "ls": (
-            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC"
-            "=C1"
+            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC" "=C1"
         ),
         "ll2": (
             "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
@@ -267,28 +177,20 @@ def ligand_smiles():
             "3)=CC=2)C=CN=1"
         ),
         "e10": (
-            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN="
-            "C1"
+            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=" "C1"
         ),
-        "e11": (
-            "C1N=CC=CC=1C1=CC2=C(C3=C(C2(C)C)C=C(C2=CN=CC=C2)C=C3)C=C1"
-        ),
+        "e11": ("C1N=CC=CC=1C1=CC2=C(C3=C(C2(C)C)C=C(C2=CN=CC=C2)C=C3)C=C1"),
         "e12": "C1=CC=C(C2=CC3C(=O)C4C=C(C5=CN=CC=C5)C=CC=4C=3C=C2)C=N1",
         "e13": (
             "C1C=C(N2C(=O)C3=C(C=C4C(=C3)C3(C5=C(C4(C)CC3)C=C3C(C(N(C3="
             "O)C3C=CC=NC=3)=O)=C5)C)C2=O)C=NC=1"
         ),
         "e14": (
-            "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)"
-            "=C1"
+            "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)" "=C1"
         ),
-        "e15": (
-            "C1C=C(C(=O)N([H])[C@@]2CCCC[C@]2N([H])C(C2C=CN=CC=2)=O)C=C"
-            "N=1"
-        ),
+        "e15": "C1CCC(C(C1)NC(=O)C2=CC=NC=C2)NC(=O)C3=CC=NC=C3",
         "e16": (
-            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC"
-            "=C1"
+            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC" "=C1"
         ),
         "e17": (
             "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
@@ -322,11 +224,13 @@ def main():
         unopt_file = _wd / f"{lig}_unopt.mol"
         opt_file = _wd / f"{lig}_opt.mol"
         lowe_file = _wd / f"{lig}_lowe.mol"
-        conf_data_file = _wd / f"{lig}_conf_data.json"
-        confuff_data_file = _wd / f"{lig}_conf_uff_data.json"
         unopt_mol = stk.BuildingBlock(
             smiles=lsmiles[lig],
             functional_groups=(AromaticCNCFactory(),),
+        )
+        unopt_mol = bbprep.FurthestFGs().modify(
+            building_block=unopt_mol,
+            desired_functional_groups=2,
         )
         unopt_mol.write(unopt_file)
 
@@ -337,19 +241,9 @@ def main():
                     molecule=unopt_mol,
                     name=lig,
                     lowe_output=lowe_file,
-                    conf_data_file=conf_data_file,
                     calc_dir=_cd,
                 )
                 opt_mol.write(opt_file)
-
-        if not os.path.exists(confuff_data_file):
-            conformer_generation_uff(
-                molecule=unopt_mol,
-                name=lig,
-                lowe_output=lowe_file,
-                conf_data_file=confuff_data_file,
-                calc_dir=_cd,
-            )
 
     draw_grid(
         names=[i for i in lsmiles],
