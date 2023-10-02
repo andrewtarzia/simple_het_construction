@@ -1609,6 +1609,7 @@ def gs_table_plot(
     dihedral_cutoff,
     geom_score_cutoff,
     strain_cutoff,
+    prefix,
 ):
     logging.info("plotting: gs table")
 
@@ -1718,12 +1719,11 @@ def gs_table_plot(
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), "g_tables.png"),
+        os.path.join(figu_path(), f"{prefix}_g_tables.png"),
         dpi=360,
         bbox_inches="tight",
     )
     plt.close()
-    raise SystemExit()
 
 
 def previous_lit_table(
@@ -1838,6 +1838,99 @@ def plot_conformer_props(
 
     ax.set_xticks(range(len(categories_num_confs)))
     ax.set_xticklabels(categories_num_confs.keys(), rotation=45)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_all_ligand_pairings(
+    results_dict,
+    dihedral_cutoff,
+    geom_score_cutoff,
+    length_score_cutoff,
+    angle_score_cutoff,
+    strain_cutoff,
+    outname,
+):
+    name = outname.replace(".png", "")
+    logging.info(f"plotting: plot_ligand_pairing of {name}")
+
+    fig, axs = plt.subplots(
+        ncols=2, nrows=2, sharex=True, sharey=True, figsize=(8, 6)
+    )
+
+    xmin = ymin = 0
+    xmax = ymax = 2
+
+    large_to_ax = {
+        "la": axs[0][0],
+        "lb": axs[0][1],
+        "lc": axs[1][0],
+        "ld": axs[1][1],
+    }
+    small_to_c = {
+        "l1": "#083D77",
+        "l2": "#FFC15E",
+        "l3": "#F56476",
+    }
+
+    for pair_name in results_dict:
+        small_l, large_l = pair_name.split(",")
+        if "e" in small_l or "e" in large_l:
+            continue
+        ax = large_to_ax[large_l]
+        c = small_to_c[small_l]
+        ax.set_title(name_conversion()[large_l], fontsize=16)
+
+        all_xs = []
+        all_ys = []
+        for conf_pair in results_dict[pair_name]:
+            rdict = results_dict[pair_name][conf_pair]
+
+            if (
+                abs(rdict["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict["small_dihedral"]) > dihedral_cutoff
+            ):
+                continue
+
+            all_xs.append(rdict["angle_deviation"])
+            all_ys.append(rdict["length_deviation"])
+
+        if len(all_ys) != 0:
+            ax.scatter(
+                all_xs,
+                all_ys,
+                c=c,
+                s=50,
+                edgecolor="k",
+            )
+
+    for ax in axs.flatten():
+        ax.tick_params(axis="both", which="major", labelsize=16)
+        ax.set_xlabel("$a$", fontsize=16)
+        ax.set_ylabel("$l$", fontsize=16)
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.axhline(y=1, c="gray", lw=2, linestyle="--")
+        ax.axvline(x=1, c="gray", lw=2, linestyle="--")
+
+    legend_elements = []
+    for i in small_to_c:
+        legend_elements.append(
+            Patch(
+                facecolor=small_to_c[i],
+                label=name_conversion()[i],
+                alpha=1.0,
+                edgecolor="k",
+            ),
+        )
+
+    axs[1][1].legend(handles=legend_elements, ncol=1, fontsize=16)
 
     fig.tight_layout()
     fig.savefig(
