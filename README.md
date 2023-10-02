@@ -1,59 +1,77 @@
-# big_unsymm
-Construct and study large (M12L24) cages with unsymmetrical ligands
+# simple_het_construction
+Python code for the construction and analysis of heteroleptic cages
 
-DOI for publication: AWAITING.
+DOI for publication: **AWAITING**.
 
-Installation:
+The library is built off of [`stk`](https://stk.readthedocs.io/en/stable/)
 
-Clone the repo and use enrivonment.yml and Anaconda or Miniconda to install the Python 3.9 environment including RDKIT and XTB from conda-forge (see environment.yml for versions).
-CREST must be installed by the user (version 2.11.2 was used). In env_set.py, I set environment variables, including directories for output. E.g. the working directory for me is `/data/atarzia/projects/big_unsymm`.
+# Installation
 
-Usage:
+I recommend installing the library with the following instructions and setting the paths in `env_set.py` appropriately. *E.g.*, the working directory for me is `/home/atarzia/projects/simple_het/`
 
-`build_ligand.py`:
-    build ligand precusor for cage construction -- includes optimisation. Generates ligands lowest energy conformer
+The code can be installed following these steps:
 
-`build_metal_precusor.py`:
-    will build the cis-protected Pd precursor for subsystems -- includes optimisation. Not used in the manuscript.
+1. clone `simple_het_construction` from [here](https://github.com/andrewtarzia/simple_het_construction)
 
-`build_cage.py`:
-    will build 4 cage symmetries -- includes optimisation
+2. Create a `conda` or `mamba` environment:
+ ```
+ mamba create -n NAME python=3.11
+ ```
 
-`build_subsystems.py`:
-    will build triangles, squares and 6-mem rings from metal precursor and ligand -- includes optimisation. Not used in the manuscript.
+3. Install from `environment.yml``:
+ ```
+mamba install openmm UPDATE
+```
+or
+```
+conda install -c conda-forge openmm UPDATE
+```
 
-`utilities.py`:
-    defines utilities for construction
+The library uses:
 
-`optimisation.py`:
-    defines optimisation sequences.
+`Gulp (6.1)`: Follow the instructions to download and install [GULP](https://gulp.curtin.edu.au/gulp/help/manuals.cfm)
 
-`topologies.py`:
-    contains the new topology graph for the ring and updated M12L24
-    The metal complex topology was not used in this work.
+`xTB`: Installed using `conda` or `mamba` through `environment.yml`
+
+# Usage for ligand-based modelling
+
+`run_ligand_analysis.py`:
+    `build_ligands.py` must be run first. Runs the ligand-based analysis (conformer generation and pairing).
+
+
+# Usage for cage modelling
+
+`extract_m30l60.py`:
+    Extracts the topology information from a given structure.
+
+`build_ligands.py`:
+    Build ligands for cage construction. Generates ligands lowest energy conformer and an appropriate conformer for cage construction.
+
+`build_cages.py`:
+    Builds and optimises homoleptic and heteroleptic cages. List of structures to build are defined in the script.
 
 `analyse_cages.py`:
-    for all desired systems:
+    Obtains structural and energetic analysis for all cages. Produces plots.
 
-        * calculates total energies
-        * calculates metal-atom order parameter
-        * calculates ligand strain energy
+`analyse_exchange_reactions.py`:
+    Performs exchange reaction analysis based on cage energies. Produces plots.
 
-`analyse_subsystems.py` and `analyse_manual_subsytems.py`:
-    for all desired systems: Not used in the manuscript.
+# Modules
 
-        * calculates total energies
-        * calculates metal-atom order parameter
-        * calculates ligand strain energy
+`utilities.py`:
+    Defines utilities for construction and analysis.
 
+`optimisation.py`:
+    Defines optimisation sequences.
 
+`topologies.py`:
+    Defines the new topology graph for M30L60.
 
 `plotting.py`:
     Utilities for plotting.
 
-`spinner.py`:
-    Utilities for using SpinDry to orient building blocks.
-    Not used in the manuscript.
+`pywindow_module.py`:
+    Defines a class for using `pyWindow`.
 
-`m24_optimising.py`:
-    Script for running the optimisation of Pd24L48 systems from XYZ file.
+`inflation.py`:
+    Defines a class for using `PoreMapper`.
