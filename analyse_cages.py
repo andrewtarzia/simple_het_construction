@@ -15,13 +15,13 @@ import sys
 import os
 import json
 import stk
+import bbprep
 
 from env_set import cage_path, calc_path, liga_path, project_path
 from utilities import (
     get_order_values,
     get_xtb_energy,
     AromaticCNCFactory,
-    get_furthest_pair_FGs,
     get_xtb_strain,
     calculate_helicities,
     get_dft_energy,
@@ -59,9 +59,11 @@ def main():
         )
         for i in glob.glob(str(li_path / "*_opt.mol"))
     }
+
     ligands = {
-        i: ligands[i].with_functional_groups(
-            functional_groups=get_furthest_pair_FGs(ligands[i])
+        i: bbprep.FurthestFGs().modify(
+            building_block=ligands[i],
+            desired_functional_groups=2,
         )
         for i in ligands
     }
@@ -133,8 +135,7 @@ def main():
     logging.info(f"there are {len(structure_files)} structures.")
 
     structure_results = {
-        i.split("/")[-1].replace("_opt.mol", ""): {}
-        for i in structure_files
+        i.split("/")[-1].replace("_opt.mol", ""): {} for i in structure_files
     }
     structure_res_file = os.path.join(_wd, "all_structure_res.json")
     if os.path.exists(structure_res_file):
@@ -202,16 +203,12 @@ def main():
                     molecule=molecule,
                     metal_atom_num=46,
                 )
-                structure_results[name][
-                    "mm_distance"
-                ] = get_mm_distance(
+                structure_results[name]["mm_distance"] = get_mm_distance(
                     molecule=molecule,
                     metal_atom_num=46,
                 )
 
-            structure_results[name][
-                "xtb_lig_strain_au"
-            ] = get_xtb_strain(
+            structure_results[name]["xtb_lig_strain_au"] = get_xtb_strain(
                 molecule=molecule,
                 name=name,
                 liga_dir=_ld,
