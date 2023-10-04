@@ -15,7 +15,7 @@ The code can be installed following these steps:
 
 2. Create a `conda` or `mamba` environment:
  ```
- mamba create -n NAME python=3.11
+ mamba create -n NAME python=3.9
  ```
 
 3. Install from `environment.yml``:
@@ -31,7 +31,7 @@ The library uses:
 
 `Gulp (6.1)`: Follow the instructions to download and install [GULP](https://gulp.curtin.edu.au/gulp/help/manuals.cfm)
 
-`xTB`: Installed using `conda` or `mamba` through `environment.yml`
+`xTB (6.5.0=h9d67668_0)`: Installed using `conda` or `mamba` through `environment.yml`
 
 # Usage for ligand-based modelling
 
