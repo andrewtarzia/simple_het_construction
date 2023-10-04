@@ -905,6 +905,7 @@ def calculate_NCCN_dihedral(bb):
 
 
 def calculate_helicities(molecule, name, calc_dir):
+    raise NotImplementedError("This was not working properly!!!")
 
     pos_mat = molecule.get_position_matrix()
     n_bonds = {}

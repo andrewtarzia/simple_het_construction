@@ -23,7 +23,7 @@ from utilities import (
     get_xtb_energy,
     AromaticCNCFactory,
     get_xtb_strain,
-    calculate_helicities,
+    # calculate_helicities,
     get_dft_energy,
     # get_dft_strain,
     get_pore_angle,
@@ -190,14 +190,14 @@ def main():
             ] = get_dft_energy(name, opt_dmso_txt)
 
             if prefix in ("cis", "trans", "m2"):
-                helicity = calculate_helicities(
-                    molecule=molecule,
-                    name=name,
-                    calc_dir=_cd,
-                )
-                structure_results[name]["min_heli"] = min(helicity)
-                structure_results[name]["avg_heli"] = sum(helicity) / 4
-                structure_results[name]["max_heli"] = max(helicity)
+                # helicity = calculate_helicities(
+                #     molecule=molecule,
+                #     name=name,
+                #     calc_dir=_cd,
+                # )
+                # structure_results[name]["min_heli"] = min(helicity)
+                # structure_results[name]["avg_heli"] = sum(helicity) / 4
+                # structure_results[name]["max_heli"] = max(helicity)
 
                 structure_results[name]["pore_angle"] = get_pore_angle(
                     molecule=molecule,
@@ -246,21 +246,21 @@ def main():
         yproperty="xtb_lig_strain_au",
         ignore_topos=("m4", "m3", "m12", "m24", "m30", "trans"),
     )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="cage_ahel",
-        yproperty="avg_heli",
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="cage_mahel",
-        yproperty="max_heli",
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="cage_mihel",
-        yproperty="min_heli",
-    )
+    # plotting.plot_property(
+    #     results_dict=structure_results,
+    #     outname="cage_ahel",
+    #     yproperty="avg_heli",
+    # )
+    # plotting.plot_property(
+    #     results_dict=structure_results,
+    #     outname="cage_mahel",
+    #     yproperty="max_heli",
+    # )
+    # plotting.plot_property(
+    #     results_dict=structure_results,
+    #     outname="cage_mihel",
+    #     yproperty="min_heli",
+    # )
     plotting.plot_property(
         results_dict=structure_results,
         outname="cage_poreangle",
