@@ -32,6 +32,7 @@ from utilities import (
     calculate_NN_distance,
     calculate_NN_BCN_angles,
     calculate_NCCN_dihedral,
+    get_furthest_pair_FGs,
 )
 
 
@@ -208,9 +209,8 @@ def conformer_generation_uff(
             functional_groups=[AromaticCNCFactory()],
         )
         # Only get two FGs.
-        new_mol = bbprep.FurthestFGs().modify(
-            building_block=new_mol,
-            desired_functional_groups=2,
+        new_mol = new_mol.with_functional_groups(
+            functional_groups=get_furthest_pair_FGs(new_mol),
         )
 
         new_mol = stko.UFF().optimize(mol=new_mol)

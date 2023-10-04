@@ -15,7 +15,6 @@ import sys
 import os
 import json
 import stk
-import bbprep
 
 from env_set import cage_path, calc_path, liga_path, project_path
 from utilities import (
@@ -24,6 +23,7 @@ from utilities import (
     AromaticCNCFactory,
     get_xtb_strain,
     # calculate_helicities,
+    get_furthest_pair_FGs,
     get_dft_energy,
     # get_dft_strain,
     get_pore_angle,
@@ -61,9 +61,8 @@ def main():
     }
 
     ligands = {
-        i: bbprep.FurthestFGs().modify(
-            building_block=ligands[i],
-            desired_functional_groups=2,
+        i: ligands[i].with_functional_groups(
+            functional_groups=get_furthest_pair_FGs(ligands[i])
         )
         for i in ligands
     }

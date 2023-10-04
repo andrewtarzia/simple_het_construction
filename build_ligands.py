@@ -14,7 +14,6 @@ import sys
 import os
 import stk
 import stko
-import bbprep
 from rdkit.Chem import AllChem as rdkit
 from rdkit.Chem import Draw
 
@@ -23,6 +22,7 @@ from utilities import (
     AromaticCNCFactory,
     update_from_rdkit_conf,
     calculate_N_centroid_N_angle,
+    get_furthest_pair_FGs,
     get_xtb_energy,
 )
 
@@ -76,9 +76,8 @@ def select_conformer_xtb(molecule, name, lowe_output, calc_dir):
             functional_groups=[AromaticCNCFactory()],
         )
         # Only get two FGs.
-        new_mol = bbprep.FurthestFGs().modify(
-            building_block=new_mol,
-            desired_functional_groups=2,
+        new_mol = new_mol.with_functional_groups(
+            functional_groups=get_furthest_pair_FGs(new_mol),
         )
         if os.path.exists(conf_opt_file_name):
             new_mol = new_mol.with_structure_from_file(
@@ -227,10 +226,6 @@ def main():
         unopt_mol = stk.BuildingBlock(
             smiles=lsmiles[lig],
             functional_groups=(AromaticCNCFactory(),),
-        )
-        unopt_mol = bbprep.FurthestFGs().modify(
-            building_block=unopt_mol,
-            desired_functional_groups=2,
         )
         unopt_mol.write(unopt_file)
 

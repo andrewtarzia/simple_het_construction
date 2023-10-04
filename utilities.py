@@ -11,6 +11,7 @@ Author: Andrew Tarzia
 
 import logging
 import os
+from itertools import combinations
 import stk
 import stko
 import numpy as np
@@ -981,3 +982,31 @@ def get_mm_distance(molecule, metal_atom_num):
     )
 
     return float(distance)
+
+
+def get_furthest_pair_FGs(stk_mol):
+    """
+    Returns the pair of functional groups that are furthest apart.
+
+    """
+
+    if stk_mol.get_num_functional_groups() == 2:
+        return tuple(i for i in stk_mol.get_functional_groups())
+    elif stk_mol.get_num_functional_groups() < 2:
+        raise ValueError(f"{stk_mol} does not have at least 2 FGs")
+
+    fg_centroids = [
+        (fg, stk_mol.get_centroid(atom_ids=fg.get_placer_ids()))
+        for fg in stk_mol.get_functional_groups()
+    ]
+
+    fg_dists = sorted(
+        [
+            (i[0], j[0], euclidean(i[1], j[1]))
+            for i, j in combinations(fg_centroids, 2)
+        ],
+        key=lambda x: x[2],
+        reverse=True,
+    )
+
+    return (fg_dists[0][0], fg_dists[0][1])
