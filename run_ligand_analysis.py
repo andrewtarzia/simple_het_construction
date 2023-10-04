@@ -15,12 +15,10 @@ import os
 import json
 import stk
 import stko
-import bbprep
 import numpy as np
 from rdkit.Chem import AllChem as rdkit
 import itertools
 import math
-
 
 from build_ligands import ligand_smiles
 from env_set import liga_path, calc_path
@@ -96,28 +94,6 @@ def test_N_N_lengths(large_c_dict, small_c_dict):
             f"large NN ({large_NN_distance}) < small NN "
             f"({small_NN_distance}) distance"
         )
-
-
-def test_converging_angles(large_c_dict):
-    raise NotImplementedError("I do not think this works")
-    # 180 - angle, to make it the angle toward the binding interaction.
-    # E.g. To become internal angle of trapezoid.
-    l_angle1 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    l_angle2 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN2"]
-    if l_angle1 > 90 or l_angle2 > 90:
-        return False
-    return True
-
-
-def test_diverging_angles(small_c_dict):
-    raise NotImplementedError("I do not think this works")
-    # 180 - angle, to make it the angle toward the binding interaction.
-    # E.g. To become internal angle of trapezoid.
-    s_angle1 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    s_angle2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
-    if s_angle1 < 90 or s_angle2 < 90:
-        return False
-    return True
 
 
 def get_gs_cutoff(
@@ -234,128 +210,6 @@ def conformer_generation_uff(
         json.dump(lig_conf_data, f)
 
 
-def conformer_generation_scan(molecule, name, conf_data_file):
-    """
-    Build a large conformer ensemble with bbprep scan.
-
-    """
-
-    name_to_smarts = {
-        "l1": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "l2": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "l3": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "la": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "lb": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "lc": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "ld": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "ll1": (
-            "[#7X2]@[#6X3]@[#6X3H0]-!@[#6X2H0]#[#6X2H0]-!@[#6X3H0]@[#6X3]",
-            7,
-            (1, 2, 5, 6),
-        ),
-        "ls": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "ll2": (
-            "[#6X3H0]@[#6X3H0]-!@[#6X2H0]#[#6X2H0]-!@[#6X3H0]@[#6X3]",
-            6,
-            (0, 1, 4, 5),
-        ),
-        "e1": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "e2": (
-            "[#7X2]@[#6X3]@[#6X3H0]-!@[#6X2H0]#[#6X2H0]-!@[#6X3H0]@[#6X3]",
-            7,
-            (1, 2, 5, 6),
-        ),
-        "e3": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "e4": (
-            (
-                "[#7X2]@[#6X3]@[#6X3]@[#6X3H0]-!@[#6X2H0]#[#6X2H0]-"
-                "!@[#6X3H0]@[#6X3]"
-            ),
-            8,
-            (2, 3, 6, 7),
-        ),
-        "e5": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "e6": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "e7": (
-            (
-                "[#7X2]@[#6X3]@[#6X3]@[#6X3H0]-!@[#6X2H0]#[#6X2H0]-"
-                "!@[#6X3H0]@[#6X3]"
-            ),
-            8,
-            (2, 3, 6, 7),
-        ),
-        "e8": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "e9": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "e10": (
-            "[#7X2]@[#6X3]@[#6X3H0]-!@[#6X2H0]#[#6X2H0]-!@[#6X3H0]@[#6X3]",
-            7,
-            (1, 2, 5, 6),
-        ),
-        "e11": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "e12": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "e13": (
-            "[#7X2]@[#6X3]@[#6X3H0]~[#7X3][#6X3]",
-            5,
-            (1, 2, 3, 4),
-        ),
-        "e14": (
-            "[#7X2]@[#6X3]@[#6X3H0]-!@[#6X2H0]#[#6X2H0]-!@[#6X3H0]@[#6X3]",
-            7,
-            (1, 2, 5, 6),
-        ),
-        "e15": ("[#8]=[#6X3][#7X3H1][#6]", 4, (0, 1, 2, 3)),
-        "e16": ("[#6X3]@[#6X3H0]-!@[#6X3H0]@[#6X3]", 4, (0, 1, 2, 3)),
-        "e17": (
-            "[#6X3H0]@[#6X3H0]-!@[#6X2H0]#[#6X2H0]-!@[#6X3H0]@[#6X3]",
-            6,
-            (0, 1, 4, 5),
-        ),
-        "e18": (
-            (
-                "[#7X2]@[#6X3]@[#6X3]@[#6X3H0]-!@[#6X2H0]#[#6X2H0]-"
-                "!@[#6X3H0]@[#6X3]"
-            ),
-            8,
-            (2, 3, 6, 7),
-        ),
-    }
-
-    lig_conf_data = {}
-    logging.info(f"building conformer ensemble of {name}")
-    generator = bbprep.generators.TorsionScanner(
-        target_torsions=bbprep.generators.TargetTorsion(
-            smarts=name_to_smarts[name][0],
-            expected_num_atoms=name_to_smarts[name][1],
-            torsion_ids=name_to_smarts[name][2],
-        ),
-        angle_range=range(0, 362, 5),
-    )
-    ensemble = generator.generate_conformers(molecule)
-    logging.info(f"{ensemble} generated for {name}")
-    if ensemble.get_num_conformers() < 2:
-        raise ValueError(f"Torsions unscanned in {name}")
-    num_confs = 0
-    for conformer in ensemble.yield_conformers():
-        aligned_ = conformer.molecule.with_centroid(np.array((0, 0, 0)))
-        aligned_ = aligned_.with_rotation_between_vectors(
-            start=aligned_.get_direction(),
-            target=np.array((1, 0, 0)),
-            origin=aligned_.get_centroid(),
-        )
-        energy = stko.UFFEnergy().get_energy(aligned_)
-        lig_conf_data[conformer.conformer_id] = {
-            "NcentroidN_angle": calculate_N_centroid_N_angle(aligned_),
-            "NCCN_dihedral": abs(calculate_NCCN_dihedral(aligned_)),
-            "NN_distance": calculate_NN_distance(aligned_),
-            "NN_BCN_angles": calculate_NN_BCN_angles(aligned_),
-            "UFFEnergy;kj/mol": energy * 4.184,
-        }
-        num_confs += 1
-
-    with open(conf_data_file, "w") as f:
-        json.dump(lig_conf_data, f)
-
-
 def main():
     if not len(sys.argv) == 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
@@ -380,19 +234,12 @@ def main():
 
     lsmiles = ligand_smiles()
     for lig in lsmiles:
-        unopt_file = _wd / f"{lig}_unopt.mol"
         lowe_file = _wd / f"{lig}_lowe.mol"
         confuff_data_file = _wd / f"{lig}_conf_uff_data.json"
-        systconf_data_file = _wd / f"{lig}_scan_data.json"
         unopt_mol = stk.BuildingBlock(
             smiles=lsmiles[lig],
             functional_groups=(AromaticCNCFactory(),),
         )
-        unopt_mol = bbprep.FurthestFGs().modify(
-            building_block=unopt_mol,
-            desired_functional_groups=2,
-        )
-        unopt_mol.write(unopt_file)
 
         if not os.path.exists(confuff_data_file):
             conformer_generation_uff(
@@ -401,13 +248,6 @@ def main():
                 lowe_output=lowe_file,
                 conf_data_file=confuff_data_file,
                 calc_dir=_cd,
-            )
-
-        if not os.path.exists(systconf_data_file):
-            conformer_generation_scan(
-                molecule=unopt_mol,
-                name=lig,
-                conf_data_file=systconf_data_file,
             )
 
     experimental_ligand_outcomes = {
@@ -448,15 +288,10 @@ def main():
         ("l3", "ld"),
     ] + list(experimental_ligand_outcomes.keys())
 
-    # res_file = os.path.join(_wd, "all_ligand_res.json")
-    # pair_file = os.path.join(_wd, "all_pair_res.json")
-    # conf_data_suffix = "conf_uff_data"
-    # figure_prefix = "etkdg"
-
-    res_file = os.path.join(_wd, "scan_ligand_res.json")
-    pair_file = os.path.join(_wd, "scan_pair_res.json")
-    conf_data_suffix = "scan_data"
-    figure_prefix = "scan"
+    res_file = os.path.join(_wd, "all_ligand_res.json")
+    pair_file = os.path.join(_wd, "all_pair_res.json")
+    conf_data_suffix = "conf_uff_data"
+    figure_prefix = "etkdg"
 
     structure_results = {}
     if os.path.exists(res_file):
@@ -535,7 +370,7 @@ def main():
                 small_c_dict = small_l_dict[small_cid]
 
                 # Check lengths.
-                swapped_LS = False
+                # swapped_LS = False
                 # try:
                 #     test_N_N_lengths(
                 #         large_c_dict=large_c_dict,
@@ -577,25 +412,25 @@ def main():
                     or large_strain > strain_cutoff
                 ):
                     continue
-                total_strain = large_strain + small_strain
+                # total_strain = large_strain + small_strain
 
                 min_geom_score = min((geom_score, min_geom_score))
                 pair_info[pair_name][cid_name] = {
                     "geom_score": geom_score,
-                    "swapped_LS": swapped_LS,
+                    # "swapped_LS": swapped_LS,
                     # "converging": converging,
                     # "diverging": diverging,
                     "large_dihedral": large_c_dict["NCCN_dihedral"],
                     "small_dihedral": small_c_dict["NCCN_dihedral"],
                     "angle_deviation": angle_dev,
                     "length_deviation": length_dev,
-                    "small_NCN_angle": small_c_dict["NcentroidN_angle"],
-                    "large_NCN_angle": large_c_dict["NcentroidN_angle"],
-                    "small_energy": small_energy,
-                    "large_energy": large_energy,
-                    "small_strain": small_strain,
-                    "large_strain": large_strain,
-                    "total_strain": total_strain,
+                    # "small_NCN_angle": small_c_dict["NcentroidN_angle"],
+                    # "large_NCN_angle": large_c_dict["NcentroidN_angle"],
+                    # "small_energy": small_energy,
+                    # "large_energy": large_energy,
+                    # "small_strain": small_strain,
+                    # "large_strain": large_strain,
+                    # "total_strain": total_strain,
                 }
             min_geom_scores[pair_name] = round(min_geom_score, 2)
 
