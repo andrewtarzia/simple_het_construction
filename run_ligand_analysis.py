@@ -20,7 +20,7 @@ import numpy as np
 from rdkit.Chem import AllChem as rdkit
 import itertools
 import math
-
+import rmsd
 
 from build_ligands import ligand_smiles
 from env_set import liga_path, calc_path
@@ -95,28 +95,6 @@ def test_N_N_lengths(large_c_dict, small_c_dict):
             f"large NN ({large_NN_distance}) < small NN "
             f"({small_NN_distance}) distance"
         )
-
-
-def test_converging_angles(large_c_dict):
-    raise NotImplementedError("I do not think this works")
-    # 180 - angle, to make it the angle toward the binding interaction.
-    # E.g. To become internal angle of trapezoid.
-    l_angle1 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    l_angle2 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN2"]
-    if l_angle1 > 90 or l_angle2 > 90:
-        return False
-    return True
-
-
-def test_diverging_angles(small_c_dict):
-    raise NotImplementedError("I do not think this works")
-    # 180 - angle, to make it the angle toward the binding interaction.
-    # E.g. To become internal angle of trapezoid.
-    s_angle1 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    s_angle2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
-    if s_angle1 < 90 or s_angle2 < 90:
-        return False
-    return True
 
 
 def get_gs_cutoff(
@@ -234,7 +212,9 @@ def conformer_generation_uff(
         json.dump(lig_conf_data, f)
 
 
-def conformer_generation_scan(molecule, name, conf_data_file):
+def conformer_generation_scan(
+    molecule, name, conf_data_file, dihedral_cutoff, calc_dir
+):
     """
     Build a large conformer ensemble with bbprep scan.
 
@@ -328,21 +308,45 @@ def conformer_generation_scan(molecule, name, conf_data_file):
             expected_num_atoms=name_to_smarts[name][1],
             torsion_ids=name_to_smarts[name][2],
         ),
-        angle_range=range(0, 362, 5),
+        angle_range=range(0, 362, 10),
     )
     ensemble = generator.generate_conformers(molecule)
-    logging.info(f"{ensemble} generated for {name}")
+
     if ensemble.get_num_conformers() < 2:
         raise ValueError(f"Torsions unscanned in {name}")
-    num_confs = 0
+    logging.info(f"{ensemble} generated for {name}")
+
+    within_dihedral = []
     for conformer in ensemble.yield_conformers():
-        aligned_ = conformer.molecule.with_centroid(np.array((0, 0, 0)))
-        aligned_ = aligned_.with_rotation_between_vectors(
-            start=aligned_.get_direction(),
-            target=np.array((1, 0, 0)),
-            origin=aligned_.get_centroid(),
+        NCCN_dihedral = abs(calculate_NCCN_dihedral(conformer.molecule))
+        if NCCN_dihedral <= dihedral_cutoff:
+            within_dihedral.append(conformer)
+        conformer.molecule.write(
+            calc_dir / f"{name}_d_{conformer.conformer_id}.mol"
         )
+
+    logging.info(f"{len(within_dihedral)} within dihedral_cutoff for {name}")
+
+    rmsd_cutoff = 0.5
+    num_confs = 0
+    for i, conformer in enumerate(within_dihedral):
+        molecule = conformer.molecule.with_centroid(np.array((0, 0, 0)))
+        # Always save first one.
+        if i == 0:
+            first_pos_mat = molecule.get_position_matrix()
+            aligned_ = molecule.clone()
+        else:
+            current_pos_mat = molecule.get_position_matrix()
+            alignment = rmsd.kabsch(current_pos_mat, first_pos_mat)
+            aligned_pos_mat = np.dot(current_pos_mat, alignment)
+            aligned_ = molecule.with_position_matrix(aligned_pos_mat)
+
+            rmsd_comparison = rmsd.rmsd(aligned_pos_mat, first_pos_mat)
+            if rmsd_comparison < rmsd_cutoff:
+                continue
+
         energy = stko.UFFEnergy().get_energy(aligned_)
+        aligned_.write(calc_dir / f"{name}_s_{conformer.conformer_id}.mol")
         lig_conf_data[conformer.conformer_id] = {
             "NcentroidN_angle": calculate_N_centroid_N_angle(aligned_),
             "NCCN_dihedral": abs(calculate_NCCN_dihedral(aligned_)),
@@ -352,6 +356,9 @@ def conformer_generation_scan(molecule, name, conf_data_file):
         }
         num_confs += 1
 
+    logging.info(
+        f"{num_confs} within dihedral_cutoff and rmsd_cutoff for {name}"
+    )
     with open(conf_data_file, "w") as f:
         json.dump(lig_conf_data, f)
 
@@ -408,6 +415,8 @@ def main():
                 molecule=unopt_mol,
                 name=lig,
                 conf_data_file=systconf_data_file,
+                dihedral_cutoff=dihedral_cutoff,
+                calc_dir=_cd,
             )
 
     experimental_ligand_outcomes = {
@@ -535,7 +544,7 @@ def main():
                 small_c_dict = small_l_dict[small_cid]
 
                 # Check lengths.
-                swapped_LS = False
+                # swapped_LS = False
                 # try:
                 #     test_N_N_lengths(
                 #         large_c_dict=large_c_dict,
@@ -577,25 +586,25 @@ def main():
                     or large_strain > strain_cutoff
                 ):
                     continue
-                total_strain = large_strain + small_strain
+                # total_strain = large_strain + small_strain
 
                 min_geom_score = min((geom_score, min_geom_score))
                 pair_info[pair_name][cid_name] = {
                     "geom_score": geom_score,
-                    "swapped_LS": swapped_LS,
+                    # "swapped_LS": swapped_LS,
                     # "converging": converging,
                     # "diverging": diverging,
                     "large_dihedral": large_c_dict["NCCN_dihedral"],
                     "small_dihedral": small_c_dict["NCCN_dihedral"],
                     "angle_deviation": angle_dev,
                     "length_deviation": length_dev,
-                    "small_NCN_angle": small_c_dict["NcentroidN_angle"],
-                    "large_NCN_angle": large_c_dict["NcentroidN_angle"],
-                    "small_energy": small_energy,
-                    "large_energy": large_energy,
-                    "small_strain": small_strain,
-                    "large_strain": large_strain,
-                    "total_strain": total_strain,
+                    # "small_NCN_angle": small_c_dict["NcentroidN_angle"],
+                    # "large_NCN_angle": large_c_dict["NcentroidN_angle"],
+                    # "small_energy": small_energy,
+                    # "large_energy": large_energy,
+                    # "small_strain": small_strain,
+                    # "large_strain": large_strain,
+                    # "total_strain": total_strain,
                 }
             min_geom_scores[pair_name] = round(min_geom_score, 2)
 
