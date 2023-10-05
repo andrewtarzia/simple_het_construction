@@ -12,7 +12,7 @@ Author: Andrew Tarzia
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
-# from matplotlib.lines import Line2D
+from matplotlib.lines import Line2D
 import matplotlib
 import matplotlib as mpl
 
@@ -1922,11 +1922,16 @@ def plot_all_ligand_pairings(
     legend_elements = []
     for i in small_to_c:
         legend_elements.append(
-            Patch(
-                facecolor=small_to_c[i],
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
                 label=name_conversion()[i],
                 alpha=1.0,
-                edgecolor="k",
+                markerfacecolor=small_to_c[i],
+                markersize=10,
+                markeredgecolor="k",
             ),
         )
 
