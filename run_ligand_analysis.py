@@ -19,8 +19,8 @@ import numpy as np
 from rdkit.Chem import AllChem as rdkit
 import itertools
 import math
+import time
 
-from build_ligands import ligand_smiles
 from env_set import liga_path, calc_path
 import plotting
 from utilities import (
@@ -210,6 +210,80 @@ def conformer_generation_uff(
         json.dump(lig_conf_data, f)
 
 
+def ligand_smiles():
+    return {
+        # Diverging.
+        "l1": "C1=NC=CC(C2=CC=C3OC4C=CC(C5C=CN=CC=5)=CC=4C3=C2)=C1",
+        "l2": "C1=CC(=CC(=C1)C2=CC=NC=C2)C3=CC=NC=C3",
+        "l3": "C1=CN=CC=C1C2=CC=C(S2)C3=CC=NC=C3",
+        # Converging.
+        "la": (
+            "C1=CN=CC2C(C3=CC=C(C#CC4=CC5C6C=C(C#CC7=CC=C(C8=CC=CC9C=C"
+            "N=CC8=9)C=C7)C=CC=6OC=5C=C4)C=C3)=CC=CC1=2"
+        ),
+        "lb": (
+            "C1=CN=CC2C(C3=CC=C(C#CC4N=C(C#CC5=CC=C(C6=CC=CC7C=CN=CC6="
+            "7)C=C5)C=CC=4)C=C3)=CC=CC1=2"
+        ),
+        "lc": (
+            "C1C2=C(C(=CC=C2)C2C=CC(C#CC3=CC=CC(C#CC4C=CC(C5C6=C(C=CN="
+            "C6)C=CC=5)=CC=4)=C3)=CC=2)C=NC=1"
+        ),
+        "ld": (
+            "C1C2=C(C(=CC=C2)C2C=CC(C#CC3=CC=C(C#CC4C=CC(C5C6=C(C=CN=C"
+            "6)C=CC=5)=CC=4)S3)=CC=2)C=NC=1"
+        ),
+        # Experimental, but assembly tested.
+        "ll1": (
+            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
+        ),
+        "ls": (
+            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
+        ),
+        "ll2": (
+            "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
+            "CN=CC=5)=C4)=O)=C1)=CC=C2"
+        ),
+        # Experimental.
+        "e1": "N1C=C(C2=CC(C3C=CC=NC=3)=CC=C2)C=CC=1",
+        "e2": "C1C=CN=CC=1C#CC1C=CC=C(C#CC2C=CC=NC=2)C=1",
+        "e3": "N1=CC=C(C2=CC(C3=CC=NC=C3)=CC=C2)C=C1",
+        "e4": "C1=CC(C#CC2=CC(C#CC3=CC=NC=C3)=CC=C2)=CC=N1",
+        "e5": "C1C=NC=CC=1C1=CC=C(C2C=CN=CC=2)S1",
+        "e6": "C1N=CC=C(C2=CC=C(C3C=CN=CC=3)C=C2)C=1",
+        "e7": "C1N=CC=C(C#CC2C=CC(C#CC3=CC=NC=C3)=CC=2)C=1",
+        "e8": "C(OC)1=C(C2C=C(C3=CN=CC=C3OC)C=CC=2)C=NC=C1",
+        "e9": (
+            "C1C=C(C2C=CC(C#CC3C(C)=C(C#CC4C=CC(C5C=CN=CC=5)=CC=4)C=CC="
+            "3)=CC=2)C=CN=1"
+        ),
+        "e10": (
+            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
+        ),
+        "e11": "C1N=CC=CC=1C1=CC2=C(C3=C(C2(C)C)C=C(C2=CN=CC=C2)C=C3)C=C1",
+        "e12": "C1=CC=C(C2=CC3C(=O)C4C=C(C5=CN=CC=C5)C=CC=4C=3C=C2)C=N1",
+        "e13": (
+            "C1C=C(N2C(=O)C3=C(C=C4C(=C3)C3(C5=C(C4(C)CC3)C=C3C(C(N(C3="
+            "O)C3C=CC=NC=3)=O)=C5)C)C2=O)C=NC=1"
+        ),
+        "e14": (
+            "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1"
+        ),
+        "e15": "C1CCC(C(C1)NC(=O)C2=CC=NC=C2)NC(=O)C3=CC=NC=C3",
+        "e16": (
+            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
+        ),
+        "e17": (
+            "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
+            "CN=CC=5)=C4)=O)=C1)=CC=C2"
+        ),
+        "e18": (
+            "C1(=CC=NC=C1)C#CC1=CC2C3C=C(C#CC4=CC=NC=C4)C=CC=3C(OC)=C(O"
+            "C)C=2C=C1"
+        ),
+    }
+
+
 def main():
     if not len(sys.argv) == 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
@@ -242,12 +316,17 @@ def main():
         )
 
         if not os.path.exists(confuff_data_file):
+            st = time.time()
             conformer_generation_uff(
                 molecule=unopt_mol,
                 name=lig,
                 lowe_output=lowe_file,
                 conf_data_file=confuff_data_file,
                 calc_dir=_cd,
+            )
+            logging.info(
+                f"time taken for conf gen of {lig}: "
+                f"{round(time.time()-st, 2)}s"
             )
 
     experimental_ligand_outcomes = {
@@ -299,6 +378,7 @@ def main():
             structure_results = json.load(f)
     else:
         for ligand in ligand_smiles():
+            st = time.time()
             structure_results[ligand] = {}
             conf_data_file = _wd / f"{ligand}_{conf_data_suffix}.json"
             with open(conf_data_file, "r") as f:
@@ -329,6 +409,10 @@ def main():
                         yproperty=yprop,
                     )
 
+            logging.info(
+                f"time taken for getting struct results {lig}: "
+                f"{round(time.time()-st, 2)}s"
+            )
         with open(res_file, "w") as f:
             json.dump(structure_results, f, indent=4)
 
@@ -354,6 +438,7 @@ def main():
         min_geom_scores = {}
         for small_l, large_l in ligand_pairings:
             logging.info(f"analysing {small_l} and {large_l}")
+            st = time.time()
             min_geom_score = 1e24
             pair_name = ",".join((small_l, large_l))
             pair_info[pair_name] = {}
@@ -398,11 +483,6 @@ def main():
                 )
                 geom_score = abs(angle_dev - 1) + abs(length_dev - 1)
 
-                if pair_name == "e3,e2":
-                    print(cid_name, geom_score, length_dev, angle_dev)
-                    print(large_c_dict, small_c_dict)
-                    # input()
-
                 small_energy = small_l_dict[small_cid]["UFFEnergy;kj/mol"]
                 small_strain = small_energy - low_energy_values[small_l][1]
                 large_energy = large_l_dict[large_cid]["UFFEnergy;kj/mol"]
@@ -433,6 +513,13 @@ def main():
                     # "total_strain": total_strain,
                 }
             min_geom_scores[pair_name] = round(min_geom_score, 2)
+            ft = time.time()
+            logging.info(
+                f"time taken for pairing {small_l}, {large_l}: "
+                f"{round(1000*(ft-st), 2)}ms "
+                f"({round(1000*(ft-st)/len(pair_info[pair_name]), 2)}ms"
+                f" per pair) - {len(pair_info[pair_name])} pairs"
+            )
 
         logging.info(f"Min. geom scores for each pair:\n {min_geom_scores}")
 
