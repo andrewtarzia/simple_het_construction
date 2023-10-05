@@ -36,7 +36,7 @@ The library uses:
 # Usage for ligand-based modelling
 
 `run_ligand_analysis.py`:
-    `build_ligands.py` must be run first. Runs the ligand-based analysis (conformer generation and pairing).
+    Runs the ligand-based analysis (conformer generation and pairing).
 
 
 # Usage for cage modelling
