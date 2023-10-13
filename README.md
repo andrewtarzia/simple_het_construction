@@ -72,6 +72,3 @@ The library uses:
 
 `pywindow_module.py`:
     Defines a class for using `pyWindow`.
-
-`inflation.py`:
-    Defines a class for using `PoreMapper`.

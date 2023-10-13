@@ -2651,7 +2651,7 @@ def plot_all_exchange_reactions(all_rxns, outname):
         + name_conversion()[i.split("_")[2]]
         for i in all_rxns
     ]
-    print(x_names)
+
     plotted = 0
     for method in methods:
         if "gas" in method:
@@ -2667,6 +2667,13 @@ def plot_all_exchange_reactions(all_rxns, outname):
             else:
                 r_energy = float(method_rxn["lhs"]) - float(method_rxn["rhs"])
             r_energy = r_energy / int(method_rxn["lhs_stoich"])
+            namings = hs.split("_")
+            print(
+                method,
+                f"{namings[0]}-{name_conversion()[namings[1]]}-"
+                f"{name_conversion()[namings[2]]}",
+                r_energy,
+            )
             method_y_values.append(r_energy)
 
         ax.bar(
@@ -2717,7 +2724,7 @@ def plot_all_exchange_reactions_production(all_rxns, outname):
         for i in all_rxns
         if i in ("cis_l1_lb", "cis_l1_lc")
     ]
-    print(x_names)
+
     plotted = 0
     for method in methods:
         if "gas" in method:
@@ -2731,15 +2738,12 @@ def plot_all_exchange_reactions_production(all_rxns, outname):
             if hs not in ("cis_l1_lb", "cis_l1_lc"):
                 continue
 
-            print(hs)
             rxns = all_rxns[hs]
             method_rxn = rxns[method][0]
             r_energy = float(method_rxn["lhs"]) - float(method_rxn["rhs"])
             r_energy = r_energy / int(method_rxn["lhs_stoich"])
             method_y_values.append(r_energy)
 
-        print(x_positions)
-        print(method_y_values)
         ax.bar(
             x=[i + x_shift for i in x_positions],
             height=[i for i in method_y_values],

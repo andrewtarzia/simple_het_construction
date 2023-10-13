@@ -470,15 +470,6 @@ def get_organic_linkers(
     return org_lig, smiles_keys
 
 
-def get_organic_linker_atoms(cage, metal_atom_nos):
-
-    connected_graphs = decompose_cage(cage, metal_atom_nos)
-    for i, cg in enumerate(connected_graphs):
-        # Get atoms from nodes.
-        atoms = list(cg)
-        yield atoms
-
-
 def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
 
     if solvent is None:
@@ -524,22 +515,6 @@ def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
     return energy
 
 
-def read_xtb_energy(name, calc_dir):
-    raise SystemExit("handle solvent")
-    output_file = os.path.join(calc_dir, f"{name}_xtb.ey")
-    if os.path.exists(output_file):
-        with open(output_file, "r") as f:
-            lines = f.readlines()
-        for line in lines:
-            energy = float(line.rstrip())
-            break
-    else:
-        raise FileNotFoundError(f"{output_file} not found.")
-
-    # In a.u.
-    return energy
-
-
 def get_dft_energy(name, txt_file):
     with open(txt_file, "r") as f:
         lines = f.readlines()
@@ -552,16 +527,6 @@ def get_dft_energy(name, txt_file):
                 energy = float(number)
                 # kJmol-1
                 return energy
-
-
-def get_stoichiometry(topology_string):
-    return {
-        "m2": (4, 0),
-        "m3": (6, 0),
-        "m4": (8, 0),
-        "trans": (4, 0),
-        "cis": (2, 2),
-    }[topology_string]
 
 
 def name_parser(name):
@@ -667,10 +632,6 @@ def get_xtb_strain(
     with open(ls_file, "w") as f:
         json.dump(strain_energies, f, indent=4)
     return strain_energies
-
-
-def get_dft_strain(molecule, name, calc_dir):
-    raise NotImplementedError()
 
 
 def update_from_rdkit_conf(stk_mol, rdk_mol, conf_id):
@@ -903,49 +864,6 @@ def calculate_NCCN_dihedral(bb):
         pt3=C_centroids[1],
         pt4=N_positions[1],
     )
-
-
-def calculate_helicities(molecule, name, calc_dir):
-    raise NotImplementedError("This was not working properly!!!")
-
-    pos_mat = molecule.get_position_matrix()
-    n_bonds = {}
-    for bond in molecule.get_bonds():
-        atom1 = bond.get_atom1()
-        atom2 = bond.get_atom2()
-        if atom1.get_atomic_number() == 46 and atom2.get_atomic_number() == 7:
-            if atom2.get_id() not in n_bonds:
-                n_bonds[atom2.get_id()] = set()
-            n_bonds[atom2.get_id()].add(atom1.get_id())
-
-        if atom2.get_atomic_number() == 46 and atom1.get_atomic_number() == 7:
-            if atom1.get_id() in n_bonds:
-                raise ValueError(f"only one Pd bond per N atom! {bond}")
-            n_bonds[atom1.get_id()] = atom2.get_id()
-
-    helicities = []
-    for lig_atoms in get_organic_linker_atoms(
-        cage=molecule,
-        metal_atom_nos=(46,),
-    ):
-        pairs = []
-        for la in lig_atoms:
-            if la.get_id() in n_bonds:
-                pda = n_bonds[la.get_id()]
-                pairs.append((la.get_id(), pda))
-
-        dihedral = abs(
-            get_dihedral(
-                pt1=pos_mat[pairs[0][0]],
-                pt2=pos_mat[pairs[0][1]],
-                pt3=pos_mat[pairs[1][1]],
-                pt4=pos_mat[pairs[1][0]],
-            )
-        )
-
-        helicities.append(dihedral)
-
-    return helicities
 
 
 def get_pore_angle(molecule, metal_atom_num):
