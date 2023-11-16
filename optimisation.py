@@ -62,7 +62,6 @@ def optimisation_sequence(mol, name, charge, calc_dir):
         gulp2_mol = mol.with_structure_from_file(gulp2_output)
 
     if not os.path.exists(gulpmd_output):
-
         logging.info(f"UFF4MOF equilib MD of {name}")
         gulp_MD = stko.GulpUFFMDOptimizer(
             gulp_path=env_set.gulp_path(),
