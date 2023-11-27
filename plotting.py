@@ -359,7 +359,6 @@ def plot_all_geom_scores_mean(
         angle_scores = []
         length_scores = []
         for cid_pair in rdict:
-
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
                 or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
@@ -495,7 +494,6 @@ def plot_all_geom_scores_categ(
     strain_cutoff,
     experimental_ligand_outcomes,
 ):
-
     logging.info("plotting: plot_all_geom_scores_categorical")
 
     colour_map = {
@@ -691,7 +689,6 @@ def plot_all_geom_scores(
         min_length_score = 1e24
         min_angle_score = 1e24
         for cid_pair in rdict:
-
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
                 or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
@@ -1127,68 +1124,59 @@ def plot_conformer_props(
     outname,
     dihedral_cutoff,
     strain_cutoff,
-    experimental_ligand_outcomes,
     low_energy_values,
 ):
     logging.info("plotting: plot_conformer_props")
 
-    fig, ax = plt.subplots(figsize=(16, 5))
-
-    categories_num_confs = {}
-    categories_num_strain = {}
-    categories_num_dihedral = {}
+    fig, ax = plt.subplots(figsize=(8, 5))
 
     for ligand in structure_results:
+        if "e" in ligand:
+            continue
+        if "ll" in ligand:
+            continue
+        if "ls" in ligand:
+            continue
+        original_number = 500
         sres = structure_results[ligand]
+        after_rmsd = len(sres)
+
         low_energy = low_energy_values[ligand][1]
 
-        num_confs = 0
-        num_strain = 0
-        num_dihedral = 0
-
+        within_strain = {}
         for cid in sres:
-            num_confs += 1
             strain = sres[cid]["UFFEnergy;kj/mol"] - low_energy
-            dihedral = sres[cid]["NCCN_dihedral"]
+            if strain <= strain_cutoff:
+                within_strain[cid] = sres[cid]
+        after_strain = len(within_strain)
 
-            if strain > strain_cutoff:
-                continue
-            num_strain += 1
+        within_torsion = {}
+        for cid in within_strain:
+            dihedral = within_strain[cid]["NCCN_dihedral"]
+            if abs(dihedral) <= dihedral_cutoff:
+                within_torsion[cid] = within_strain[cid]
 
-            if abs(dihedral) > dihedral_cutoff:
-                continue
-            num_dihedral += 1
-
-        categories_num_confs[ligand] = num_confs
-        categories_num_strain[ligand] = num_strain
-        categories_num_dihedral[ligand] = num_dihedral
-
-    p = ax.bar(
-        categories_num_dihedral.keys(),
-        categories_num_dihedral.values(),
-        color="gold",
-        edgecolor="k",
-        lw=2,
-    )
-    ax.bar_label(
-        p,
-        labels=[
-            round((i / j) * 100, 1)
-            for i, j in zip(
-                categories_num_dihedral.values(),
-                categories_num_confs.values(),
-            )
-        ],
-        label_type="center",
-        padding=3,
-        fontsize=16,
-    )
-
+        after_torsion = len(within_torsion)
+        print(ligand, len(sres))
+        print(original_number, after_rmsd, after_strain, after_torsion)
+        if ligand in ("l1", "l2", "l3"):
+            c = "#26547C"
+        else:
+            c = "#FE6D73"
+        ax.plot(
+            [0, 1, 2, 3],
+            [original_number, after_rmsd, after_strain, after_torsion],
+            lw=2,
+            c=c,
+            marker="o",
+            markersize=8,
+            label=f"{name_conversion()[ligand]}-{after_torsion}",
+        )
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.set_ylabel("num. conformers", fontsize=16)
-
-    ax.set_xticks(range(len(categories_num_confs)))
-    ax.set_xticklabels(categories_num_confs.keys(), rotation=45)
+    ax.set_xticks([0, 1, 2, 3])
+    ax.set_xticklabels(["target", "RMSD", "strain", "torsion"])
+    ax.legend(fontsize=16)
 
     fig.tight_layout()
     fig.savefig(
@@ -1251,6 +1239,8 @@ def plot_all_ligand_pairings(
             all_xs.append(rdict["angle_deviation"])
             all_ys.append(rdict["length_deviation"])
 
+        print(pair_name, len(all_xs), len(all_ys))
+
         if len(all_ys) != 0:
             ax.scatter(
                 all_xs,
@@ -1297,7 +1287,6 @@ def plot_all_ligand_pairings(
 
 
 def plot_ligand_pairing(results_dict, dihedral_cutoff, strain_cutoff, outname):
-
     name = outname.replace(".png", "")
     logging.info(f"plotting: plot_ligand_pairing of {name}")
 
@@ -1420,7 +1409,6 @@ def plot_single_distribution(
 
 
 def plot_vs_energy(results_dict, outname, yproperty):
-
     lab_prop = axes_labels(yproperty)
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -1473,7 +1461,6 @@ def plot_vs_energy(results_dict, outname, yproperty):
 
 
 def plot_property(results_dict, outname, yproperty, ignore_topos=None):
-
     if ignore_topos is None:
         ignore_topos = ()
 
@@ -1553,7 +1540,6 @@ def plot_property(results_dict, outname, yproperty, ignore_topos=None):
 
 
 def plot_qsqp(results_dict, outname, yproperty, ignore_topos=None):
-
     if ignore_topos is None:
         ignore_topos = ()
 
@@ -1664,7 +1650,6 @@ def plot_qsqp(results_dict, outname, yproperty, ignore_topos=None):
 
 
 def compare_cis_trans(results_dict, outname, yproperty):
-
     ignore_topos = ("m2", "m3", "m4", "m6", "m12", "m24", "m30")
 
     lab_prop = axes_labels(yproperty)
@@ -1778,7 +1763,6 @@ def method_c_map():
 
 
 def plot_exchange_reactions(rxns, outname):
-
     _, _, l1, l2 = outname.split("_")
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -1846,7 +1830,6 @@ def plot_exchange_reactions(rxns, outname):
 
 
 def plot_all_exchange_reactions(all_rxns, outname):
-
     fig, ax = plt.subplots(figsize=(8, 5))
     methods = method_c_map()
 
@@ -1916,7 +1899,6 @@ def plot_all_exchange_reactions(all_rxns, outname):
 
 
 def plot_all_exchange_reactions_production(all_rxns, outname):
-
     fig, ax = plt.subplots(figsize=(8, 5))
     methods = method_c_map()
 
@@ -1986,7 +1968,6 @@ def plot_all_exchange_reactions_production(all_rxns, outname):
 
 
 def plot_homoleptic_exchange_reactions(rxns, outname):
-
     fig, ax = plt.subplots(figsize=(8, 5))
     methods = method_c_map()
     for i, method in enumerate(methods):
@@ -2023,7 +2004,7 @@ def plot_homoleptic_exchange_reactions(rxns, outname):
         "relative energy / metal atom [kJ mol-1]",
         fontsize=16,
     )
-    ax.set_ylim(0, None)
+    ax.set_ylim(0, 200)
     # ax.axhline(y=0, lw=2, c="k", linestyle="--")
 
     ax.set_xticks([i[0] for i in x_values])
