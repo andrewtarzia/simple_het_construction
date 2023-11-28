@@ -367,7 +367,6 @@ def get_order_values(mol, metal, per_site=False):
 
 
 def decompose_cage(cage, metal_atom_nos):
-
     # Produce a graph from the cage that does not include metals.
     cage_g = nx.Graph()
     atom_ids_in_G = set()
@@ -471,7 +470,6 @@ def get_organic_linkers(
 
 
 def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
-
     if solvent is None:
         solvent_model = "alpb"
         solvent_str = None
@@ -552,7 +550,6 @@ def get_xtb_strain(
     exp_lig,
     solvent,
 ):
-
     ls_file = os.path.join(calc_dir, f"{name}_strain_xtb.json")
     if os.path.exists(ls_file):
         with open(ls_file, "r") as f:
@@ -867,7 +864,6 @@ def calculate_NCCN_dihedral(bb):
 
 
 def get_pore_angle(molecule, metal_atom_num):
-
     atom_ids = [
         i.get_id()
         for i in molecule.get_atoms()
@@ -884,7 +880,6 @@ def get_pore_angle(molecule, metal_atom_num):
 
 
 def get_mm_distance(molecule, metal_atom_num):
-
     atom_ids = [
         i.get_id()
         for i in molecule.get_atoms()

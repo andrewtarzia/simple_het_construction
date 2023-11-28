@@ -45,7 +45,6 @@ def vector_length():
 
 
 def get_test_1(large_c_dict, small_c_dict):
-
     # l_angle = (large_c_dict["NN_BCN_angles"]["NN_BCN1"] - 90) + (
     #     large_c_dict["NN_BCN_angles"]["NN_BCN2"] - 90
     # )
@@ -70,7 +69,6 @@ def get_test_1(large_c_dict, small_c_dict):
 
 
 def get_test_2(large_c_dict, small_c_dict):
-
     sNN_dist = small_c_dict["NN_distance"]
     lNN_dist = large_c_dict["NN_distance"]
     # 180 - angle, to make it the angle toward the binding interaction.
@@ -101,7 +99,6 @@ def get_gs_cutoff(
     dihedral_cutoff,
     experimental_ligand_outcomes,
 ):
-
     max_min_gs = 0
     for pair_name in results_dict:
         rdict = results_dict[pair_name]
@@ -123,7 +120,6 @@ def get_gs_cutoff(
 
         min_geom_score = 1e24
         for cid_pair in rdict:
-
             if (
                 abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
                 or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
@@ -523,6 +519,14 @@ def main():
         prefix=figure_prefix,
     )
     # Figure in manuscript.
+    plotting.plot_all_ligand_pairings_simplified(
+        results_dict=pair_info,
+        dihedral_cutoff=dihedral_cutoff,
+        length_score_cutoff=0.3,
+        angle_score_cutoff=0.3,
+        strain_cutoff=strain_cutoff,
+        outname=f"{figure_prefix}_all_lp_simpl.png",
+    )
     plotting.plot_all_ligand_pairings(
         results_dict=pair_info,
         dihedral_cutoff=dihedral_cutoff,
@@ -530,6 +534,14 @@ def main():
         angle_score_cutoff=0.3,
         strain_cutoff=strain_cutoff,
         outname=f"{figure_prefix}_all_lp.png",
+    )
+    plotting.plot_all_ligand_pairings_old(
+        results_dict=pair_info,
+        dihedral_cutoff=dihedral_cutoff,
+        length_score_cutoff=0.3,
+        angle_score_cutoff=0.3,
+        strain_cutoff=strain_cutoff,
+        outname=f"{figure_prefix}_all_lp_old.png",
     )
 
     # Figures in SI.
@@ -584,15 +596,6 @@ def main():
         dihedral_cutoff=dihedral_cutoff,
         outname=f"{figure_prefix}_gs_cutoff.png",
         experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
-
-    plotting.plot_conformer_props(
-        structure_results=structure_results,
-        outname=f"{figure_prefix}_conformer_properties.png",
-        dihedral_cutoff=dihedral_cutoff,
-        strain_cutoff=strain_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-        low_energy_values=low_energy_values,
     )
 
 

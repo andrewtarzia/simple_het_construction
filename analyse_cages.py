@@ -34,7 +34,6 @@ from topologies import ligand_cage_topologies, heteroleptic_cages
 
 
 def get_min_order_parameter(molecule):
-
     order_results = get_order_values(mol=molecule, metal=46)
     return order_results["sq_plan"]["min"]
 

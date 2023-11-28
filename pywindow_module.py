@@ -46,12 +46,9 @@ class PyWindow:
                     "pore_diameter_opt": (
                         mol.properties["pore_diameter_opt"]["diameter"]
                     ),
-                    "pore_volume_opt": (
-                        mol.properties["pore_volume_opt"]
-                    ),
+                    "pore_volume_opt": (mol.properties["pore_volume_opt"]),
                     "windows": tuple(
-                        i
-                        for i in mol.properties["windows"]["diameters"]
+                        i for i in mol.properties["windows"]["diameters"]
                     ),
                 }
                 mol.dump_molecule(
@@ -63,7 +60,6 @@ class PyWindow:
                 results = {
                     "pore_diameter_opt": 0,
                     "pore_volume_opt": 0,
-                    "windows": (),
                     "windows": (),
                 }
                 mol.dump_molecule(

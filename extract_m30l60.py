@@ -44,7 +44,6 @@ def extract_topo(struct, smarts, prefix, working_dir):
 
 
 def main():
-
     prefix = "1482268"
     _wd = xtal_path()
 
@@ -82,7 +81,6 @@ def main():
     )
 
     with open(str(_wd / f"{prefix}_tginfo.txt"), "w") as f:
-
         edges = topo_info.get_edge_pairs()
         edge_string = ""
         count_bonds = {}
@@ -122,8 +120,7 @@ def main():
             )
 
         bbdict = (
-            f"metal: {tuple(four_fg_ids)},\n"
-            f"ligand: {tuple(two_fg_ids)},\n"
+            f"metal: {tuple(four_fg_ids)},\n" f"ligand: {tuple(two_fg_ids)},\n"
         )
 
         f.write("bbdict:\n")
