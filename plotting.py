@@ -1187,6 +1187,43 @@ def plot_conformer_props(
     plt.close()
 
 
+def simple_beeswarm(y, nbins=None, width=1.0):
+    """
+    Returns x coordinates for the points in ``y``, so that plotting ``x`` and
+    ``y`` results in a bee swarm plot.
+    """
+    y = np.asarray(y)
+    if nbins is None:
+        # nbins = len(y) // 6
+        nbins = np.ceil(len(y) / 6).astype(int)
+
+    # Get upper bounds of bins
+    x = np.zeros(len(y))
+
+    nn, ybins = np.histogram(y, bins=nbins)
+    nmax = nn.max()
+
+    # Divide indices into bins
+    ibs = []  # np.nonzero((y>=ybins[0])*(y<=ybins[1]))[0]]
+    for ymin, ymax in zip(ybins[:-1], ybins[1:]):
+        i = np.nonzero((y > ymin) * (y <= ymax))[0]
+        ibs.append(i)
+
+    # Assign x indices
+    dx = width / (nmax // 2)
+    for i in ibs:
+        yy = y[i]
+        if len(i) > 1:
+            j = len(i) % 2
+            i = i[np.argsort(yy)]
+            a = i[j::2]
+            b = i[j + 1 :: 2]
+            x[a] = (0.5 + j / 3 + np.arange(len(b))) * dx
+            x[b] = (0.5 + j / 3 + np.arange(len(b))) * -dx
+
+    return x
+
+
 def plot_all_ligand_pairings_simplified(
     results_dict,
     dihedral_cutoff,
@@ -1324,34 +1361,58 @@ def plot_all_ligand_pairings(
     logging.info(f"plotting: plot_all_ligand_pairings of {name}")
 
     fig, axs = plt.subplots(
-        ncols=2, nrows=2, sharex=True, sharey=True, figsize=(8, 6)
+        ncols=4,
+        nrows=3,
+        sharex=True,
+        sharey=True,
+        figsize=(16, 10),
     )
+    flat_axs = axs.flatten()
 
-    xmin = ymin = 0
-    xmax = ymax = 2
+    # large_to_ax = {
+    #     "la": axs[0][0],
+    #     "lb": axs[0][1],
+    #     "lc": axs[1][0],
+    #     "ld": axs[1][1],
+    # }
+    # small_to_c = {
+    #     "l1": "#083D77",
+    #     "l2": "#FFC15E",
+    #     "l3": "#F56476",
+    # }
+    # small_to_x = {
+    #     "l1": 0,
+    #     "l2": 3,
+    #     "l3": 6,
+    # }
 
-    large_to_ax = {
-        "la": axs[0][0],
-        "lb": axs[0][1],
-        "lc": axs[1][0],
-        "ld": axs[1][1],
-    }
-    small_to_c = {
-        "l1": "#083D77",
-        "l2": "#FFC15E",
-        "l3": "#F56476",
-    }
+    # pair_to_x = {
+    #     ("l1", "la"): 0,
+    #     ("l1", "lb"): 1,
+    #     ("l1", "lc"): 2,
+    #     ("l1", "ld"): 3,
+    #     ("l2", "la"): 4,
+    #     ("l2", "lb"): 5,
+    #     ("l2", "lc"): 6,
+    #     ("l2", "ld"): 7,
+    #     ("l3", "la"): 8,
+    #     ("l3", "lb"): 9,
+    #     ("l3", "lc"): 10,
+    #     ("l3", "ld"): 11,
+    # }
 
-    for pair_name in results_dict:
+    for pair_name, ax in zip(results_dict, flat_axs):
         small_l, large_l = pair_name.split(",")
         if "e" in small_l or "e" in large_l:
             continue
-        ax = large_to_ax[large_l]
-        c = small_to_c[small_l]
-        ax.set_title(name_conversion()[large_l], fontsize=16)
 
-        all_xs = []
-        all_ys = []
+        ax.set_title(
+            f"{name_conversion()[small_l]}-{name_conversion()[large_l]}",
+            fontsize=16,
+        )
+        all_as = []
+        all_ls = []
+        all_gs = []
         for conf_pair in results_dict[pair_name]:
             rdict = results_dict[pair_name][conf_pair]
 
@@ -1361,16 +1422,133 @@ def plot_all_ligand_pairings(
             ):
                 continue
 
-            all_xs.append(rdict["angle_deviation"])
-            all_ys.append(rdict["length_deviation"])
+            all_as.append(abs(rdict["angle_deviation"] - 1))
+            all_ls.append(abs(rdict["length_deviation"] - 1))
+            all_gs.append(rdict["geom_score"])
 
-        print(pair_name, len(all_xs), len(all_ys))
+        print(pair_name, len(all_as), len(all_ls), len(all_gs))
 
-        if len(all_ys) != 0:
+        if len(all_as) != 0:
             ax.scatter(
-                all_xs,
-                all_ys,
-                c=c,
+                simple_beeswarm(all_as, width=0.4) + 0,
+                all_as,
+                c="#083D77",
+                s=30,
+                edgecolor="none",
+                alpha=1.0,
+            )
+            ax.scatter(
+                simple_beeswarm(all_ls, width=0.4) + 1,
+                all_ls,
+                c="#FFC15E",
+                s=30,
+                edgecolor="none",
+                alpha=1.0,
+            )
+            ax.scatter(
+                simple_beeswarm(all_gs, width=0.4) + 2,
+                all_gs,
+                c="#F56476",
+                s=30,
+                edgecolor="none",
+                alpha=1.0,
+            )
+            # ax.boxplot(
+            #     all_as,
+            #     widths=0.4,
+            #     showfliers=False,
+            #     showcaps=False,
+            #     positions=[0],
+            # )
+            # ax.boxplot(
+            #     all_ls,
+            #     widths=0.4,
+            #     showfliers=False,
+            #     showcaps=False,
+            #     positions=[1],
+            # )
+            # ax.boxplot(
+            #     all_gs,
+            #     widths=0.4,
+            #     showfliers=False,
+            #     showcaps=False,
+            #     positions=[2],
+            # )
+
+        ax.tick_params(axis="both", which="major", labelsize=16)
+        # ax.set_xlabel("$a$", fontsize=16)
+        ax.set_ylabel("deviation", fontsize=16)
+        ax.set_xlim(-0.5, 2.5)
+        ax.set_ylim(0, 1.6)
+        # ax.axhline(y=1, c="gray", lw=2, linestyle="--")
+        # ax.axvline(x=1, c="gray", lw=2, linestyle="--")
+
+        ax.set_xticks([0, 1, 2])
+        ax.set_xticklabels(["$a$", "$l$", "$g$"])
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_all_ligand_pairings_2dhist(
+    results_dict,
+    dihedral_cutoff,
+    length_score_cutoff,
+    angle_score_cutoff,
+    strain_cutoff,
+    outname,
+):
+    name = outname.replace(".png", "")
+    logging.info(f"plotting: plot_all_ligand_pairings of {name}")
+
+    fig, axs = plt.subplots(
+        ncols=4,
+        nrows=3,
+        sharex=True,
+        sharey=True,
+        figsize=(16, 10),
+    )
+    flat_axs = axs.flatten()
+
+    xmin = ymin = 0
+    xmax = ymax = 2
+
+    for pair_name, ax in zip(results_dict, flat_axs):
+        small_l, large_l = pair_name.split(",")
+        if "e" in small_l or "e" in large_l:
+            continue
+
+        ax.set_title(
+            f"{name_conversion()[small_l]}-{name_conversion()[large_l]}",
+            fontsize=16,
+        )
+        all_as = []
+        all_ls = []
+        for conf_pair in results_dict[pair_name]:
+            rdict = results_dict[pair_name][conf_pair]
+
+            if (
+                abs(rdict["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict["small_dihedral"]) > dihedral_cutoff
+            ):
+                continue
+
+            all_as.append(rdict["angle_deviation"])
+            all_ls.append(rdict["length_deviation"])
+
+        print(pair_name, len(all_as), len(all_ls))
+
+        if len(all_ls) != 0:
+            ax.scatter(
+                all_as,
+                all_ls,
+                c="#083D77",
+                alpha=0.2,
                 s=50,
                 edgecolor="k",
             )
@@ -1384,24 +1562,6 @@ def plot_all_ligand_pairings(
         ax.axhline(y=1, c="gray", lw=2, linestyle="--")
         ax.axvline(x=1, c="gray", lw=2, linestyle="--")
 
-    legend_elements = []
-    for i in small_to_c:
-        legend_elements.append(
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="w",
-                label=name_conversion()[i],
-                alpha=1.0,
-                markerfacecolor=small_to_c[i],
-                markersize=10,
-                markeredgecolor="k",
-            ),
-        )
-
-    axs[1][1].legend(handles=legend_elements, ncol=1, fontsize=16)
-
     fig.tight_layout()
     fig.savefig(
         os.path.join(figu_path(), f"{outname}"),
@@ -1409,6 +1569,7 @@ def plot_all_ligand_pairings(
         bbox_inches="tight",
     )
     plt.close()
+    raise SystemExit
 
 
 def plot_ligand_pairing(results_dict, dihedral_cutoff, strain_cutoff, outname):

@@ -535,13 +535,13 @@ def main():
         strain_cutoff=strain_cutoff,
         outname=f"{figure_prefix}_all_lp.png",
     )
-    plotting.plot_all_ligand_pairings_old(
+    plotting.plot_all_ligand_pairings_2dhist(
         results_dict=pair_info,
         dihedral_cutoff=dihedral_cutoff,
         length_score_cutoff=0.3,
         angle_score_cutoff=0.3,
         strain_cutoff=strain_cutoff,
-        outname=f"{figure_prefix}_all_lp_old.png",
+        outname=f"{figure_prefix}_all_lp_2dhist.png",
     )
 
     # Figures in SI.
