@@ -406,7 +406,7 @@ def main():
                     )
 
             logging.info(
-                f"time taken for getting struct results {lig}: "
+                f"time taken for getting struct results {ligand}: "
                 f"{round(time.time()-st, 2)}s"
             )
         with open(res_file, "w") as f:
@@ -506,42 +506,40 @@ def main():
         with open(pair_file, "w") as f:
             json.dump(pair_info, f, indent=4)
 
-    # Figure in manuscript.
-    plotting.gs_table(
+    plotting.plot_all_geom_scores_simplified(
         results_dict=pair_info,
+        outname=f"{figure_prefix}_all_pairs_simpl.png",
         dihedral_cutoff=dihedral_cutoff,
-        strain_cutoff=strain_cutoff,
+        experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
+
+    # Figure in manuscript.
+    plotting.gs_table(results_dict=pair_info, dihedral_cutoff=dihedral_cutoff)
     plotting.gs_table_plot(
         results_dict=pair_info,
         dihedral_cutoff=dihedral_cutoff,
-        strain_cutoff=strain_cutoff,
         prefix=figure_prefix,
     )
     # Figure in manuscript.
     plotting.plot_all_ligand_pairings_simplified(
         results_dict=pair_info,
         dihedral_cutoff=dihedral_cutoff,
-        length_score_cutoff=0.3,
-        angle_score_cutoff=0.3,
-        strain_cutoff=strain_cutoff,
-        outname=f"{figure_prefix}_all_lp_simpl.png",
+        outname=f"{figure_prefix}_all_lp_simpl.pdf",
     )
     plotting.plot_all_ligand_pairings(
         results_dict=pair_info,
         dihedral_cutoff=dihedral_cutoff,
-        length_score_cutoff=0.3,
-        angle_score_cutoff=0.3,
-        strain_cutoff=strain_cutoff,
         outname=f"{figure_prefix}_all_lp.png",
     )
     plotting.plot_all_ligand_pairings_2dhist(
         results_dict=pair_info,
         dihedral_cutoff=dihedral_cutoff,
-        length_score_cutoff=0.3,
-        angle_score_cutoff=0.3,
-        strain_cutoff=strain_cutoff,
         outname=f"{figure_prefix}_all_lp_2dhist.png",
+    )
+    plotting.plot_all_ligand_pairings_2dhist_fig5(
+        results_dict=pair_info,
+        dihedral_cutoff=dihedral_cutoff,
+        outname=f"{figure_prefix}_all_lp_2dhist_fig5.pdf",
     )
 
     # Figures in SI.
@@ -549,21 +547,18 @@ def main():
         results_dict=pair_info,
         outname=f"{figure_prefix}_all_pairs_categorical.png",
         dihedral_cutoff=dihedral_cutoff,
-        strain_cutoff=strain_cutoff,
         experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
     plotting.plot_all_geom_scores(
         results_dict=pair_info,
         outname=f"{figure_prefix}_all_pairs.png",
         dihedral_cutoff=dihedral_cutoff,
-        strain_cutoff=strain_cutoff,
         experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
     plotting.plot_all_geom_scores_mean(
         results_dict=pair_info,
         outname=f"{figure_prefix}_all_pairs_mean.png",
         dihedral_cutoff=dihedral_cutoff,
-        strain_cutoff=strain_cutoff,
         experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
 
@@ -573,7 +568,6 @@ def main():
         plotting.plot_ligand_pairing(
             results_dict=pair_info[pair_name],
             dihedral_cutoff=dihedral_cutoff,
-            strain_cutoff=strain_cutoff,
             outname=f"{figure_prefix}_lp_{small_l}_{large_l}.png",
         )
     raise SystemExit()
