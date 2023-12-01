@@ -1187,6 +1187,131 @@ def plot_conformer_props(
     plt.close()
 
 
+def plot_all_ligand_pairings_simplified(
+    results_dict,
+    dihedral_cutoff,
+    length_score_cutoff,
+    angle_score_cutoff,
+    strain_cutoff,
+    outname,
+):
+    name = outname.replace(".png", "")
+    logging.info(f"plotting: plot_all_ligand_pairings of {name}")
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    pair_to_x = {
+        ("l1", "la"): {"x": 0, "a": [], "l": [], "g": []},
+        ("l1", "lb"): {"x": 1, "a": [], "l": [], "g": []},
+        ("l1", "lc"): {"x": 2, "a": [], "l": [], "g": []},
+        ("l1", "ld"): {"x": 3, "a": [], "l": [], "g": []},
+        ("l2", "la"): {"x": 4, "a": [], "l": [], "g": []},
+        ("l2", "lb"): {"x": 5, "a": [], "l": [], "g": []},
+        ("l2", "lc"): {"x": 6, "a": [], "l": [], "g": []},
+        ("l2", "ld"): {"x": 7, "a": [], "l": [], "g": []},
+        ("l3", "la"): {"x": 8, "a": [], "l": [], "g": []},
+        ("l3", "lb"): {"x": 9, "a": [], "l": [], "g": []},
+        ("l3", "lc"): {"x": 10, "a": [], "l": [], "g": []},
+        ("l3", "ld"): {"x": 11, "a": [], "l": [], "g": []},
+    }
+    for pair_name in results_dict:
+        small_l, large_l = pair_name.split(",")
+        if "e" in small_l or "e" in large_l:
+            continue
+
+        for conf_pair in results_dict[pair_name]:
+            rdict = results_dict[pair_name][conf_pair]
+
+            if (
+                abs(rdict["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict["small_dihedral"]) > dihedral_cutoff
+            ):
+                continue
+
+            pair_to_x[(small_l, large_l)]["a"].append(
+                abs(rdict["angle_deviation"] - 1)
+            )
+            pair_to_x[(small_l, large_l)]["l"].append(
+                abs(rdict["length_deviation"] - 1)
+            )
+            pair_to_x[(small_l, large_l)]["g"].append(rdict["geom_score"])
+
+    width = 0.8
+    bottom = np.zeros(12)
+    for meas, c in zip(["a", "l", "g"], ["#083D77", "#F56476", "none"]):
+        # for meas, c in zip(["a", "l"], ["#083D77", "#F56476"]):
+        x = [pair_to_x[i]["x"] for i in pair_to_x]
+        y = [np.mean(pair_to_x[i][meas]) for i in pair_to_x]
+        # min_y = [min(pair_to_x[i][meas]) for i in pair_to_x]
+        # max_y = [max(pair_to_x[i][meas]) for i in pair_to_x]
+
+        if meas == "g":
+            ec = "k"
+            abottom = np.zeros(12)
+            # error = None
+        else:
+            ec = "w"
+            abottom = bottom
+            # error = np.array((min_y, max_y))
+
+        p = ax.bar(
+            x,
+            y,
+            # c=c,
+            # # s=20,
+            # marker="o",
+            # markersize=10,
+            # lw=2,
+            # alpha=1.0,
+            width,
+            # yerr=error,
+            label=f"${meas}$",
+            bottom=abottom,
+            color=c,
+            edgecolor=ec,
+            linewidth=2,
+        )
+        if meas != "g":
+            ax.bar_label(
+                p, label_type="center", color="w", fontsize=12, fmt="%.2f"
+            )
+        # ax.fill_between(
+        #     x,
+        #     y1=min_y,
+        #     y2=max_y,
+        #     color=c,
+        #     alpha=0.2,
+        # )
+        bottom += np.asarray(y)
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    # ax.set_xlabel("$a$", fontsize=16)
+    ax.set_ylabel("deviation", fontsize=16)
+    # ax.set_xlim(-0.5, 2.5)
+    ax.set_ylim(0, 1.6)
+    # ax.axhline(y=1, c="gray", lw=2, linestyle="--")
+    ax.axvline(x=3.5, c="gray", lw=2, linestyle="--")
+    ax.axvline(x=7.5, c="gray", lw=2, linestyle="--")
+    ax.text(x=1.2, y=1.5, s=name_conversion()["l1"], fontsize=16)
+    ax.text(x=5.2, y=1.5, s=name_conversion()["l2"], fontsize=16)
+    ax.text(x=9.2, y=1.5, s=name_conversion()["l3"], fontsize=16)
+
+    ax.set_xticks(range(0, 12))
+    ax.set_xticklabels(
+        [f"{name_conversion()[i[1]]}" for i in pair_to_x],
+        # rotation=20,
+    )
+
+    ax.legend(fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
 def plot_all_ligand_pairings(
     results_dict,
     dihedral_cutoff,
