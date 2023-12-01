@@ -397,13 +397,6 @@ def main():
                     outname=f"{figure_prefix}_d_{ligand}_{yprop}",
                     yproperty=yprop,
                 )
-                continue
-                if yprop != "xtb_dmsoenergy":
-                    plotting.plot_vs_energy(
-                        results_dict=structure_results[ligand],
-                        outname=f"{figure_prefix}_ve_{ligand}_{yprop}",
-                        yproperty=yprop,
-                    )
 
             logging.info(
                 f"time taken for getting struct results {ligand}: "
@@ -506,13 +499,6 @@ def main():
         with open(pair_file, "w") as f:
             json.dump(pair_info, f, indent=4)
 
-    plotting.plot_all_geom_scores_simplified(
-        results_dict=pair_info,
-        outname=f"{figure_prefix}_all_pairs_simpl.png",
-        dihedral_cutoff=dihedral_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
-
     # Figure in manuscript.
     plotting.gs_table(results_dict=pair_info, dihedral_cutoff=dihedral_cutoff)
     plotting.gs_table_plot(
@@ -543,6 +529,14 @@ def main():
     )
 
     # Figures in SI.
+    plotting.plot_all_geom_scores_simplified(
+        results_dict=pair_info,
+        outname=f"{figure_prefix}_all_pairs_simpl.png",
+        dihedral_cutoff=dihedral_cutoff,
+        experimental_ligand_outcomes=experimental_ligand_outcomes,
+    )
+
+    # Figures not in SI.
     plotting.plot_all_geom_scores_categ(
         results_dict=pair_info,
         outname=f"{figure_prefix}_all_pairs_categorical.png",
@@ -561,8 +555,6 @@ def main():
         dihedral_cutoff=dihedral_cutoff,
         experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
-
-    # Figures not in SI.
     for pair_name in pair_info:
         small_l, large_l = pair_name.split(",")
         plotting.plot_ligand_pairing(
