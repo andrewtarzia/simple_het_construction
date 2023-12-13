@@ -1859,6 +1859,222 @@ def plot_all_ligand_pairings_2dhist(
     plt.close()
 
 
+def plot_all_ligand_pairings_conformers(
+    results_dict,
+    structure_results,
+    dihedral_cutoff,
+    outname,
+):
+    logging.info("plotting: plot_all_ligand_pairings_conformers")
+
+    fig, axs = plt.subplots(
+        ncols=12,
+        nrows=1,
+        sharex=True,
+        sharey=True,
+        figsize=(16, 4),
+    )
+    flat_axs = axs.flatten()
+
+    lhs_anchor = (-1.5, 0)
+    rhs_anchor = (1.5, 0)
+
+    for pair_name, ax in zip(results_dict, flat_axs):
+        small_l, large_l = pair_name.split(",")
+        if "e" in small_l or "e" in large_l:
+            continue
+
+        ax.set_title(
+            f"{name_conversion()[small_l]}-{name_conversion()[large_l]}",
+            fontsize=16,
+        )
+        l_confs = {}
+        s_confs = {}
+        for conf_pair in results_dict[pair_name]:
+            rdict = results_dict[pair_name][conf_pair]
+            small_l, large_l = pair_name.split(",")
+            small_cid, large_cid = conf_pair.split(",")
+            if (
+                abs(rdict["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict["small_dihedral"]) > dihedral_cutoff
+            ):
+                continue
+
+            large_c_dict = structure_results[large_l][large_cid]
+            small_c_dict = structure_results[small_l][small_cid]
+            pd_length = 2.05
+
+            # 180 - angle, to make it the angle toward the binding interaction.
+            # E.g. To become internal angle of trapezoid.
+            s_angle1 = np.radians(
+                (180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]) - 90
+            )
+            s_angle2 = np.radians(
+                (180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]) - 90
+            )
+            l_angle1 = np.radians(
+                90 - (180 - large_c_dict["NN_BCN_angles"]["NN_BCN1"])
+            )
+            l_angle2 = np.radians(
+                90 - (180 - large_c_dict["NN_BCN_angles"]["NN_BCN2"])
+            )
+            l_confs[large_cid] = {
+                "N1": (
+                    lhs_anchor[0],
+                    lhs_anchor[1] + large_c_dict["NN_distance"] / 2,
+                ),
+                "N2": (
+                    lhs_anchor[0],
+                    lhs_anchor[1] - large_c_dict["NN_distance"] / 2,
+                ),
+                "B1": (
+                    lhs_anchor[0] + (pd_length * np.cos(l_angle1)),
+                    (lhs_anchor[1] + large_c_dict["NN_distance"] / 2)
+                    - (pd_length * np.sin(l_angle1)),
+                ),
+                "B2": (
+                    lhs_anchor[0] + (pd_length * np.cos(l_angle2)),
+                    (lhs_anchor[1] - large_c_dict["NN_distance"] / 2)
+                    + (pd_length * np.sin(l_angle2)),
+                ),
+            }
+            s_confs[large_cid] = {
+                "N1": (
+                    rhs_anchor[0],
+                    rhs_anchor[1] + small_c_dict["NN_distance"] / 2,
+                ),
+                "N2": (
+                    rhs_anchor[0],
+                    rhs_anchor[1] - small_c_dict["NN_distance"] / 2,
+                ),
+                "B1": (
+                    rhs_anchor[0] - (pd_length * np.cos(s_angle1)),
+                    (
+                        rhs_anchor[1]
+                        + small_c_dict["NN_distance"] / 2
+                        + (pd_length * np.sin(s_angle1))
+                    ),
+                ),
+                "B2": (
+                    rhs_anchor[0] - (pd_length * np.cos(s_angle2)),
+                    (rhs_anchor[1] - small_c_dict["NN_distance"] / 2)
+                    - (pd_length * np.sin(s_angle2)),
+                ),
+            }
+
+        print(large_l, l_confs.keys())
+        print(small_l, s_confs.keys())
+        for cid in l_confs:
+            ax.plot(
+                (l_confs[cid]["N1"][0], l_confs[cid]["N2"][0]),
+                (l_confs[cid]["N1"][1], l_confs[cid]["N2"][1]),
+                c="#374A67",
+                alpha=0.2,
+                # s=100,
+                lw=3,
+                marker="o",
+                markersize=6,
+                markeredgecolor="none",
+            )
+            ax.plot(
+                (l_confs[cid]["N1"][0], l_confs[cid]["B1"][0]),
+                (l_confs[cid]["N1"][1], l_confs[cid]["B1"][1]),
+                c="#374A67",
+                alpha=0.2,
+                # s=100,
+                lw=3,
+            )
+            ax.plot(
+                (l_confs[cid]["N2"][0], l_confs[cid]["B2"][0]),
+                (l_confs[cid]["N2"][1], l_confs[cid]["B2"][1]),
+                c="#374A67",
+                alpha=0.2,
+                # s=100,
+                lw=3,
+            )
+            # ax.scatter(
+            #     (l_confs[cid]["B1"][0], l_confs[cid]["B2"][0]),
+            #     (l_confs[cid]["B1"][1], l_confs[cid]["B2"][1]),
+            #     c="gold",
+            #     alpha=0.2,
+            #     s=100,
+            #     marker="X",
+            #     edgecolor="none",
+            # )
+
+        for cid in s_confs:
+            ax.plot(
+                (s_confs[cid]["N1"][0], s_confs[cid]["N2"][0]),
+                (s_confs[cid]["N1"][1], s_confs[cid]["N2"][1]),
+                c="#F0803C",
+                alpha=0.2,
+                # s=100,
+                lw=3,
+                marker="o",
+                markersize=6,
+                markeredgecolor="none",
+            )
+            ax.plot(
+                (s_confs[cid]["N1"][0], s_confs[cid]["B1"][0]),
+                (s_confs[cid]["N1"][1], s_confs[cid]["B1"][1]),
+                c="#F0803C",
+                alpha=0.2,
+                # s=100,
+                lw=3,
+            )
+            ax.plot(
+                (s_confs[cid]["N2"][0], s_confs[cid]["B2"][0]),
+                (s_confs[cid]["N2"][1], s_confs[cid]["B2"][1]),
+                c="#F0803C",
+                alpha=0.2,
+                # s=100,
+                lw=3,
+            )
+            # ax.scatter(
+            #     (s_confs[cid]["B1"][0], s_confs[cid]["B2"][0]),
+            #     (s_confs[cid]["B1"][1], s_confs[cid]["B2"][1]),
+            #     c="gold",
+            #     alpha=0.2,
+            #     s=100,
+            #     marker="X",
+            #     edgecolor="none",
+            # )
+
+    for ax in axs.flatten():
+        ax.tick_params(axis="both", which="major", labelsize=16)
+        ax.axis("off")
+        ax.set_xlim(-4, 4)
+        ax.set_ylim(-15, 15)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.scatter(
+            lhs_anchor[0],
+            lhs_anchor[1],
+            c="k",
+            alpha=1.0,
+            s=120,
+            edgecolor="w",
+            zorder=4,
+        )
+        ax.scatter(
+            rhs_anchor[0],
+            rhs_anchor[1],
+            c="k",
+            alpha=1.0,
+            s=120,
+            edgecolor="white",
+            zorder=4,
+        )
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
 def plot_all_ligand_pairings_2dhist_fig5(
     results_dict,
     dihedral_cutoff,

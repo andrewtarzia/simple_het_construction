@@ -68,7 +68,7 @@ def get_test_1(large_c_dict, small_c_dict):
     return interior_angles / 360
 
 
-def get_test_2(large_c_dict, small_c_dict):
+def get_test_2(large_c_dict, small_c_dict, pdn_distance):
     sNN_dist = small_c_dict["NN_distance"]
     lNN_dist = large_c_dict["NN_distance"]
     # 180 - angle, to make it the angle toward the binding interaction.
@@ -76,7 +76,7 @@ def get_test_2(large_c_dict, small_c_dict):
     s_angle1 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]
     s_angle2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
 
-    bonding_vector_length = 2 * vector_length()
+    bonding_vector_length = 2 * pdn_distance
     se1 = bonding_vector_length * np.sin(np.radians(s_angle1))
     se2 = bonding_vector_length * np.sin(np.radians(s_angle2))
 
@@ -453,6 +453,7 @@ def main():
                 length_dev = get_test_2(
                     large_c_dict=large_c_dict,
                     small_c_dict=small_c_dict,
+                    pdn_distance=vector_length(),
                 )
                 geom_score = abs(angle_dev - 1) + abs(length_dev - 1)
 
@@ -534,6 +535,12 @@ def main():
         outname=f"{figure_prefix}_all_pairs_simpl.png",
         dihedral_cutoff=dihedral_cutoff,
         experimental_ligand_outcomes=experimental_ligand_outcomes,
+    )
+    plotting.plot_all_ligand_pairings_conformers(
+        results_dict=pair_info,
+        structure_results=structure_results,
+        dihedral_cutoff=dihedral_cutoff,
+        outname=f"{figure_prefix}_all_lp_conformers.pdf",
     )
 
     # Figures not in SI.
