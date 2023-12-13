@@ -19,6 +19,7 @@ import os
 
 from env_set import figu_path
 from utilities import name_parser, name_conversion
+from run_ligand_analysis import vector_length
 
 
 def c_and_m_properties():
@@ -2073,6 +2074,7 @@ def plot_all_ligand_pairings_conformers(
         bbox_inches="tight",
     )
     plt.close()
+    raise SystemExit
 
 
 def plot_all_ligand_pairings_2dhist_fig5(
@@ -2907,3 +2909,83 @@ def plot_homoleptic_exchange_reactions(rxns, outname):
         bbox_inches="tight",
     )
     plt.close()
+
+
+def plot_pdntest(results_dict, dihedral_cutoff, outname):
+    name = outname.replace(".png", "")
+    logging.info(f"plotting: plot_pdntest of {name}")
+
+    pair_to_c = {
+        ("l1", "lb"): "#083D77",
+        ("l2", "lb"): "#FFC15E",
+        ("l3", "lb"): "#F56476",
+    }
+
+    fig, axs = plt.subplots(
+        ncols=2,
+        nrows=1,
+        sharex=True,
+        sharey=True,
+        figsize=(16, 5),
+    )
+
+    for pair in pair_to_c:
+        small_l, large_l = pair
+        pair_name = ",".join(pair)
+        if "e" in small_l or "e" in large_l:
+            continue
+
+        all_ls = {}
+        all_as = {}
+        for pdn in results_dict:
+            all_ls[pdn] = []
+            all_as[pdn] = []
+            rdict = results_dict[pdn]
+            for conf_pair in rdict[pair_name]:
+                cdict = rdict[pair_name][conf_pair]
+                if (
+                    abs(cdict["large_dihedral"]) > dihedral_cutoff
+                    or abs(cdict["small_dihedral"]) > dihedral_cutoff
+                ):
+                    continue
+
+                all_as[pdn].append(abs(cdict["angle_deviation"] - 1))
+                all_ls[pdn].append(abs(cdict["length_deviation"] - 1))
+
+        axs[0].plot(
+            [i for i in all_as],
+            [np.mean(all_as[i]) for i in all_as],
+            lw=3,
+            marker="o",
+            markersize=6,
+            c=pair_to_c[pair],
+            label=f"{name_conversion()[pair[0]]}-{name_conversion()[pair[1]]}",
+        )
+        axs[1].plot(
+            [i for i in all_ls],
+            [np.mean(all_ls[i]) for i in all_ls],
+            lw=3,
+            marker="o",
+            markersize=6,
+            c=pair_to_c[pair],
+            label=f"{name_conversion()[pair[0]]}-{name_conversion()[pair[1]]}",
+        )
+
+    axs[0].tick_params(axis="both", which="major", labelsize=16)
+    axs[0].set_xlabel(r"Pd-N distance [$\mathrm{\AA}$]", fontsize=16)
+    axs[0].set_ylabel("mean $a$", fontsize=16)
+    axs[0].axvline(x=vector_length(), c="gray", lw=2, linestyle="--")
+    axs[0].legend(fontsize=16)
+    axs[1].tick_params(axis="both", which="major", labelsize=16)
+    axs[1].set_xlabel(r"Pd-N distance [$\mathrm{\AA}$]", fontsize=16)
+    axs[1].set_ylabel("mean $l$", fontsize=16)
+    axs[1].axvline(x=vector_length(), c="gray", lw=2, linestyle="--")
+
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+    raise SystemExit
