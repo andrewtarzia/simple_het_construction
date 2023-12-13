@@ -2074,7 +2074,6 @@ def plot_all_ligand_pairings_conformers(
         bbox_inches="tight",
     )
     plt.close()
-    raise SystemExit
 
 
 def plot_all_ligand_pairings_2dhist_fig5(
