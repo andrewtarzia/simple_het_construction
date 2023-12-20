@@ -220,17 +220,6 @@ def main():
     )
     plotting.plot_property(
         results_dict=structure_results,
-        outname="cage_ops",
-        yproperty="min_order_param",
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="cage_xtb_strain",
-        yproperty="xtb_lig_strain_au",
-        ignore_topos=("m4", "m3", "m12", "m24", "m30", "trans"),
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
         outname="cage_poreangle",
         yproperty="pore_angle",
     )
@@ -239,83 +228,10 @@ def main():
         outname="cage_mm_distance",
         yproperty="mm_distance",
     )
-
     plotting.plot_property(
         results_dict=structure_results,
         outname="cage_pw_diameter",
         yproperty="pore_diameter_opt",
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="cage_xtb_strain",
-        yproperty="xtb_lig_strain_au",
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="het_cage_ops",
-        yproperty="min_order_param",
-        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="het_cage_pw_diameter",
-        yproperty="pore_diameter_opt",
-        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="het_cage_poreangle",
-        yproperty="pore_angle",
-        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="het_cage_mm_distance",
-        yproperty="mm_distance",
-        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="het_cage_xtb_strain",
-        yproperty="xtb_lig_strain_au",
-        ignore_topos=("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
-    )
-
-    plotting.compare_cis_trans(
-        results_dict=structure_results,
-        outname="hetcf_cage_xtb_strain",
-        yproperty="xtb_lig_strain_au",
-    )
-    plotting.compare_cis_trans(
-        results_dict=structure_results,
-        outname="hetcf_cage_pw_diameter",
-        yproperty="pore_diameter_opt",
-    )
-    plotting.compare_cis_trans(
-        results_dict=structure_results,
-        outname="hetcf_cage_xtb_solv_e",
-        yproperty="xtb_solv_opt_dmsoenergy_au",
-    )
-
-    plotting.compare_cis_trans(
-        results_dict=structure_results,
-        outname="hetcf_cage_dft_sp_gas_e",
-        yproperty="pbe0_def2svp_sp_gas_kjmol",
-    )
-    plotting.compare_cis_trans(
-        results_dict=structure_results,
-        outname="hetcf_cage_dft_sp_dmso_e",
-        yproperty="pbe0_def2svp_sp_dmso_kjmol",
-    )
-    plotting.compare_cis_trans(
-        results_dict=structure_results,
-        outname="hetcf_cage_dft_opt_gas_e",
-        yproperty="pbe0_def2svp_opt_gas_kjmol",
-    )
-    plotting.compare_cis_trans(
-        results_dict=structure_results,
-        outname="hetcf_cage_dft_opt_dmso_e",
-        yproperty="pbe0_def2svp_opt_dmso_kjmol",
     )
 
 
