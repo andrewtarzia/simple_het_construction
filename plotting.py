@@ -457,7 +457,6 @@ def plot_all_geom_scores_simplified(
         bbox_inches="tight",
     )
     plt.close()
-    raise SystemExit
 
 
 def plot_all_geom_scores_mean(
@@ -2173,7 +2172,6 @@ def plot_all_ligand_pairings_2dhist_fig5(
         bbox_inches="tight",
     )
     plt.close()
-    raise SystemExit
 
 
 def plot_ligand_pairing(results_dict, dihedral_cutoff, outname):
@@ -2537,6 +2535,7 @@ def plot_qsqp(results_dict, outname, yproperty, ignore_topos=None):
         bbox_inches="tight",
     )
     plt.close()
+
 
 def method_c_map():
     methods = {
@@ -2909,4 +2908,3 @@ def plot_pdntest(results_dict, dihedral_cutoff, outname):
         bbox_inches="tight",
     )
     plt.close()
-    raise SystemExit

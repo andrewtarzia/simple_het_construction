@@ -38,10 +38,8 @@ def vector_length():
     """
     Mean value of bond distance to use in candidate selection.
 
-    Ran with 2.05 from CSD survey.
-
     """
-    return 2.05
+    return 2.02
 
 
 def get_test_1(large_c_dict, small_c_dict):
