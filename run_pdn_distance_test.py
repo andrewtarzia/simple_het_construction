@@ -13,6 +13,7 @@ import logging
 import sys
 import json
 import itertools
+import numpy as np
 
 from env_set import liga_path, calc_path
 import plotting
@@ -49,30 +50,14 @@ def main():
 
     # Small, large.
     ligand_pairings = [("l1", "lb"), ("l2", "lb"), ("l3", "lb")]
-    pd_n_distances = [
-        1.95,
-        1.96,
-        1.97,
-        1.98,
-        1.99,
-        2.0,
-        2.01,
-        2.02,
-        2.03,
-        2.04,
-        2.05,
-        2.06,
-        2.07,
-        2.08,
-        2.09,
-        2.1,
-    ]
+    pd_n_distances = np.arange(1.8, 2.21, 0.01)
 
     conf_data_suffix = "conf_uff_data"
     figure_prefix = "pdntest"
 
     pd_results = {}
     for pdn in pd_n_distances:
+        logging.info(f"doing {pdn}...")
         structure_results = {}
         for ligand in ligand_smiles():
             structure_results[ligand] = {}
@@ -106,7 +91,6 @@ def main():
 
         pair_info = {}
         for small_l, large_l in ligand_pairings:
-            logging.info(f"analysing {small_l} and {large_l}")
             pair_name = ",".join((small_l, large_l))
             pair_info[pair_name] = {}
             small_l_dict = structure_results[small_l]
