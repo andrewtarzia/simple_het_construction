@@ -23,7 +23,6 @@ from utilities import (
     AromaticCNCFactory,
     get_xtb_strain,
     get_furthest_pair_FGs,
-    get_dft_energy,
     get_pore_angle,
     get_mm_distance,
 )
@@ -67,13 +66,6 @@ def main():
     _cd = calc_path()
     _ld = liga_path()
     _pd = project_path()
-
-    dft_data_dir = _pd / "vh_data" / "final_data_set_091023"
-    # These need to do be manually extracted from Excel files.
-    sp_gas_txt = dft_data_dir / "SP_Final_energies_no_solvent.txt"
-    sp_dmso_txt = dft_data_dir / "SP_Final_energies_DMSO.txt"
-    opt_gas_txt = dft_data_dir / "OPT_Final_energies_no_solvent.txt"
-    opt_dmso_txt = dft_data_dir / "OPT_Final_energies_DMSO.txt"
 
     property_dictionary = {
         "cis": {
@@ -153,36 +145,24 @@ def main():
             exp_lig = properties["exp_lig"]
             molecule = stk.BuildingBlock.init_from_file(s_file)
 
-            structure_results[name][
-                "xtb_solv_opt_gasenergy_au"
-            ] = get_xtb_energy(
-                molecule=molecule,
-                name=name,
-                charge=charge,
-                calc_dir=_cd,
-                solvent=None,
+            structure_results[name]["xtb_solv_opt_gasenergy_au"] = (
+                get_xtb_energy(
+                    molecule=molecule,
+                    name=name,
+                    charge=charge,
+                    calc_dir=_cd,
+                    solvent=None,
+                )
             )
-            structure_results[name][
-                "xtb_solv_opt_dmsoenergy_au"
-            ] = get_xtb_energy(
-                molecule=molecule,
-                name=name,
-                charge=charge,
-                calc_dir=_cd,
-                solvent="dmso",
+            structure_results[name]["xtb_solv_opt_dmsoenergy_au"] = (
+                get_xtb_energy(
+                    molecule=molecule,
+                    name=name,
+                    charge=charge,
+                    calc_dir=_cd,
+                    solvent="dmso",
+                )
             )
-            structure_results[name][
-                "pbe0_def2svp_sp_gas_kjmol"
-            ] = get_dft_energy(name, sp_gas_txt)
-            structure_results[name][
-                "pbe0_def2svp_sp_dmso_kjmol"
-            ] = get_dft_energy(name, sp_dmso_txt)
-            structure_results[name][
-                "pbe0_def2svp_opt_gas_kjmol"
-            ] = get_dft_energy(name, opt_gas_txt)
-            structure_results[name][
-                "pbe0_def2svp_opt_dmso_kjmol"
-            ] = get_dft_energy(name, opt_dmso_txt)
 
             if prefix in ("cis", "trans", "m2"):
                 structure_results[name]["pore_angle"] = get_pore_angle(
@@ -213,6 +193,10 @@ def main():
         with open(structure_res_file, "w") as f:
             json.dump(structure_results, f, indent=4)
 
+    plotting.plot_topo_energy(
+        results_dict=structure_results,
+        outname="main_topology_ey",
+    )
     plotting.plot_qsqp(
         results_dict=structure_results,
         outname="cage_qsqp",

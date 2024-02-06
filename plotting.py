@@ -2537,6 +2537,102 @@ def plot_qsqp(results_dict, outname, yproperty, ignore_topos=None):
     plt.close()
 
 
+def plot_topo_energy(results_dict, outname):
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    to_plot = {
+        "l1": {
+            "systems": (
+                "m2_l1",
+                "m3_l1",
+                "m4_l1",
+                "m6_l1",
+                "m12_l1",
+                "m24_l1",
+            ),
+        },
+        "l2": {
+            "systems": (
+                "m2_l2",
+                "m3_l2",
+                "m4_l2",
+                "m6_l2",
+                "m12_l2",
+                "m24_l2",
+            ),
+        },
+        "l3": {
+            "systems": (
+                "m2_l3",
+                "m3_l3",
+                "m4_l3",
+                "m6_l3",
+                "m12_l3",
+                "m24_l3",
+                "m30_l3",
+            ),
+        },
+    }
+
+    for ligand in to_plot:
+        x_position = 0
+        _x_names = []
+        dmso_values = []
+        for struct in to_plot[ligand]["systems"]:
+            topo, l1, l2 = name_parser(struct)
+            try:
+                s_values = results_dict[struct]
+            except KeyError:
+                continue
+
+            if len(s_values) == 0:
+                continue
+            x_position += 1
+
+            name = topo.upper()
+            num_metals = int(name.split("M")[-1])
+            _x_names.append((x_position, name))
+
+            dmso_energy = s_values["xtb_solv_opt_dmsoenergy_au"]
+            dmso_values.append((x_position, dmso_energy, num_metals))
+
+        print(dmso_values)
+        min_dmso = min([i[1] / i[2] for i in dmso_values])
+        print(min_dmso)
+
+        dmso_values = [
+            (i[0], ((i[1] / i[2]) - min_dmso) * 2625.5, i[2])
+            for i in dmso_values
+        ]
+        print(dmso_values)
+
+        ax.plot(
+            [i[0] for i in dmso_values],
+            [i[1] for i in dmso_values],
+            # markersize=8,
+            # marker="o",
+            lw=2,
+            label=name_conversion()[l1],
+        )
+
+        ax.tick_params(axis="both", which="major", labelsize=16)
+        ax.set_ylabel("total energy / Pd [kJmol$^{-1}$]", fontsize=16)
+
+        # ax.set_xlim((0, 1))
+        ax.set_ylim(0.0, None)
+        ax.set_xticks([i[0] for i in _x_names])
+        ax.set_xticklabels([i[1] for i in _x_names], rotation=0)
+
+    ax.legend(fontsize=16)
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}.pdf"),
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
 def method_c_map():
     methods = {
         "xtb_solv_opt_gasenergy_au": {

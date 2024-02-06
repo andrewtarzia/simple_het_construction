@@ -35,8 +35,8 @@ def heteroleptic_cages():
 def ligand_cage_topologies():
     return {
         "l1": ("m2", "m3", "m4", "m6", "m12", "m24"),
-        "l2": ("m12",),
-        "l3": ("m24", "m30"),
+        "l2": ("m2", "m3", "m4", "m6", "m12", "m24"),
+        "l3": ("m2", "m3", "m4", "m6", "m12", "m24", "m30"),
         "la": ("m2",),
         "lb": ("m2",),
         "lc": ("m2",),
