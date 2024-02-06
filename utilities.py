@@ -40,15 +40,9 @@ def name_conversion():
         "e16": "e16",
         "e13": "e13",
         "e18": "e18",
-        "e1": "e1",
-        "e3": "e3",
         "e10": "e10",
         "e14": "e14",
         "e17": "e17",
-        "e4": "e4",
-        "e6": "e6",
-        "e2": "e2",
-        "e9": "e9",
     }
 
 
@@ -552,8 +546,7 @@ def name_parser(name):
     return topo, ligand1, ligand2
 
 
-class UnexpectedNumLigands(Exception):
-    ...
+class UnexpectedNumLigands(Exception): ...
 
 
 def get_xtb_strain(

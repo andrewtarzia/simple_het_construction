@@ -11,6 +11,8 @@ Author: Andrew Tarzia
 
 import logging
 import sys
+from rdkit.Chem import Draw
+
 import os
 import json
 import stk
@@ -18,7 +20,6 @@ import stko
 import numpy as np
 from rdkit.Chem import AllChem as rdkit
 import itertools
-import math
 import time
 
 from env_set import liga_path, calc_path
@@ -90,52 +91,6 @@ def test_N_N_lengths(large_c_dict, small_c_dict):
             f"large NN ({large_NN_distance}) < small NN "
             f"({small_NN_distance}) distance"
         )
-
-
-def get_gs_cutoff(
-    results_dict,
-    dihedral_cutoff,
-    experimental_ligand_outcomes,
-):
-    max_min_gs = 0
-    for pair_name in results_dict:
-        rdict = results_dict[pair_name]
-
-        if "e" in pair_name:
-            ename = pair_name.split(",")
-            if (ename[0], ename[1]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[(ename[0], ename[1])]
-
-            elif (ename[1], ename[0]) in experimental_ligand_outcomes:
-                edata = experimental_ligand_outcomes[(ename[1], ename[0])]
-            else:
-                continue
-
-            if edata != "yes":
-                continue
-        else:
-            continue
-
-        min_geom_score = 1e24
-        for cid_pair in rdict:
-            if (
-                abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
-                or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
-            ):
-                continue
-
-            geom_score = rdict[cid_pair]["geom_score"]
-            if geom_score < min_geom_score:
-                min_geom_score = geom_score
-
-        max_min_gs = max([min_geom_score, max_min_gs])
-
-    return max_min_gs
-
-
-def round_up(n, decimals=0):
-    multiplier = 10**decimals
-    return math.ceil(n * multiplier) / multiplier
 
 
 def conformer_generation_uff(
@@ -227,30 +182,7 @@ def ligand_smiles():
             "C1C2=C(C(=CC=C2)C2C=CC(C#CC3=CC=C(C#CC4C=CC(C5C6=C(C=CN=C"
             "6)C=CC=5)=CC=4)S3)=CC=2)C=NC=1"
         ),
-        # Experimental, but assembly tested.
-        "ll1": (
-            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
-        ),
-        "ls": (
-            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
-        ),
-        "ll2": (
-            "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
-            "CN=CC=5)=C4)=O)=C1)=CC=C2"
-        ),
         # Experimental.
-        "e1": "N1C=C(C2=CC(C3C=CC=NC=3)=CC=C2)C=CC=1",
-        "e2": "C1C=CN=CC=1C#CC1C=CC=C(C#CC2C=CC=NC=2)C=1",
-        "e3": "N1=CC=C(C2=CC(C3=CC=NC=C3)=CC=C2)C=C1",
-        "e4": "C1=CC(C#CC2=CC(C#CC3=CC=NC=C3)=CC=C2)=CC=N1",
-        "e5": "C1C=NC=CC=1C1=CC=C(C2C=CN=CC=2)S1",
-        "e6": "C1N=CC=C(C2=CC=C(C3C=CN=CC=3)C=C2)C=1",
-        "e7": "C1N=CC=C(C#CC2C=CC(C#CC3=CC=NC=C3)=CC=2)C=1",
-        "e8": "C(OC)1=C(C2C=C(C3=CN=CC=C3OC)C=CC=2)C=NC=C1",
-        "e9": (
-            "C1C=C(C2C=CC(C#CC3C(C)=C(C#CC4C=CC(C5C=CN=CC=5)=CC=4)C=CC="
-            "3)=CC=2)C=CN=1"
-        ),
         "e10": (
             "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
         ),
@@ -263,7 +195,6 @@ def ligand_smiles():
         "e14": (
             "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1"
         ),
-        "e15": "C1CCC(C(C1)NC(=O)C2=CC=NC=C2)NC(=O)C3=CC=NC=C3",
         "e16": (
             "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
         ),
@@ -308,6 +239,8 @@ def main():
             smiles=lsmiles[lig],
             functional_groups=(AromaticCNCFactory(),),
         )
+        rdkit_mol = rdkit.MolFromSmiles(stk.Smiles().get_key(unopt_mol))
+        Draw.MolToFile(rdkit_mol, _wd / f"{lig}_2d.png", size=(300, 300))
 
         if not os.path.exists(confuff_data_file):
             st = time.time()
@@ -332,11 +265,6 @@ def main():
         ("e16", "e14"): "yes",
         ("e18", "e14"): "yes",
         ("e18", "e10"): "yes",
-        ("e1", "e3"): "no",
-        ("e1", "e4"): "no",
-        ("e3", "e2"): "no",
-        ("e1", "e6"): "no",
-        ("e3", "e9"): "no",
         ("e12", "e10"): "yes",
         ("e11", "e14"): "yes",
         ("e12", "e14"): "yes",
@@ -500,11 +428,7 @@ def main():
 
     # Figure in manuscript.
     plotting.gs_table(results_dict=pair_info, dihedral_cutoff=dihedral_cutoff)
-    plotting.gs_table_plot(
-        results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
-        prefix=figure_prefix,
-    )
+
     # Figure in manuscript.
     plotting.plot_all_ligand_pairings_simplified(
         results_dict=pair_info,
@@ -542,24 +466,6 @@ def main():
     )
 
     # Figures not in SI.
-    plotting.plot_all_geom_scores_categ(
-        results_dict=pair_info,
-        outname=f"{figure_prefix}_all_pairs_categorical.png",
-        dihedral_cutoff=dihedral_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
-    plotting.plot_all_geom_scores(
-        results_dict=pair_info,
-        outname=f"{figure_prefix}_all_pairs.png",
-        dihedral_cutoff=dihedral_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
-    plotting.plot_all_geom_scores_mean(
-        results_dict=pair_info,
-        outname=f"{figure_prefix}_all_pairs_mean.png",
-        dihedral_cutoff=dihedral_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
     for pair_name in pair_info:
         small_l, large_l = pair_name.split(",")
         plotting.plot_ligand_pairing(
@@ -567,27 +473,6 @@ def main():
             dihedral_cutoff=dihedral_cutoff,
             outname=f"{figure_prefix}_lp_{small_l}_{large_l}.png",
         )
-    raise SystemExit()
-
-    # Removed analysis based on the g_percent below threshold -
-    # over complicated and depends on prior knowledge.
-
-    # Get geoms core cutoff from the max, min geomscore in experimental
-    # successes.
-    geom_score_max = get_gs_cutoff(
-        results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
-    geom_score_cutoff = round_up(geom_score_max, 2)
-    logging.info(f"found a gs cutoff of: {geom_score_cutoff}")
-
-    plotting.plot_geom_scores_vs_threshold(
-        results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
-        outname=f"{figure_prefix}_gs_cutoff.png",
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
 
 
 if __name__ == "__main__":
