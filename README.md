@@ -11,23 +11,16 @@ I recommend installing the library with the following instructions and setting t
 
 The code can be installed following these steps:
 
-1. clone `simple_het_construction` from [here](https://github.com/andrewtarzia/simple_het_construction)
+1. clone the `submission` branch of `simple_het_construction` from [here](https://github.com/andrewtarzia/simple_het_construction)
 
 2. Create a `conda` or `mamba` environment:
- ```
- mamba create -n NAME python=3.9
- ```
-
-3. Install from `environment.yml``:
- ```
-mamba install openmm UPDATE
 ```
-or
-```
-conda install -c conda-forge openmm UPDATE
+conda env create -f environment.yml
 ```
 
-The library uses:
+3. Update directories in `env_set.py`
+
+For cage and ligand optimisation, this library uses:
 
 `Gulp (6.1)`: Follow the instructions to download and install [GULP](https://gulp.curtin.edu.au/gulp/help/manuals.cfm)
 
@@ -38,6 +31,14 @@ The library uses:
 `run_ligand_analysis.py`:
     Runs the ligand-based analysis (conformer generation and pairing).
 
+`analyse_csd_survey.py`:
+    This is a helper script for analysing the survery of Pd centres in the Cambridge Structural Database. The methods for extracting the data are not provided.
+
+`plot_conformer_numbers.py`:
+    Plots the number of conformers for each ligand at each stage of screening before performing ligand-based analysis.
+
+`run_pdn_distance_tests.py`:
+    Reruns some of the ligand-based analysis with varying Pd-N distances to see impact of this variable.
 
 # Usage for cage modelling
 
@@ -53,9 +54,6 @@ The library uses:
 `analyse_cages.py`:
     Obtains structural and energetic analysis for all cages. Produces plots.
 
-`analyse_exchange_reactions.py`:
-    Performs exchange reaction analysis based on cage energies. Produces plots.
-
 # Modules
 
 `utilities.py`:
@@ -68,7 +66,7 @@ The library uses:
     Defines the new topology graph for M30L60.
 
 `plotting.py`:
-    Utilities for plotting.
+    Utilities and functions for plotting.
 
 `pywindow_module.py`:
     Defines a class for using `pyWindow`.

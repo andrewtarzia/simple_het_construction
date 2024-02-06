@@ -2573,8 +2573,8 @@ def plot_topo_energy(results_dict, outname):
     ax.legend(fontsize=16)
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
-        dpi=720,
+        os.path.join(figu_path(), f"{outname}.png"),
+        dpi=360,
         bbox_inches="tight",
     )
     plt.close()
