@@ -2076,9 +2076,7 @@ def plot_all_ligand_pairings_conformers(
 
 
 def plot_all_ligand_pairings_2dhist_fig5(
-    results_dict,
-    dihedral_cutoff,
-    outname,
+    results_dict, dihedral_cutoff, outname
 ):
     name = outname.replace(".png", "")
     logging.info(f"plotting: plot_all_ligand_pairings of {name}")
@@ -2097,12 +2095,13 @@ def plot_all_ligand_pairings_2dhist_fig5(
     xmax = 1.6
     ymax = 1.6
 
-    targets = ("l1,lb", "l1,ld", "l2,lb")
-    short_results_dict = {
-        i: results_dict[i] for i in results_dict if i in targets
-    }
+    targets = (
+        "l1,lb",
+        "l2,lb",
+        "l1,la",
+    )
 
-    for pair_name, ax in zip(short_results_dict, flat_axs):
+    for pair_name, ax in zip(targets, flat_axs):
         small_l, large_l = pair_name.split(",")
         if "e" in small_l or "e" in large_l:
             continue
