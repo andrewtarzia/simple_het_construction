@@ -16,7 +16,7 @@ import numpy as np
 import os
 
 from env_set import figu_path
-from utilities import name_parser, name_conversion
+from utilities import name_parser, name_conversion, expt_name_conversion
 from run_ligand_analysis import vector_length
 
 
@@ -164,19 +164,20 @@ def plot_all_geom_scores_simplified(
         # Forms.
         # ("l1", "lb"): {"x": 1, "a": [], "l": [], "g": []},
         # ("l1", "lc"): {"x": 2, "a": [], "l": [], "g": []},
-        ("e16", "e10"): {"x": 1, "a": [], "l": [], "g": []},
-        ("e16", "e17"): {"x": 2, "a": [], "l": [], "g": []},
-        ("e16", "e14"): {"x": 3, "a": [], "l": [], "g": []},
-        ("e11", "e10"): {"x": 4, "a": [], "l": [], "g": []},
-        ("e11", "e13"): {"x": 5, "a": [], "l": [], "g": []},
-        ("e11", "e14"): {"x": 6, "a": [], "l": [], "g": []},
-        ("e18", "e10"): {"x": 7, "a": [], "l": [], "g": []},
-        ("e18", "e14"): {"x": 8, "a": [], "l": [], "g": []},
-        ("e12", "e10"): {"x": 9, "a": [], "l": [], "g": []},
-        ("e12", "e13"): {"x": 10, "a": [], "l": [], "g": []},
-        ("e12", "e14"): {"x": 11, "a": [], "l": [], "g": []},
+        ("e16", "e10"): {"x": 1, "a": [], "l": [], "g": [], "success": True},
+        ("e16", "e17"): {"x": 2, "a": [], "l": [], "g": [], "success": True},
+        ("e10", "e17"): {"x": 3, "a": [], "l": [], "g": [], "success": False},
+        ("e11", "e10"): {"x": 4, "a": [], "l": [], "g": [], "success": True},
+        ("e16", "e14"): {"x": 5, "a": [], "l": [], "g": [], "success": True},
+        ("e18", "e14"): {"x": 6, "a": [], "l": [], "g": [], "success": True},
+        ("e18", "e10"): {"x": 7, "a": [], "l": [], "g": [], "success": True},
+        ("e12", "e10"): {"x": 8, "a": [], "l": [], "g": [], "success": True},
+        ("e11", "e14"): {"x": 9, "a": [], "l": [], "g": [], "success": True},
+        ("e12", "e14"): {"x": 10, "a": [], "l": [], "g": [], "success": True},
+        ("e11", "e13"): {"x": 11, "a": [], "l": [], "g": [], "success": True},
+        ("e12", "e13"): {"x": 12, "a": [], "l": [], "g": [], "success": True},
         # Mixture.
-        ("e13", "e14"): {"x": 12, "a": [], "l": [], "g": []},
+        ("e13", "e14"): {"x": 13, "a": [], "l": [], "g": [], "success": False},
         # Our work, does not form.
         # ("l1", "la"): {"x": 15, "a": [], "l": [], "g": []},
         # ("l1", "ld"): {"x": 16, "a": [], "l": [], "g": []},
@@ -191,7 +192,6 @@ def plot_all_geom_scores_simplified(
         # Narcissitic Self sort.
         # ("e3", "e2"): {"x": 13, "a": [], "l": [], "g": []},
         # # Does not form - different heteroleptic.
-        ("e10", "e17"): {"x": 13, "a": [], "l": [], "g": []},
         # ("e1", "e3"): {"x": 15, "a": [], "l": [], "g": []},
         # ("e1", "e4"): {"x": 16, "a": [], "l": [], "g": []},
         # ("e1", "e6"): {"x": 17, "a": [], "l": [], "g": []},
@@ -255,7 +255,7 @@ def plot_all_geom_scores_simplified(
         )
         if meas != "g":
             ax.bar_label(
-                p, label_type="center", color="w", fontsize=12, fmt="%.2f"
+                p, label_type="center", color="w", fontsize=16, fmt="%.2f"
             )
         else:
             ax.bar_label(
@@ -263,7 +263,7 @@ def plot_all_geom_scores_simplified(
                 label_type="edge",
                 padding=0.1,
                 color="k",
-                fontsize=12,
+                fontsize=16,
                 fmt="%.2f",
             )
         # ax.fill_between(
@@ -281,17 +281,22 @@ def plot_all_geom_scores_simplified(
     # ax.set_xlim(-0.5, 2.5)
     ax.set_ylim(0, 0.8)
     # ax.axhline(y=1, c="gray", lw=2, linestyle="--")
-    ax.axvline(x=11.5, c="gray", lw=2, linestyle="--")
-    ax.axvline(x=12.5, c="gray", lw=2, linestyle="--")
+    # ax.axvline(x=11.5, c="gray", lw=2, linestyle="--")
+    # ax.axvline(x=12.5, c="gray", lw=2, linestyle="--")
 
-    ax.set_xticks(range(1, len(pair_to_x) + 1))
-    ax.set_xticklabels(
-        [
-            f"{name_conversion()[i[0]]}-{name_conversion()[i[1]]}"
-            for i in pair_to_x
-        ],
-        rotation=45,
-    )
+    for i in pair_to_x:
+        if not pair_to_x[i]["success"]:
+            ax.scatter(
+                pair_to_x[i]["x"],
+                0.67,
+                c="r",
+                marker="X",
+                edgecolor="k",
+                s=150,
+            )
+
+    ax.set_xticks([pair_to_x[i]["x"] for i in pair_to_x])
+    ax.set_xticklabels([expt_name_conversion(i[0], i[1]) for i in pair_to_x])
 
     ax.legend(fontsize=16, ncol=3)
 

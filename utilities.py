@@ -46,6 +46,24 @@ def name_conversion():
     }
 
 
+def expt_name_conversion(l1, l2):
+    return {
+        ("e16", "e10"): "1",
+        ("e16", "e17"): "2",
+        ("e10", "e17"): "3",
+        ("e11", "e10"): "4",
+        ("e16", "e14"): "5",
+        ("e18", "e14"): "6",
+        ("e18", "e10"): "7",
+        ("e12", "e10"): "8",
+        ("e11", "e14"): "9",
+        ("e12", "e14"): "10",
+        ("e11", "e13"): "11",
+        ("e12", "e13"): "12",
+        ("e13", "e14"): "13",
+    }[(l1, l2)]
+
+
 class AromaticCNCFactory(stk.FunctionalGroupFactory):
     """
     A subclass of stk.SmartsFunctionalGroupFactory.
