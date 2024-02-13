@@ -1404,8 +1404,13 @@ def plot_qsqp(results_dict, outname, yproperty, ignore_topos=None):
     plt.close()
 
 
-def plot_topo_energy(results_dict, outname):
+def plot_topo_energy(results_dict, outname, solvent=None):
     fig, ax = plt.subplots(figsize=(8, 5))
+
+    if solvent is None:
+        s_key = "xtb_solv_opt_dmsoenergy_au"
+    elif solvent == "gas":
+        s_key = "xtb_solv_opt_gasenergy_au"
 
     to_plot = {
         "l1": {
@@ -1444,7 +1449,7 @@ def plot_topo_energy(results_dict, outname):
     for ligand in to_plot:
         x_position = 0
         _x_names = []
-        dmso_values = []
+        values = []
         for struct in to_plot[ligand]["systems"]:
             topo, l1, l2 = name_parser(struct)
             try:
@@ -1460,22 +1465,21 @@ def plot_topo_energy(results_dict, outname):
             num_metals = int(name.split("M")[-1])
             _x_names.append((x_position, name))
 
-            dmso_energy = s_values["xtb_solv_opt_dmsoenergy_au"]
-            dmso_values.append((x_position, dmso_energy, num_metals))
+            energy = s_values[s_key]
+            values.append((x_position, energy, num_metals))
 
-        print(dmso_values)
-        min_dmso = min([i[1] / i[2] for i in dmso_values])
-        print(min_dmso)
+        print(values)
+        min_value = min([i[1] / i[2] for i in values])
+        print(min_value)
 
-        dmso_values = [
-            (i[0], ((i[1] / i[2]) - min_dmso) * 2625.5, i[2])
-            for i in dmso_values
+        values = [
+            (i[0], ((i[1] / i[2]) - min_value) * 2625.5, i[2]) for i in values
         ]
-        print(dmso_values)
+        print(values)
 
         ax.plot(
-            [i[0] for i in dmso_values],
-            [i[1] for i in dmso_values],
+            [i[0] for i in values],
+            [i[1] for i in values],
             # markersize=8,
             # marker="o",
             lw=2,

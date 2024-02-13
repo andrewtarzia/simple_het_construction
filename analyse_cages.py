@@ -197,6 +197,11 @@ def main():
         results_dict=structure_results,
         outname="main_topology_ey",
     )
+    plotting.plot_topo_energy(
+        results_dict=structure_results,
+        outname="gas_topology_ey",
+        solvent="gas",
+    )
     plotting.plot_qsqp(
         results_dict=structure_results,
         outname="cage_qsqp",
