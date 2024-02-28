@@ -178,6 +178,7 @@ def plot_all_geom_scores_simplified(
         ("e12", "e13"): {"x": 12, "a": [], "l": [], "g": [], "success": True},
         # Mixture.
         ("e13", "e14"): {"x": 13, "a": [], "l": [], "g": [], "success": False},
+        ("e11", "e12"): {"x": 14, "a": [], "l": [], "g": [], "success": False},
         # Our work, does not form.
         # ("l1", "la"): {"x": 15, "a": [], "l": [], "g": []},
         # ("l1", "ld"): {"x": 16, "a": [], "l": [], "g": []},
@@ -279,7 +280,7 @@ def plot_all_geom_scores_simplified(
     # ax.set_xlabel("$a$", fontsize=16)
     ax.set_ylabel("deviation", fontsize=16)
     # ax.set_xlim(-0.5, 2.5)
-    ax.set_ylim(0, 0.8)
+    ax.set_ylim(0, 0.9)
     # ax.axhline(y=1, c="gray", lw=2, linestyle="--")
     # ax.axvline(x=11.5, c="gray", lw=2, linestyle="--")
     # ax.axvline(x=12.5, c="gray", lw=2, linestyle="--")
@@ -288,7 +289,7 @@ def plot_all_geom_scores_simplified(
         if not pair_to_x[i]["success"]:
             ax.scatter(
                 pair_to_x[i]["x"],
-                0.67,
+                0.73,
                 c="r",
                 marker="X",
                 edgecolor="k",
@@ -1502,6 +1503,90 @@ def plot_topo_energy(results_dict, outname, solvent=None):
         bbox_inches="tight",
     )
     plt.close()
+
+
+def plot_stab_energy(results_dict, outname, solvent=None):
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    to_plot = (
+        "m2_la",
+        "m6_l1",
+        "cis_l1_la",
+        "cis_l1_lb",
+        "cis_l1_lc",
+        "cis_l1_ld",
+        # "m12_l2",
+        # "cis_l2_la",
+        # "cis_l2_lb",
+        # "cis_l2_lc",
+        # "cis_l2_ld",
+        # "m30_l3",
+        # "cis_l3_la",
+        # "cis_l3_lb",
+        # "cis_l3_lc",
+        # "cis_l3_ld",
+    )
+    xs = []
+    stabs = []
+    e1dashes = []
+    x_position = 0
+    for system in to_plot:
+        sdict = results_dict[system]
+        topology, l1, l2 = name_parser(system)
+
+        try:
+            num_metals = int(topology.split("m")[-1])
+        except ValueError:
+            num_metals = 2
+
+        stab_energy = (sdict["stabilisation_energy"] / num_metals) * 2625.5
+        print(system, sdict["stabilisation_energy"])
+        stabs.append(stab_energy)
+        e1dashes.append(sdict["E1'"])
+        xs.append((x_position, system))
+        x_position += 1
+
+    # print(values)
+    # min_value = min([i[1] / i[2] for i in values])
+    # print(min_value)
+
+    # values = [
+    #     (i[0], ((i[1] / i[2]) - min_value) * 2625.5, i[2]) for i in values
+    # ]
+    # print(values)
+
+    ax.plot(
+        [i[0] for i in xs],
+        stabs,
+        # markersize=8,
+        # marker="o",
+        lw=2,
+        label="E-E`",
+    )
+    # ax.plot(
+    #     [i[0] for i in xs],
+    #     e1dashes,
+    #     # markersize=8,
+    #     # marker="o",
+    #     lw=2,
+    #     label="E`",
+    # )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_ylabel("energy per metal [kJmol$^{-1}$]", fontsize=16)
+
+    ax.set_xticks([i[0] for i in xs])
+    ax.set_xticklabels([i[1] for i in xs], rotation=90)
+
+    ax.legend(fontsize=16)
+    fig.tight_layout()
+    fig.savefig(
+        os.path.join(figu_path(), f"{outname}.png"),
+        dpi=360,
+        bbox_inches="tight",
+    )
+    plt.close()
+    raise SystemExit
 
 
 def plot_pdntest(results_dict, dihedral_cutoff, outname):

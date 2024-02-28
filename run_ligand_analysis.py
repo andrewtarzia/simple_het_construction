@@ -271,6 +271,7 @@ def main():
         ("e11", "e13"): "yes",
         ("e12", "e13"): "yes",
         ("e13", "e14"): "no",
+        ("e11", "e12"): "no",
         # ("e15", "e14"): "yes",
     }
     ligand_pairings = [
