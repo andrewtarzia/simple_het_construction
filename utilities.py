@@ -61,6 +61,7 @@ def expt_name_conversion(l1, l2):
         ("e11", "e13"): "11",
         ("e12", "e13"): "12",
         ("e13", "e14"): "13",
+        ("e11", "e12"): "14",
     }[(l1, l2)]
 
 
@@ -493,6 +494,108 @@ def get_organic_linkers(
             )
 
     return org_lig, smiles_keys
+
+
+def get_stabilised_structure(cage, metal_atom_nos):
+
+    connected_graphs = decompose_cage(cage, metal_atom_nos)
+    new_atoms = []
+    atom_id_map = {}
+    for i, cg in enumerate(connected_graphs):
+        # Get atoms from nodes.
+        for atom in list(cg):
+            atom_id_map[atom.get_id()] = len(new_atoms)
+            new_atoms.append(
+                stk.Atom(
+                    id=atom_id_map[atom.get_id()],
+                    atomic_number=atom.get_atomic_number(),
+                )
+            )
+
+    new_bonds = [
+        stk.Bond(
+            atom1=new_atoms[atom_id_map[i.get_atom1().get_id()]],
+            atom2=new_atoms[atom_id_map[i.get_atom2().get_id()]],
+            order=i.get_order(),
+        )
+        for i in cage.get_bonds()
+        if i.get_atom1().get_id() in atom_id_map
+        and i.get_atom2().get_id() in atom_id_map
+    ]
+
+    new_position_matrix = [cage.get_position_matrix()[i] for i in atom_id_map]
+
+    return stk.BuildingBlock.init(
+        atoms=tuple(new_atoms),
+        bonds=tuple(new_bonds),
+        position_matrix=np.array(new_position_matrix),
+    )
+
+
+def get_pd_energy(calc_dir):
+    pd_molecule = stk.BuildingBlock(
+        smiles="[Pd+2]",
+        functional_groups=(
+            stk.SingleAtom(stk.Pd(0, charge=2)) for i in range(4)
+        ),
+        position_matrix=[[0, 0, 0]],
+    )
+    return stko.XTBEnergy(
+        xtb_path=xtb_path(),
+        output_dir=os.path.join(calc_dir, "pd_gas"),
+        gfn_version=2,
+        num_cores=6,
+        charge=2,
+        num_unpaired_electrons=0,
+        unlimited_memory=True,
+        solvent=None,
+    ).get_energy(mol=pd_molecule)
+
+
+def get_stab_energy(
+    molecule,
+    name,
+    charge,
+    calc_dir,
+    solvent,
+    metal_atom_nos,
+    cage_energy,
+):
+    output_file = os.path.join(calc_dir, f"{name}_stab.ey")
+    output_dir = os.path.join(calc_dir, f"{name}_stabey")
+
+    if os.path.exists(output_file):
+        with open(output_file, "r") as f:
+            lines = f.readlines()
+        for line in lines:
+            stabilisation_energy = float(line.rstrip())
+            break
+    else:
+        logging.info(f"stabilisation energy calculation of {name}")
+        stab_molecule = get_stabilised_structure(molecule, metal_atom_nos)
+
+        num_pds = molecule.get_num_atoms() - stab_molecule.get_num_atoms()
+        pd_energy = get_pd_energy(calc_dir)
+        no_pd_cage_energy = stko.XTBEnergy(
+            xtb_path=xtb_path(),
+            output_dir=output_dir,
+            gfn_version=2,
+            num_cores=6,
+            charge=0,
+            num_unpaired_electrons=0,
+            unlimited_memory=True,
+            solvent=None,
+        ).get_energy(mol=stab_molecule)
+
+        E1_energy = cage_energy
+        E1dash_energy = no_pd_cage_energy + (num_pds * pd_energy)
+        stabilisation_energy = (E1_energy - E1dash_energy) / num_pds
+
+        with open(output_file, "w") as f:
+            f.write(f"{stabilisation_energy}\n")
+
+    # In a.u. per metal atom
+    return stabilisation_energy
 
 
 def get_xtb_energy(molecule, name, charge, calc_dir, solvent):

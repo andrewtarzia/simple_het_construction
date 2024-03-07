@@ -23,6 +23,7 @@ from utilities import (
     AromaticCNCFactory,
     get_xtb_strain,
     get_furthest_pair_FGs,
+    get_stab_energy,
     get_pore_angle,
     get_mm_distance,
 )
@@ -163,6 +164,21 @@ def main():
                     solvent="dmso",
                 )
             )
+            structure_results[name]["stabilisation_energy"] = get_stab_energy(
+                molecule=molecule,
+                name=name,
+                charge=charge,
+                calc_dir=_cd,
+                solvent="gas",
+                metal_atom_nos=(46,),
+                cage_energy=structure_results[name][
+                    "xtb_solv_opt_gasenergy_au"
+                ],
+            )
+            structure_results[name]["E1'"] = (
+                structure_results[name]["xtb_solv_opt_gasenergy_au"]
+                - structure_results[name]["stabilisation_energy"]
+            )
 
             if prefix in ("cis", "trans", "m2"):
                 structure_results[name]["pore_angle"] = get_pore_angle(
@@ -193,6 +209,10 @@ def main():
         with open(structure_res_file, "w") as f:
             json.dump(structure_results, f, indent=4)
 
+    plotting.plot_stab_energy(
+        results_dict=structure_results,
+        outname="stabilisation_ey",
+    )
     plotting.plot_topo_energy(
         results_dict=structure_results,
         outname="main_topology_ey",

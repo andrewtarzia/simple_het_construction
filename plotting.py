@@ -1510,6 +1510,9 @@ def plot_stab_energy(results_dict, outname, solvent=None):
 
     to_plot = (
         "m2_la",
+        "m2_lb",
+        "m2_lc",
+        "m2_ld",
         "m6_l1",
         "cis_l1_la",
         "cis_l1_lb",
@@ -1534,43 +1537,21 @@ def plot_stab_energy(results_dict, outname, solvent=None):
         sdict = results_dict[system]
         topology, l1, l2 = name_parser(system)
 
-        try:
-            num_metals = int(topology.split("m")[-1])
-        except ValueError:
-            num_metals = 2
-
-        stab_energy = (sdict["stabilisation_energy"] / num_metals) * 2625.5
+        stab_energy = (sdict["stabilisation_energy"]) * 2625.5
         print(system, sdict["stabilisation_energy"])
         stabs.append(stab_energy)
         e1dashes.append(sdict["E1'"])
         xs.append((x_position, system))
         x_position += 1
 
-    # print(values)
-    # min_value = min([i[1] / i[2] for i in values])
-    # print(min_value)
-
-    # values = [
-    #     (i[0], ((i[1] / i[2]) - min_value) * 2625.5, i[2]) for i in values
-    # ]
-    # print(values)
-
     ax.plot(
         [i[0] for i in xs],
         stabs,
-        # markersize=8,
-        # marker="o",
+        markersize=8,
+        marker="o",
         lw=2,
         label="E-E`",
     )
-    # ax.plot(
-    #     [i[0] for i in xs],
-    #     e1dashes,
-    #     # markersize=8,
-    #     # marker="o",
-    #     lw=2,
-    #     label="E`",
-    # )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.set_ylabel("energy per metal [kJmol$^{-1}$]", fontsize=16)
@@ -1586,7 +1567,6 @@ def plot_stab_energy(results_dict, outname, solvent=None):
         bbox_inches="tight",
     )
     plt.close()
-    raise SystemExit
 
 
 def plot_pdntest(results_dict, dihedral_cutoff, outname):
