@@ -21,11 +21,16 @@ from utilities import (
     get_order_values,
     get_xtb_energy,
     AromaticCNCFactory,
+    get_xtb_gsasa,
     get_xtb_strain,
     get_furthest_pair_FGs,
+    get_xtb_enthalpy,
+    get_xtb_sasa,
+    get_xtb_gsolv,
     get_stab_energy,
     get_pore_angle,
     get_mm_distance,
+    get_xtb_free_energy,
 )
 from pywindow_module import PyWindow
 
@@ -164,6 +169,53 @@ def main():
                     solvent="dmso",
                 )
             )
+            structure_results[name]["xtb_sasa"] = get_xtb_sasa(
+                molecule=molecule,
+                name=name,
+                charge=charge,
+                calc_dir=_cd,
+                solvent="dmso",
+            )
+
+            if name in (
+                "m2_la",
+                "m2_lb",
+                "m2_lc",
+                "m2_ld",
+                "m2_l1",
+                "m3_l1",
+                "m4_l1",
+                "m6_l1",
+                "m12_l1",
+                "m12_l2",
+                "cis_l1_la",
+                "cis_l1_lb",
+                "cis_l1_lc",
+                "cis_l1_ld",
+                "cis_l2_la",
+                "cis_l2_lb",
+                "cis_l2_lc",
+                "cis_l2_ld",
+            ):
+                structure_results[name]["xtb_solv_opt_dmsofreeenergy_au"] = (
+                    get_xtb_free_energy(
+                        molecule=molecule,
+                        name=name,
+                        charge=charge,
+                        calc_dir=_cd,
+                        solvent="dmso",
+                    )
+                )
+                structure_results[name]["xtb_solv_opt_dmsoenthalpy_au"] = (
+                    get_xtb_enthalpy(
+                        molecule=molecule,
+                        name=name,
+                        charge=charge,
+                        calc_dir=_cd,
+                        solvent="dmso",
+                    )
+                )
+
             structure_results[name]["stabilisation_energy"] = get_stab_energy(
                 molecule=molecule,
                 name=name,
@@ -178,6 +230,16 @@ def main():
             structure_results[name]["E1'"] = (
                 structure_results[name]["xtb_solv_opt_gasenergy_au"]
                 - structure_results[name]["stabilisation_energy"]
+            )
+            structure_results[name]["xtb_gsolv_au"] = get_xtb_gsolv(
+                name=name,
+                calc_dir=_cd,
+                solvent="dmso",
+            )
+            structure_results[name]["xtb_gsasa_au"] = get_xtb_gsasa(
+                name=name,
+                calc_dir=_cd,
+                solvent="dmso",
             )
 
             if prefix in ("cis", "trans", "m2"):
@@ -209,13 +271,54 @@ def main():
         with open(structure_res_file, "w") as f:
             json.dump(structure_results, f, indent=4)
 
-    plotting.plot_stab_energy(
+    for name in structure_results:
+        if "pw_results" in structure_results[name]:
+            print(
+                name, structure_results[name]["pw_results"]["pore_volume_opt"]
+            )
+
+    plotting.plot_strain_pore_sasa(
         results_dict=structure_results,
-        outname="stabilisation_ey",
+        outname="strain_pore_sasa",
+    )
+    plotting.plot_strain(
+        results_dict=structure_results,
+        outname="xtb_strain_energy",
+        yproperty="xtb_lig_strain_au",
+    )
+    plotting.plot_sasa(
+        results_dict=structure_results,
+        outname="xtb_sasa",
+        yproperty="xtb_sasa",
+    )
+    plotting.plot_pore(
+        results_dict=structure_results,
+        outname="cage_pw_diameter",
+        yproperty="pore_diameter_opt",
+    )
+    raise SystemExit
+    plotting.plot_all_contributions(
+        results_dict=structure_results,
+        outname="main_contributions",
+    )
+    plotting.plot_gsasa(
+        results_dict=structure_results,
+        outname="main_ssolv",
+        yproperty="xtb_gsasa_au",
+    )
+    plotting.plot_gsolv(
+        results_dict=structure_results,
+        outname="main_gsolv",
+        yproperty="xtb_gsolv_au",
     )
     plotting.plot_topo_energy(
         results_dict=structure_results,
         outname="main_topology_ey",
+    )
+
+    plotting.plot_stab_energy(
+        results_dict=structure_results,
+        outname="stabilisation_ey",
     )
     plotting.plot_topo_energy(
         results_dict=structure_results,
@@ -236,11 +339,6 @@ def main():
         results_dict=structure_results,
         outname="cage_mm_distance",
         yproperty="mm_distance",
-    )
-    plotting.plot_property(
-        results_dict=structure_results,
-        outname="cage_pw_diameter",
-        yproperty="pore_diameter_opt",
     )
 
 

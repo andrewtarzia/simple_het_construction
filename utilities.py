@@ -8,6 +8,7 @@ Module for utility functions.
 Author: Andrew Tarzia
 
 """
+import re
 
 import logging
 import os
@@ -640,6 +641,228 @@ def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
 
     # In a.u.
     return energy
+
+
+class XTBSasa(stko.XTBEnergy):
+    def _write_detailed_control(self) -> None:
+        string = f"$gbsa\n   gbsagrid={self._solvent_grid}\n"
+        string += "$write\n   gbsa=true"
+
+        with open("det_control.in", "w") as f:
+            f.write(string)
+
+
+def get_xtb_sasa(molecule, name, charge, calc_dir, solvent):
+
+    solvent_model = "alpb"
+    solvent_str = solvent
+    solvent_grid = "verytight"
+    solvent_list = f"{solvent_str}/{solvent_model}/{solvent_grid}"
+    output_dir = os.path.join(calc_dir, f"{name}_{solvent_str}_xtbsasa")
+    output_file = os.path.join(calc_dir, f"{name}_{solvent_str}_sasa.json")
+
+    if os.path.exists(output_file):
+        with open(output_file, "r") as f:
+            sasa_data = json.load(f)
+
+    else:
+        logging.info(f"xtb sasa calculation of {name} with {solvent_list}")
+        xtb = XTBSasa(
+            xtb_path=xtb_path(),
+            output_dir=output_dir,
+            gfn_version=2,
+            num_cores=6,
+            charge=charge,
+            num_unpaired_electrons=0,
+            unlimited_memory=True,
+            solvent_model=solvent_model,
+            solvent=solvent_str,
+            solvent_grid=solvent_grid,
+        )
+        next(xtb.calculate(mol=molecule))
+
+        with open(os.path.join(output_dir, "energy.output"), "r") as f:
+            lines = f.readlines()
+        switch = False
+        sasa_data = []
+
+        for line in lines:
+            if switch and " total SASA /" in line:
+                total_sasa = float(line.strip().split()[-1])
+                break
+            if switch:
+                if "#" not in line:
+                    sasa_data.append(line.strip().split())
+            if " * generalized Born model for continuum solvation" in line:
+                switch = True
+
+        print(sasa_data)
+        sasa_data = {
+            int(i[0]): {
+                "Z": int(i[1]),
+                "element": i[2],
+                "born/A": float(i[3]),
+                "sasa/A2": float(i[4]),
+                "hbond": float(i[5]),
+            }
+            for i in sasa_data
+            if len(i) > 1
+        }
+        sasa_data["total_sasa/A2"] = total_sasa
+
+        with open(output_file, "w") as f:
+            json.dump(sasa_data, f)
+
+    # In a.u.
+    return sasa_data
+
+
+def get_xtb_gsasa(name, calc_dir, solvent):
+    solvent_model = "alpb"
+    solvent_str = solvent
+    solvent_grid = "verytight"
+    solvent_list = f"{solvent_str}/{solvent_model}/{solvent_grid}"
+    output_dir = os.path.join(calc_dir, f"{name}_{solvent_str}_xtbey")
+    output_file = os.path.join(calc_dir, f"{name}_{solvent_str}_xtb.ey")
+
+    if not os.path.exists(output_file):
+        raise RuntimeError(
+            f"xtb with {solvent} needs to have been run giving {output_dir}"
+        )
+
+    logging.info(f"xtb energy calculation of {name} with {solvent_list}")
+    energy_file = os.path.join(output_dir, "energy.output")
+
+    # Based on XX
+    # Get the  nonpolar solvation contribution, which we divide by num. Pd
+    # later.
+
+    nums = re.compile(r"[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
+    with open(energy_file, "r") as f:
+        for line in f.readlines():
+            if "-> Gsasa" in line:
+
+                string = nums.search(line.rstrip())
+                gsasa = float(string.group(0))
+                break
+
+    # In a.u.
+    return gsasa
+
+
+def get_xtb_gsolv(name, calc_dir, solvent):
+    solvent_model = "alpb"
+    solvent_str = solvent
+    solvent_grid = "verytight"
+    solvent_list = f"{solvent_str}/{solvent_model}/{solvent_grid}"
+    output_dir = os.path.join(calc_dir, f"{name}_{solvent_str}_xtbey")
+    output_file = os.path.join(calc_dir, f"{name}_{solvent_str}_xtb.ey")
+
+    if not os.path.exists(output_file):
+        raise RuntimeError(
+            f"xtb with {solvent} needs to have been run giving {output_dir}"
+        )
+
+    logging.info(f"xtb energy calculation of {name} with {solvent_list}")
+    energy_file = os.path.join(output_dir, "energy.output")
+
+    nums = re.compile(r"[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
+    with open(energy_file, "r") as f:
+        for line in f.readlines():
+            if ":: -> Gsolv" in line:
+
+                string = nums.search(line.rstrip())
+
+                gsolv = float(string.group(0))
+                break
+
+    # In a.u.
+    return gsolv
+
+
+def get_xtb_free_energy(molecule, name, charge, calc_dir, solvent):
+    if solvent is None:
+        solvent_model = "alpb"
+        solvent_str = None
+        solvent_grid = "verytight"
+        solvent_list = "gas"
+        output_dir = os.path.join(calc_dir, f"{name}_xtbfey")
+        output_file = os.path.join(calc_dir, f"{name}_xtb.fey")
+        freq_file = os.path.join(calc_dir, f"{name}_xtb.freq")
+    else:
+        solvent_model = "alpb"
+        solvent_str = solvent
+        solvent_grid = "verytight"
+        solvent_list = f"{solvent_str}/{solvent_model}/{solvent_grid}"
+        output_dir = os.path.join(calc_dir, f"{name}_{solvent_str}_xtbfey")
+        output_file = os.path.join(calc_dir, f"{name}_{solvent_str}_xtb.fey")
+        freq_file = os.path.join(calc_dir, f"{name}_{solvent_str}_xtb.freq")
+
+    if os.path.exists(output_file):
+        with open(output_file, "r") as f:
+            lines = f.readlines()
+        for line in lines:
+            total_free_energy = float(line.rstrip())
+            break
+    else:
+        logging.info(
+            f"xtb free energy calculation of {name} with {solvent_list}"
+        )
+        xtb = stko.XTBEnergy(
+            xtb_path=xtb_path(),
+            output_dir=output_dir,
+            gfn_version=2,
+            num_cores=6,
+            charge=charge,
+            calculate_free_energy=True,
+            num_unpaired_electrons=0,
+            unlimited_memory=True,
+            solvent_model=solvent_model,
+            solvent=solvent_str,
+            solvent_grid=solvent_grid,
+        )
+        xtb_results = xtb.get_results(molecule)
+        total_results = xtb_results.get_total_free_energy()
+        total_free_energy = total_results[0]
+        total_frequencies = xtb_results.get_frequencies()
+        with open(output_file, "w") as f:
+            f.write(f"{total_results[0]}\n")
+        with open(freq_file, "w") as f:
+            for freq in total_frequencies[0]:
+                f.write(f"{freq}\n")
+
+    # In a.u.
+    return total_free_energy
+
+
+def get_xtb_enthalpy(molecule, name, charge, calc_dir, solvent):
+    solvent_model = "alpb"
+    solvent_str = solvent
+    solvent_grid = "verytight"
+    solvent_list = f"{solvent_str}/{solvent_model}/{solvent_grid}"
+    output_dir = os.path.join(calc_dir, f"{name}_{solvent_str}_xtbfey")
+    output_file = os.path.join(calc_dir, f"{name}_{solvent_str}_xtb.fey")
+
+    if not os.path.exists(output_file):
+        raise RuntimeError(
+            f"xtb with {solvent} needs to have been run giving {output_dir}"
+        )
+
+    logging.info(f"xtb energy calculation of {name} with {solvent_list}")
+    energy_file = os.path.join(output_dir, "energy.output")
+
+    nums = re.compile(r"[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
+    with open(energy_file, "r") as f:
+        for line in f.readlines():
+            if "TOTAL ENTHALPY" in line:
+
+                string = nums.search(line.rstrip())
+
+                enthalpy = float(string.group(0))
+                break
+
+    # In a.u.
+    return enthalpy
 
 
 def get_dft_energy(name, txt_file):
