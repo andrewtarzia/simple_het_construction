@@ -1,18 +1,9 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Distributed under the terms of the MIT License.
-
-"""
-Script to build the ligand in this project.
-
-Author: Andrew Tarzia
-
-"""
+"""Script to build the ligand in this project."""
 
 import logging
-import sys
+import pathlib
 from rdkit.Chem import Draw
-
+import bbprep
 import os
 import json
 import stk
@@ -22,17 +13,8 @@ from rdkit.Chem import AllChem as rdkit
 import itertools
 import time
 
-from env_set import liga_path, calc_path
-import plotting
-from utilities import (
-    AromaticCNCFactory,
-    update_from_rdkit_conf,
-    calculate_N_centroid_N_angle,
-    calculate_NN_distance,
-    calculate_NN_BCN_angles,
-    calculate_NCCN_dihedral,
-    get_furthest_pair_FGs,
-)
+from utilities import update_from_rdkit_conf
+import itertools as it
 
 
 def vector_length():
@@ -44,6 +26,7 @@ def vector_length():
 
 
 def get_test_1(large_c_dict, small_c_dict):
+    raise SystemExit("need to make sure this is pointing the right way")
     # l_angle = (large_c_dict["NN_BCN_angles"]["NN_BCN1"] - 90) + (
     #     large_c_dict["NN_BCN_angles"]["NN_BCN2"] - 90
     # )
@@ -68,6 +51,7 @@ def get_test_1(large_c_dict, small_c_dict):
 
 
 def get_test_2(large_c_dict, small_c_dict, pdn_distance):
+    raise SystemExit("need to make sure this is pointing the right way")
     sNN_dist = small_c_dict["NN_distance"]
     lNN_dist = large_c_dict["NN_distance"]
     # 180 - angle, to make it the angle toward the binding interaction.
@@ -96,14 +80,13 @@ def test_N_N_lengths(large_c_dict, small_c_dict):
 def conformer_generation_uff(
     molecule,
     name,
-    lowe_output,
     conf_data_file,
     calc_dir,
+    ligand_dir,
 ):
-    """
-    Build a large conformer ensemble with UFF optimisation.
-
-    """
+    """Build a large conformer ensemble with UFF optimisation."""
+    conf_dir = ligand_dir / f"confs_{name}"
+    conf_dir.mkdir(exist_ok=True)
 
     logging.info(f"building conformer ensemble of {name}")
 
@@ -115,15 +98,14 @@ def conformer_generation_uff(
         mol=confs,
         numConfs=500,
         params=etkdg,
-        # pruneRmsThresh=0.2,
     )
 
     lig_conf_data = {}
     num_confs = 0
+    min_energy = 1e24
     for cid in cids:
-        conf_opt_file_name = str(lowe_output).replace(
-            "_lowe.mol", f"_c{cid}_cuff.mol"
-        )
+        conf_opt_file_name = f"{name}_c{cid}_cuff.mol"
+
         # Update stk_mol to conformer geometry.
         new_mol = update_from_rdkit_conf(
             stk_mol=molecule, rdk_mol=confs, conf_id=cid
@@ -131,164 +113,201 @@ def conformer_generation_uff(
         # Need to define the functional groups.
         new_mol = stk.BuildingBlock.init_from_molecule(
             molecule=new_mol,
-            functional_groups=[AromaticCNCFactory()],
+            functional_groups=stko.functional_groups.ThreeSiteFactory(
+                smarts="[#6]~[#7X2]~[#6]", bonders=(1,), deleters=()
+            ),
         )
         # Only get two FGs.
-        new_mol = new_mol.with_functional_groups(
-            functional_groups=get_furthest_pair_FGs(new_mol),
+        new_mol = bbprep.FurthestFGs().modify(
+            building_block=new_mol,
+            desired_functional_groups=2,
         )
 
         new_mol = stko.UFF().optimize(mol=new_mol)
         energy = stko.UFFEnergy().get_energy(new_mol)
-        new_mol.write(conf_opt_file_name)
+        new_mol.write(conf_dir / conf_opt_file_name)
+        if energy < min_energy:
+            min_energy = energy
+            new_mol.write(ligand_dir / f"{name}_lowe.mol")
 
-        NCCN_dihedral = abs(calculate_NCCN_dihedral(new_mol))
-        angle = calculate_N_centroid_N_angle(new_mol)
+        analyser = stko.molecule_analysis.DitopicThreeSiteAnalyser()
 
         lig_conf_data[cid] = {
-            "NcentroidN_angle": angle,
-            "NCCN_dihedral": NCCN_dihedral,
-            "NN_distance": calculate_NN_distance(new_mol),
-            "NN_BCN_angles": calculate_NN_BCN_angles(new_mol),
+            "NcentroidN_angle": analyser.get_binder_centroid_angle(new_mol),
+            "NCCN_dihedral": analyser.get_binder_adjacent_torsion(new_mol),
+            "NN_distance": analyser.get_binder_distance(new_mol),
+            "NN_BCN_angles": analyser.get_binder_angles(new_mol),
             "UFFEnergy;kj/mol": energy * 4.184,
         }
         num_confs += 1
+
     logging.info(f"{num_confs} conformers generated for {name}")
 
     with open(conf_data_file, "w") as f:
         json.dump(lig_conf_data, f)
 
 
-def ligand_smiles():
+def generate_converging_ligands() -> dict[str, stk.Molecule]:
+
     return {
-        # Diverging.
-        "l1": "C1=NC=CC(C2=CC=C3OC4C=CC(C5C=CN=CC=5)=CC=4C3=C2)=C1",
-        "l2": "C1=CC(=CC(=C1)C2=CC=NC=C2)C3=CC=NC=C3",
-        "l3": "C1=CN=CC=C1C2=CC=C(S2)C3=CC=NC=C3",
-        # Converging.
-        "la": (
-            "C1=CN=CC2C(C3=CC=C(C#CC4=CC5C6C=C(C#CC7=CC=C(C8=CC=CC9C=C"
-            "N=CC8=9)C=C7)C=CC=6OC=5C=C4)C=C3)=CC=CC1=2"
-        ),
-        "lb": (
-            "C1=CN=CC2C(C3=CC=C(C#CC4N=C(C#CC5=CC=C(C6=CC=CC7C=CN=CC6="
-            "7)C=C5)C=CC=4)C=C3)=CC=CC1=2"
-        ),
-        "lc": (
-            "C1C2=C(C(=CC=C2)C2C=CC(C#CC3=CC=CC(C#CC4C=CC(C5C6=C(C=CN="
-            "C6)C=CC=5)=CC=4)=C3)=CC=2)C=NC=1"
-        ),
-        "ld": (
-            "C1C2=C(C(=CC=C2)C2C=CC(C#CC3=CC=C(C#CC4C=CC(C5C6=C(C=CN=C"
-            "6)C=CC=5)=CC=4)S3)=CC=2)C=NC=1"
-        ),
-        # Experimental.
-        "e10": (
-            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
-        ),
-        "e11": "C1N=CC=CC=1C1=CC2=C(C3=C(C2(C)C)C=C(C2=CN=CC=C2)C=C3)C=C1",
-        "e12": "C1=CC=C(C2=CC3C(=O)C4C=C(C5=CN=CC=C5)C=CC=4C=3C=C2)C=N1",
-        "e13": (
-            "C1C=C(N2C(=O)C3=C(C=C4C(=C3)C3(C5=C(C4(C)CC3)C=C3C(C(N(C3="
-            "O)C3C=CC=NC=3)=O)=C5)C)C2=O)C=NC=1"
-        ),
-        "e14": (
-            "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1"
-        ),
-        "e16": (
-            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
-        ),
-        "e17": (
-            "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
-            "CN=CC=5)=C4)=O)=C1)=CC=C2"
-        ),
-        "e18": (
-            "C1(=CC=NC=C1)C#CC1=CC2C3C=C(C#CC4=CC=NC=C4)C=CC=3C(OC)=C(O"
-            "C)C=2C=C1"
-        ),
+        "d1": stk.BuildingBlock(
+            smiles="C1=CC(=CC(=C1)C#CC2=CN=CC=C2)C#CC3=CN=CC=C3"
+        )
     }
 
 
-def main():
-    if not len(sys.argv) == 1:
-        logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
-        sys.exit()
-    else:
-        pass
+def generate_diverging_ligands(
+    ligand_dir: pathlib.Path,
+    figures_dir: pathlib.Path,
+    calculation_dir: pathlib.Path,
+) -> dict[str, stk.Molecule]:
+    core_smiles = (
+        # From 10.1002/anie.202106721
+        "Brc1ccc(Br)cc1",
+        "Brc1cccc(Br)c1",
+        "Brc1ccc2[nH]c3ccc(Br)cc3c2c1",
+        "Brc1ccc2ccc(Br)cc2c1",
+    )
+    linker_smiles = ("C1=CC(=CC=C1Br)Br",)
+    binder_smiles = (
+        # From 10.1002/anie.202106721
+        "Brc1ccncc1",
+        "Brc1cccnc1",
+        "BrC#Cc1cccnc1",
+        "BrC#Cc1cccc2cnccc12",
+        "BrC#Cc1cccc2ccncc12",
+        "BrC#Cc1cccc2ncccc12",
+    )
 
-    _wd = liga_path()
-    _cd = calc_path()
+    all_ligands = {}
+    for (j, core), (i, link) in it.product(
+        enumerate(core_smiles), enumerate(linker_smiles)
+    ):
+        for (k1, bind1), (k2, bind2) in it.combinations(
+            enumerate(binder_smiles), r=2
+        ):
+
+            # Build ABA.
+            ligand_name = f"aba_{j}{k1}{k2}"
+            lowe_file = ligand_dir / f"{ligand_name}_lowe.mol"
+            if lowe_file.exists():
+                molecule = stk.BuildingBlock.init_from_file(lowe_file)
+            else:
+                # Build polymer.
+                molecule = stk.ConstructedMolecule(
+                    topology_graph=stk.polymer.Linear(
+                        building_blocks=(
+                            stk.BuildingBlock(core, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind2, [stk.BromoFactory()]),
+                        ),
+                        repeating_unit="BAC",
+                        num_repeating_units=1,
+                        orientations=(0, 0, 0),
+                        num_processes=1,
+                    )
+                )
+                # Optimise with ETKDG.
+                molecule = stko.ETKDG().optimize(molecule)
+                explore_ligand(
+                    molecule=molecule,
+                    ligand_name=ligand_name,
+                    ligand_dir=ligand_dir,
+                    figures_dir=figures_dir,
+                    calculation_dir=calculation_dir,
+                )
+            all_ligands[ligand_name] = molecule
+
+            # Build ABCBA
+            ligand_name = f"abcba_{j}{i}{k1}{k2}"
+            lowe_file = ligand_dir / f"{ligand_name}_lowe.mol"
+            if lowe_file.exists():
+                molecule = stk.BuildingBlock.init_from_file(lowe_file)
+            else:
+                # Build polymer.
+                molecule = stk.ConstructedMolecule(
+                    topology_graph=stk.polymer.Linear(
+                        building_blocks=(
+                            stk.BuildingBlock(core, [stk.BromoFactory()]),
+                            stk.BuildingBlock(link, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind2, [stk.BromoFactory()]),
+                        ),
+                        repeating_unit="CBABD",
+                        num_repeating_units=1,
+                        orientations=(0, 0, 0, 0, 0),
+                        num_processes=1,
+                    )
+                )
+                # Optimise with ETKDG.
+                molecule = stko.ETKDG().optimize(molecule)
+                explore_ligand(
+                    molecule=molecule,
+                    ligand_name=ligand_name,
+                    ligand_dir=ligand_dir,
+                    figures_dir=figures_dir,
+                    calculation_dir=calculation_dir,
+                )
+            all_ligands[ligand_name] = molecule
+
+    return all_ligands
+
+
+def explore_ligand(
+    molecule: stk.Molecule,
+    ligand_name: str,
+    ligand_dir: pathlib.Path,
+    figures_dir: pathlib.Path,
+    calculation_dir: pathlib.Path,
+):
+
+    confuff_data_file = ligand_dir / f"{ligand_name}_conf_uff_data.json"
+    rdkit_mol = rdkit.MolFromSmiles(stk.Smiles().get_key(molecule))
+    Draw.MolToFile(
+        rdkit_mol, figures_dir / f"{ligand_name}_2d.png", size=(300, 300)
+    )
+
+    if not confuff_data_file.exists():
+        st = time.time()
+        conformer_generation_uff(
+            molecule=molecule,
+            name=ligand_name,
+            ligand_dir=ligand_dir,
+            conf_data_file=confuff_data_file,
+            calc_dir=calculation_dir,
+        )
+        logging.info(
+            f"time taken for conf gen of {ligand_name}: "
+            f"{round(time.time()-st, 2)}s"
+        )
+
+
+def main():
+
+    ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
+    calculation_dir = pathlib.Path(
+        "/home/atarzia/workingspace/cpl/calculations"
+    )
+    figures_dir = pathlib.Path("/home/atarzia/workingspace/cpl/figures")
+    ligand_dir.mkdir(exist_ok=True)
+    calculation_dir.mkdir(exist_ok=True)
+    figures_dir.mkdir(exist_ok=True)
 
     dihedral_cutoff = 10
     strain_cutoff = 5
 
-    yproperties = (
-        # "xtb_dmsoenergy",
-        "NcentroidN_angle",
-        "NN_distance",
-        "NCCN_dihedral",
-        "NN_BCN_angles",
-        "bite_angle",
+    # Generate all ligands from core, binder and connector pools.
+    diverging = generate_diverging_ligands(
+        ligand_dir=ligand_dir,
+        figures_dir=figures_dir,
+        calculation_dir=calculation_dir,
+    )
+    converging = generate_converging_ligands()
+    logging.info(
+        "build %s diverging and %s converging", len(diverging), len(converging)
     )
 
-    lsmiles = ligand_smiles()
-    for lig in lsmiles:
-        lowe_file = _wd / f"{lig}_lowe.mol"
-        confuff_data_file = _wd / f"{lig}_conf_uff_data.json"
-        unopt_mol = stk.BuildingBlock(
-            smiles=lsmiles[lig],
-            functional_groups=(AromaticCNCFactory(),),
-        )
-        rdkit_mol = rdkit.MolFromSmiles(stk.Smiles().get_key(unopt_mol))
-        Draw.MolToFile(rdkit_mol, _wd / f"{lig}_2d.png", size=(300, 300))
-
-        if not os.path.exists(confuff_data_file):
-            st = time.time()
-            conformer_generation_uff(
-                molecule=unopt_mol,
-                name=lig,
-                lowe_output=lowe_file,
-                conf_data_file=confuff_data_file,
-                calc_dir=_cd,
-            )
-            logging.info(
-                f"time taken for conf gen of {lig}: "
-                f"{round(time.time()-st, 2)}s"
-            )
-
-    experimental_ligand_outcomes = {
-        # Small, large.
-        ("e16", "e10"): "yes",
-        ("e16", "e17"): "yes",
-        ("e10", "e17"): "no",
-        ("e11", "e10"): "yes",
-        ("e16", "e14"): "yes",
-        ("e18", "e14"): "yes",
-        ("e18", "e10"): "yes",
-        ("e12", "e10"): "yes",
-        ("e11", "e14"): "yes",
-        ("e12", "e14"): "yes",
-        ("e11", "e13"): "yes",
-        ("e12", "e13"): "yes",
-        ("e13", "e14"): "no",
-        ("e11", "e12"): "no",
-        # ("e15", "e14"): "yes",
-    }
-    ligand_pairings = [
-        # Small, large.
-        ("l1", "la"),
-        ("l1", "lb"),
-        ("l1", "lc"),
-        ("l1", "ld"),
-        ("l2", "la"),
-        ("l2", "lb"),
-        ("l2", "lc"),
-        ("l2", "ld"),
-        ("l3", "la"),
-        ("l3", "lb"),
-        ("l3", "lc"),
-        ("l3", "ld"),
-    ] + list(experimental_ligand_outcomes.keys())
+    raise SystemExit
 
     res_file = os.path.join(_wd, "all_ligand_res.json")
     pair_file = os.path.join(_wd, "all_pair_res.json")
