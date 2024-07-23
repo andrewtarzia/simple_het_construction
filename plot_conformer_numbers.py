@@ -16,6 +16,7 @@ import json
 
 from env_set import liga_path, calc_path
 import plotting
+from definitions import EnvVariables
 
 
 def main():
@@ -27,9 +28,6 @@ def main():
 
     _wd = liga_path()
     _cd = calc_path()
-
-    dihedral_cutoff = 10
-    strain_cutoff = 5
 
     res_file = os.path.join(_wd, "all_ligand_res.json")
     figure_prefix = "etkdg"
@@ -53,8 +51,8 @@ def main():
     plotting.plot_conformer_props(
         structure_results=structure_results,
         outname=f"{figure_prefix}_conformer_properties.png",
-        dihedral_cutoff=dihedral_cutoff,
-        strain_cutoff=strain_cutoff,
+        dihedral_cutoff=EnvVariables.dihedral_cutoff,
+        strain_cutoff=EnvVariables.strain_cutoff,
         low_energy_values=low_energy_values,
     )
 
