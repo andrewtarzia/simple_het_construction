@@ -19,6 +19,7 @@ from env_set import liga_path, calc_path
 import plotting
 
 from run_ligand_analysis import get_test_1, get_test_2
+from definitions import EnvVariables
 
 
 def ligand_smiles():
@@ -45,9 +46,6 @@ def main():
     _wd = liga_path()
     _cd = calc_path()
 
-    dihedral_cutoff = 10
-    strain_cutoff = 5
-
     # Small, large.
     ligand_pairings = [("l1", "lb"), ("l2", "lb"), ("l3", "lb")]
     pd_n_distances = np.arange(1.8, 2.21, 0.01)
@@ -69,9 +67,7 @@ def main():
                 pdi = property_dict[cid]["NN_BCN_angles"]
                 # 180 - angle, to make it the angle toward the binding
                 # interaction. Minus 90  to convert to the bite-angle.
-                ba = ((180 - pdi["NN_BCN1"]) - 90) + (
-                    (180 - pdi["NN_BCN2"]) - 90
-                )
+                ba = ((180 - pdi["NN_BCN1"]) - 90) + ((180 - pdi["NN_BCN2"]) - 90)
                 property_dict[cid]["bite_angle"] = ba
 
             structure_results[ligand] = property_dict
@@ -97,9 +93,7 @@ def main():
             large_l_dict = structure_results[large_l]
 
             # Iterate over the product of all conformers.
-            for small_cid, large_cid in itertools.product(
-                small_l_dict, large_l_dict
-            ):
+            for small_cid, large_cid in itertools.product(small_l_dict, large_l_dict):
                 cid_name = ",".join((small_cid, large_cid))
                 # Calculate geom score for both sides together.
                 large_c_dict = large_l_dict[large_cid]
@@ -124,8 +118,8 @@ def main():
                 large_energy = large_l_dict[large_cid]["UFFEnergy;kj/mol"]
                 large_strain = large_energy - low_energy_values[large_l][1]
                 if (
-                    small_strain > strain_cutoff
-                    or large_strain > strain_cutoff
+                    small_strain > EnvVariables.strain_cutoff
+                    or large_strain > EnvVariables.strain_cutoff
                 ):
                     continue
                 # total_strain = large_strain + small_strain
@@ -151,7 +145,7 @@ def main():
 
     plotting.plot_pdntest(
         results_dict=pd_results,
-        dihedral_cutoff=dihedral_cutoff,
+        dihedral_cutoff=EnvVariables.dihedral_cutoff,
         outname=f"{figure_prefix}_test.png",
     )
 
