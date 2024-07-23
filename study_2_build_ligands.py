@@ -334,10 +334,10 @@ def explore_ligand(
 def main():
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
     calculation_dir = pathlib.Path("/home/atarzia/workingspace/cpl/calculations")
-    figures_dir = pathlib.Path("/home/atarzia/workingspace/cpl/figures")
+    figures_dir = pathlib.Path("/home/atarzia/workingspace/cpl/figures/ligands_2d")
     ligand_dir.mkdir(exist_ok=True)
     calculation_dir.mkdir(exist_ok=True)
-    figures_dir.mkdir(exist_ok=True)
+    figures_dir.mkdir(exist_ok=True, parents=True)
 
     ligand_db = atomlite.Database(ligand_dir / "ligands.db")
 
