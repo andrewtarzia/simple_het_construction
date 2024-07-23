@@ -12,7 +12,7 @@ Author: Andrew Tarzia
 import logging
 import sys
 from rdkit.Chem import Draw
-
+from definitions import EnvVariables
 import os
 import json
 import stk
@@ -120,13 +120,9 @@ def conformer_generation_uff(
     lig_conf_data = {}
     num_confs = 0
     for cid in cids:
-        conf_opt_file_name = str(lowe_output).replace(
-            "_lowe.mol", f"_c{cid}_cuff.mol"
-        )
+        conf_opt_file_name = str(lowe_output).replace("_lowe.mol", f"_c{cid}_cuff.mol")
         # Update stk_mol to conformer geometry.
-        new_mol = update_from_rdkit_conf(
-            stk_mol=molecule, rdk_mol=confs, conf_id=cid
-        )
+        new_mol = update_from_rdkit_conf(stk_mol=molecule, rdk_mol=confs, conf_id=cid)
         # Need to define the functional groups.
         new_mol = stk.BuildingBlock.init_from_molecule(
             molecule=new_mol,
@@ -182,28 +178,21 @@ def ligand_smiles():
             "6)C=CC=5)=CC=4)S3)=CC=2)C=NC=1"
         ),
         # Experimental.
-        "e10": (
-            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
-        ),
+        "e10": ("C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"),
         "e11": "C1N=CC=CC=1C1=CC2=C(C3=C(C2(C)C)C=C(C2=CN=CC=C2)C=C3)C=C1",
         "e12": "C1=CC=C(C2=CC3C(=O)C4C=C(C5=CN=CC=C5)C=CC=4C=3C=C2)C=N1",
         "e13": (
             "C1C=C(N2C(=O)C3=C(C=C4C(=C3)C3(C5=C(C4(C)CC3)C=C3C(C(N(C3="
             "O)C3C=CC=NC=3)=O)=C5)C)C2=O)C=NC=1"
         ),
-        "e14": (
-            "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1"
-        ),
-        "e16": (
-            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
-        ),
+        "e14": ("C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1"),
+        "e16": ("C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"),
         "e17": (
             "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
             "CN=CC=5)=C4)=O)=C1)=CC=C2"
         ),
         "e18": (
-            "C1(=CC=NC=C1)C#CC1=CC2C3C=C(C#CC4=CC=NC=C4)C=CC=3C(OC)=C(O"
-            "C)C=2C=C1"
+            "C1(=CC=NC=C1)C#CC1=CC2C3C=C(C#CC4=CC=NC=C4)C=CC=3C(OC)=C(O" "C)C=2C=C1"
         ),
     }
 
@@ -217,9 +206,6 @@ def main():
 
     _wd = liga_path()
     _cd = calc_path()
-
-    dihedral_cutoff = 10
-    strain_cutoff = 5
 
     yproperties = (
         # "xtb_dmsoenergy",
@@ -251,8 +237,7 @@ def main():
                 calc_dir=_cd,
             )
             logging.info(
-                f"time taken for conf gen of {lig}: "
-                f"{round(time.time()-st, 2)}s"
+                f"time taken for conf gen of {lig}: " f"{round(time.time()-st, 2)}s"
             )
 
     experimental_ligand_outcomes = {
@@ -310,9 +295,7 @@ def main():
                 pdi = property_dict[cid]["NN_BCN_angles"]
                 # 180 - angle, to make it the angle toward the binding
                 # interaction. Minus 90  to convert to the bite-angle.
-                ba = ((180 - pdi["NN_BCN1"]) - 90) + (
-                    (180 - pdi["NN_BCN2"]) - 90
-                )
+                ba = ((180 - pdi["NN_BCN1"]) - 90) + ((180 - pdi["NN_BCN2"]) - 90)
                 property_dict[cid]["bite_angle"] = ba
 
             structure_results[ligand] = property_dict
@@ -361,9 +344,7 @@ def main():
             large_l_dict = structure_results[large_l]
 
             # Iterate over the product of all conformers.
-            for small_cid, large_cid in itertools.product(
-                small_l_dict, large_l_dict
-            ):
+            for small_cid, large_cid in itertools.product(small_l_dict, large_l_dict):
                 cid_name = ",".join((small_cid, large_cid))
                 # Calculate geom score for both sides together.
                 large_c_dict = large_l_dict[large_cid]
@@ -388,8 +369,8 @@ def main():
                 large_energy = large_l_dict[large_cid]["UFFEnergy;kj/mol"]
                 large_strain = large_energy - low_energy_values[large_l][1]
                 if (
-                    small_strain > strain_cutoff
-                    or large_strain > strain_cutoff
+                    small_strain > EnvVariables.strain_cutoff
+                    or large_strain > EnvVariables.strain_cutoff
                 ):
                     continue
                 # total_strain = large_strain + small_strain
@@ -427,27 +408,29 @@ def main():
             json.dump(pair_info, f, indent=4)
 
     # Figure in manuscript.
-    plotting.gs_table(results_dict=pair_info, dihedral_cutoff=dihedral_cutoff)
+    plotting.gs_table(
+        results_dict=pair_info, dihedral_cutoff=EnvVariables.dihedral_cutoff
+    )
 
     # Figure in manuscript.
     plotting.plot_all_ligand_pairings_simplified(
         results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
+        dihedral_cutoff=EnvVariables.dihedral_cutoff,
         outname=f"{figure_prefix}_all_lp_simpl.pdf",
     )
     plotting.plot_all_ligand_pairings(
         results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
+        dihedral_cutoff=EnvVariables.dihedral_cutoff,
         outname=f"{figure_prefix}_all_lp.png",
     )
     plotting.plot_all_ligand_pairings_2dhist(
         results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
+        dihedral_cutoff=EnvVariables.dihedral_cutoff,
         outname=f"{figure_prefix}_all_lp_2dhist.png",
     )
     plotting.plot_all_ligand_pairings_2dhist_fig5(
         results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
+        dihedral_cutoff=EnvVariables.dihedral_cutoff,
         outname=f"{figure_prefix}_all_lp_2dhist_fig5.pdf",
     )
 
@@ -455,13 +438,13 @@ def main():
     plotting.plot_all_geom_scores_simplified(
         results_dict=pair_info,
         outname=f"{figure_prefix}_all_pairs_simpl.png",
-        dihedral_cutoff=dihedral_cutoff,
+        dihedral_cutoff=EnvVariables.dihedral_cutoff,
         experimental_ligand_outcomes=experimental_ligand_outcomes,
     )
     plotting.plot_all_ligand_pairings_conformers(
         results_dict=pair_info,
         structure_results=structure_results,
-        dihedral_cutoff=dihedral_cutoff,
+        dihedral_cutoff=EnvVariables.dihedral_cutoff,
         outname=f"{figure_prefix}_all_lp_conformers.pdf",
     )
 
@@ -470,7 +453,7 @@ def main():
         small_l, large_l = pair_name.split(",")
         plotting.plot_ligand_pairing(
             results_dict=pair_info[pair_name],
-            dihedral_cutoff=dihedral_cutoff,
+            dihedral_cutoff=EnvVariables.dihedral_cutoff,
             outname=f"{figure_prefix}_lp_{small_l}_{large_l}.png",
         )
 
