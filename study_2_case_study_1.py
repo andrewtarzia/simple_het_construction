@@ -32,6 +32,107 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def analyse_ligand_pair(
+    ligand1: str,
+    ligand2: str,
+    key: str,
+    ligand_db: atomlite.Database,
+    pair_db: atomlite.Database,
+):
+    ligand1_entry = ligand_db.get_entry(ligand1)
+    ligand1_confs = ligand1_entry.properties["conf_data"]
+    ligand2_entry = ligand_db.get_entry(ligand2)
+    ligand2_confs = ligand2_entry.properties["conf_data"]
+    st = time.time()
+    num_pairs = 0
+    min_geom_score = 1e24
+    print("check this to pair count", len(ligand1_confs), len(ligand2_confs))
+    pair_data = {}
+
+    # Iterate over the product of all conformers.
+    for cid_1, cid_2 in it.product(ligand1_confs, ligand2_confs):
+        cid_name = f"{cid_1}-{cid_2}"
+
+        # Check strain.
+        logging.info("remove conversion")
+        strain1 = (
+            ligand1_confs[cid_1]["UFFEnergy;kj/mol"]
+            - ligand1_entry.properties["min_energy;kj/mol"] * 4.184
+        )
+        strain2 = (
+            ligand2_confs[cid_2]["UFFEnergy;kj/mol"]
+            - ligand2_entry.properties["min_energy;kj/mol"] * 4.184
+        )
+        if strain1 > EnvVariables.strain_cutoff or strain2 > EnvVariables.strain_cutoff:
+            continue
+
+        # Check torsion.
+        torsion1 = abs(ligand1_confs[cid_1]["NCCN_dihedral"])
+        torsion2 = abs(ligand2_confs[cid_2]["NCCN_dihedral"])
+        if (
+            torsion1 > EnvVariables.dihedral_cutoff
+            or torsion2 > EnvVariables.dihedral_cutoff
+        ):
+            continue
+
+        # Calculate geom score for both sides together.
+        c_dict1 = ligand1_confs[cid_1]
+        c_dict2 = ligand2_confs[cid_2]
+        print(c_dict1, c_dict2)
+        print(cid_1, cid_2, key)
+
+        logging.info(
+            "should I pick large and small, or just define the alg so it does not matter?"
+        )
+
+        # Calculate final geometrical properties.
+        # T1.
+        angle_dev = angle_test(c_dict1=c_dict1, c_dict2=c_dict2)
+        print(angle_dev)
+
+        residuals = mismatch_test(c_dict1=c_dict1, c_dict2=c_dict2)
+        print(key, residuals, "same for lc, ld")
+
+        raise SystemExit
+        geom_score = abs(angle_dev - 1) + abs(length_dev - 1)
+
+        min_geom_score = min((geom_score, min_geom_score))
+        pair_data[cid_name] = {
+            "geom_score": geom_score,
+            "large_key": large_key,
+            "small_key": small_key,
+            "large_dihedral": large_c_dict["NCCN_dihedral"],
+            "small_dihedral": small_c_dict["NCCN_dihedral"],
+            "angle_deviation": angle_dev,
+            "length_deviation": length_dev,
+            "large_dict": large_c_dict,
+            "small_dict": small_c_dict,
+        }
+        num_pairs += 1
+    logging.info("need to handle the two different isomers of matching")
+    print("t", pair_db.has_property_entry(key))
+    entry = atomlite.PropertyEntry(
+        key=key,
+        properties={"pair_data": pair_data},
+    )
+    pair_db.update_entries(entries=entry)
+    print("t2", pair_db.has_property_entry(key))
+    ft = time.time()
+    logging.info(
+        f"time taken for pairing {ligand1}, {ligand2}: "
+        f"{round(1000*(ft-st), 2)}ms "
+        f"({round(1000*(ft-st)/num_pairs)}ms"
+        f" per pair) - {num_pairs} pairs"
+    )
+    print(
+        "check this to pair count",
+        len(ligand1_confs),
+        len(ligand2_confs),
+        len(ligand1_confs) * len(ligand2_confs),
+        num_pairs,
+    )
+
+
 def extract_torsions(
     molecule: stk.Molecule,
     smarts: str,
