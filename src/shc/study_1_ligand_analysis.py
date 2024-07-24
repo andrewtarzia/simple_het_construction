@@ -31,16 +31,6 @@ def vector_length():
 
 
 def get_test_1(large_c_dict, small_c_dict):
-    # l_angle = (large_c_dict["NN_BCN_angles"]["NN_BCN1"] - 90) + (
-    #     large_c_dict["NN_BCN_angles"]["NN_BCN2"] - 90
-    # )
-
-    # s_angle = small_c_dict["bite_angle"]
-    # # Version 1
-    # return s_angle / l_angle
-    # # Version 2
-    # return (s_angle + l_angle) / 180
-
     # Version 3.
     # 180 - angle, to make it the angle toward the binding interaction.
     # E.g. To become internal angle of trapezoid.

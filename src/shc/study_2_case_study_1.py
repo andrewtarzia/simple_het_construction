@@ -30,14 +30,15 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def analyse_ligand_pair(
+def analyse_ligand_pair(  # noqa: PLR0913
     ligand1: str,
     ligand2: str,
     key: str,
     ligand_db: atomlite.Database,
     pair_db: atomlite.Database,
     figures_dir: pathlib.Path,
-):
+) -> None:
+    """Analyse a pair of ligands."""
     ligand1_entry = ligand_db.get_entry(ligand1)
     ligand1_confs = ligand1_entry.properties["conf_data"]
     ligand2_entry = ligand_db.get_entry(ligand2)
@@ -138,20 +139,20 @@ def analyse_ligand_pair(
             )
 
     logging.info("in future, save this whole dict with comented code.")
-    # print("t", pair_db.has_property_entry(key))
-    # entry = atomlite.PropertyEntry(
-    #     key=key,
-    #     properties={"pair_data": pair_data},
-    # )
-    # pair_db.update_properties(entries=entry)
-    # print("t2", pair_db.has_property_entry(key))
+    # print("t", pair_db.has_property_entry(key))  # noqa: ERA001
+    #   entry = atomlite.PropertyEntry(  key=key,
+    #     properties={"pair_data": pair_data}, # noqa: ERA001
+    # pair_db.update_properties(entries=entry) # noqa: ERA001
+    # print("t2", pair_db.has_property_entry(key)) # noqa: ERA001
     pair_db.connection.commit()
     ft = time.time()
     logging.info(
-        f"pairing {ligand1}, {ligand2}: "
-        f"{round((ft-st), 2)}s "
-        f"({round(1000*(ft-st)/num_pairs)}s"
-        f" per pair) - {num_pairs_passed} pairs passed"
+        "pairing %s, %s: " "%s s " "(%s s" " per pair) - %s pairs passed",
+        ligand1,
+        ligand2,
+        round((ft - st), 2),
+        round(1000 * (ft - st) / num_pairs),
+        num_pairs_passed,
     )
 
     plot_pair_position(
@@ -225,6 +226,7 @@ def get_amide_torsions(molecule: stk.Molecule) -> tuple[float, float]:
 
 
 def get_num_alkynes(rdkit_mol: rdkit.Mol) -> int:
+    """Get the number of alkynes in a molecule."""
     smarts = "[#6]#[#6]"
     matches = rdkit_mol.GetSubstructMatches(
         query=rdkit.MolFromSmarts(smarts),
@@ -238,6 +240,7 @@ def plot_ligand(
     ligand_dir: pathlib.Path,
     figures_dir: pathlib.Path,
 ) -> None:
+    """Plot ligand properties."""
     nnmaps = {
         "lab_0": (9.8, 12.8),
         "la_0": (8.7,),
@@ -286,7 +289,7 @@ def plot_ligand(
             )
 
             torsion_state = (
-                "f" if get_amide_torsions(conf_mol)[0] < 90 else "b"
+                "f" if get_amide_torsions(conf_mol)[0] < 90 else "b"  # noqa: PLR2004
             )
 
             states[torsion_state].append(conf)
@@ -368,8 +371,10 @@ def plot_ligand(
 
 
 def plot_flexes(
-    ligand_db: atomlite.Database, figures_dir: pathlib.Path
+    ligand_db: atomlite.Database,
+    figures_dir: pathlib.Path,
 ) -> None:
+    """Plot ligand flexibilities."""
     fig, axs = plt.subplots(ncols=2, figsize=(16, 5))
     ax, ax1 = axs
     all_xs = []
@@ -409,7 +414,7 @@ def plot_flexes(
             ),
         )
         target_atom_ids = tuple(
-            list(i.get_bonder_ids())[0]
+            next(iter(i.get_bonder_ids()))
             for i in new_mol.get_functional_groups()
         )
         dist_matrix = rdmolops.GetDistanceMatrix(rdkit_mol)
@@ -511,15 +516,21 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
             "6)C=CC=5)=CC=4)S3)=CC=2)C=NC=1"
         ),
         # Experimental.
-        "e10_0": "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1",
+        "e10_0": (
+            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
+        ),
         "e11_0": "C1N=CC=CC=1C1=CC2=C(C3=C(C2(C)C)C=C(C2=CN=CC=C2)C=C3)C=C1",
         "e12_0": "C1=CC=C(C2=CC3C(=O)C4C=C(C5=CN=CC=C5)C=CC=4C=3C=C2)C=N1",
         "e13_0": (
             "C1C=C(N2C(=O)C3=C(C=C4C(=C3)C3(C5=C(C4(C)CC3)C=C3C(C(N(C3="
             "O)C3C=CC=NC=3)=O)=C5)C)C2=O)C=NC=1"
         ),
-        "e14_0": "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1",
-        "e16_0": "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1",
+        "e14_0": (
+            "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1"
+        ),
+        "e16_0": (
+            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
+        ),
         "e17_0": (
             "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
             "CN=CC=5)=C4)=O)=C1)=CC=C2"
@@ -545,7 +556,6 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 ligand_name=lname,
                 ligand_dir=ligand_dir,
                 figures_dir=figures_dir,
-                calculation_dir=calculation_dir,
                 ligand_db=ligand_db,
             )
 
@@ -597,7 +607,7 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
         if pair_db.has_property_entry(key):
             continue
 
-        logging.info(f"analysing {ligand1} and {ligand2}")
+        logging.info("analysing %s and %s", ligand1, ligand2)
         analyse_ligand_pair(
             ligand1=ligand1,
             ligand2=ligand2,
@@ -679,12 +689,6 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 alpha=1.0,
                 c="k",
             )
-            ax.plot(
-                (np.min(xdata), np.min(xdata)),
-                ((i + 1) * ystep, i * ystep),
-                alpha=1.0,
-                c="k",
-            )
 
             xdata = [
                 entry.properties["pair_data"][i]["state_2_residual"]
@@ -709,12 +713,6 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
             )
             ax1.plot(
                 (np.mean(xdata), np.mean(xdata)),
-                ((i + 1) * ystep, i * ystep),
-                alpha=1.0,
-                c="k",
-            )
-            ax1.plot(
-                (np.min(xdata), np.min(xdata)),
                 ((i + 1) * ystep, i * ystep),
                 alpha=1.0,
                 c="k",
@@ -748,18 +746,12 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 alpha=1.0,
                 c="k",
             )
-            ax2.plot(
-                (np.min(xdata), np.min(xdata)),
-                ((i + 1) * ystep, i * ystep),
-                alpha=1.0,
-                c="k",
-            )
+
         ax.tick_params(axis="both", which="major", labelsize=16)
         ax.set_xlabel("1-residuals", fontsize=16)
         ax.set_ylabel("frequency", fontsize=16)
         ax.set_yticks([])
         ax.set_ylim(0, (steps[0] + 1.5) * 1)
-        ax.legend(fontsize=16)
 
         ax1.tick_params(axis="both", which="major", labelsize=16)
         ax1.set_xlabel("2-residuals", fontsize=16)
@@ -770,6 +762,10 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
         ax2.set_xlabel("delta-residuals", fontsize=16)
         ax2.set_yticks([])
         ax2.set_ylim(0, (steps[0] + 1.5) * 10)
+        if pts == "expt":
+            ax2.legend(ncols=2, fontsize=16)
+        else:
+            ax2.legend(fontsize=16)
 
         fig.tight_layout()
         fig.savefig(
@@ -779,7 +775,7 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
         )
         plt.close()
 
-    fig, axs = plt.subplots(ncols=3, figsize=(16, 5))
+    fig, ax = plt.subplots(figsize=(8, 5))
     plot_targets = (
         ("lab_0", "la_0"),
         ("lab_0", "lb_0"),
@@ -801,26 +797,30 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
         conf_dir = ligand_dir / "confs_lab_0"
         for cid_name in entry.properties["pair_data"]:
             la_conf = cid_name.split("-")[0]
-            print(cid_name, la_conf)
             conf_mol = stk.BuildingBlock.init_from_file(
                 conf_dir / f"lab_0_c{la_conf}_cuff.mol"
             )
 
             torsion_state = (
-                "f" if get_amide_torsions(conf_mol)[0] < 90 else "b"
+                "f" if get_amide_torsions(conf_mol)[0] < 90 else "b"  # noqa: PLR2004
             )
 
             if torsion_state == "f":
                 x1data.append(
-                    entry.properties["pair_data"][i]["state_1_residual"]
+                    entry.properties["pair_data"][cid_name]["state_1_residual"]
                 )
             elif torsion_state == "b":
                 x2data.append(
-                    entry.properties["pair_data"][i]["state_1_residual"]
+                    entry.properties["pair_data"][cid_name]["state_1_residual"]
                 )
-            print(torsion_state)
-            print(f"lab_0_c{la_conf}_cuff.mol")
-            raise SystemExit
+
+        if ligand2 == "la_0":
+            lbl1 = "f"
+            lbl2 = "b"
+        else:
+            lbl1 = None
+            lbl2 = None
+
         ax.hist(
             x=x1data,
             bins=xbins,
@@ -831,16 +831,10 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
             linewidth=1.0,
             alpha=1.0,
             edgecolor="none",
-            label=f"{entry.key}",
+            label=lbl1,
         )
         ax.plot(
             (np.mean(x1data), np.mean(x1data)),
-            ((i + 1) * ystep, i * ystep),
-            alpha=1.0,
-            c="k",
-        )
-        ax.plot(
-            (np.min(x1data), np.min(x1data)),
             ((i + 1) * ystep, i * ystep),
             alpha=1.0,
             c="k",
@@ -857,16 +851,10 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
             alpha=1.0,
             edgecolor="k",
             facecolor="none",
-            label=f"{entry.key}",
+            label=lbl2,
         )
         ax.plot(
             (np.mean(x2data), np.mean(x2data)),
-            ((i + 1) * ystep, i * ystep),
-            alpha=1.0,
-            c="r",
-        )
-        ax.plot(
-            (np.min(x2data), np.min(x2data)),
             ((i + 1) * ystep, i * ystep),
             alpha=1.0,
             c="r",
@@ -886,9 +874,6 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
         bbox_inches="tight",
     )
     plt.close()
-    raise SystemExit(
-        "plot residuals as a function of LAB state for four pairs"
-    )
 
 
 if __name__ == "__main__":

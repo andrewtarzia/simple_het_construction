@@ -1,16 +1,8 @@
-#!/usr/bin/env python
-# Distributed under the terms of the MIT License.
-
-"""Script to build the ligand in this project.
-
-Author: Andrew Tarzia
-
-"""
+"""Script to build the ligand in this project."""
 
 import json
 import logging
 import os
-import sys
 
 import plotting
 from definitions import EnvVariables
@@ -18,12 +10,7 @@ from definitions import EnvVariables
 
 def main() -> None:
     """Run script."""
-    if len(sys.argv) != 1:
-        logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
-        sys.exit()
-    else:
-        pass
-
+    raise SystemExit("convert this to taking a db as an arg to show")
     _wd = liga_path()
     _cd = calc_path()
 

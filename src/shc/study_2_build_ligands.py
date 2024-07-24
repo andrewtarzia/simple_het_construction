@@ -10,20 +10,20 @@ import atomlite
 import bbprep
 import stk
 import stko
-from rdkit.Chem import AllChem as rdkit
+from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import Draw
 from utilities import update_from_rdkit_conf
 
 
-def build_ligand(
+def build_ligand(  # noqa: PLR0913
     building_blocks: abc.Sequence[stk.BuildingBlock],
     repeating_unit: str,
     ligand_name: str,
     ligand_dir: pathlib.Path,
     figures_dir: pathlib.Path,
-    calculation_dir: pathlib.Path,
     ligand_db: atomlite.Database,
 ) -> None:
+    """Build a ligand."""
     lowe_file = ligand_dir / f"{ligand_name}_lowe.mol"
     if lowe_file.exists():
         molecule = stk.BuildingBlock.init_from_file(lowe_file)
@@ -45,7 +45,6 @@ def build_ligand(
             ligand_name=ligand_name,
             ligand_dir=ligand_dir,
             figures_dir=figures_dir,
-            calculation_dir=calculation_dir,
             ligand_db=ligand_db,
         )
 
@@ -53,9 +52,9 @@ def build_ligand(
 def generate_all_ligands(
     ligand_dir: pathlib.Path,
     figures_dir: pathlib.Path,
-    calculation_dir: pathlib.Path,
     ligand_db: atomlite.Database,
 ) -> None:
+    """Iterate and generate through all components."""
     core_smiles = (
         # From 10.1002/anie.202106721
         "Brc1ccc(Br)cc1",
@@ -91,13 +90,13 @@ def generate_all_ligands(
         "C1=CC2=C(C=CC=N2)C(=C1)Br",
         #####
         "CC1=C(C=NC=C1)Br",
-        # "C1=CC(=CN=C1)C#CBr",
-        # "C1C=C(C)C(C#CBr)=CN=1",
+        # "C1=CC(=CN=C1)C#CBr",  # noqa: ERA001
+        # "C1C=C(C)C(C#CBr)=CN=1",  # noqa: ERA001
         "C1=CN(C=N1)Br",
         "CN1C=NC=C1Br",
         "C1=CC=C2C(=C1)C=NC=C2Br",
         "C1=CC=C2C(=C1)C=C(C=N2)Br",
-        # "C1=CC=C2C(=C1)C(=C3C=CC=CC3=N2)Br",
+        # "C1=CC=C2C(=C1)C(=C3C=CC=CC3=N2)Br",  # noqa: ERA001
     )
 
     count = 0
@@ -246,7 +245,6 @@ def generate_all_ligands(
                         repeating_unit=options[option]["ru"],
                         ligand_dir=ligand_dir,
                         figures_dir=figures_dir,
-                        calculation_dir=calculation_dir,
                         ligand_db=ligand_db,
                     )
                     count += 1
@@ -257,9 +255,9 @@ def explore_ligand(
     ligand_name: str,
     ligand_dir: pathlib.Path,
     figures_dir: pathlib.Path,
-    calculation_dir: pathlib.Path,
     ligand_db: atomlite.Database,
 ) -> None:
+    """Do conformer scan."""
     rdkit_mol = rdkit.MolFromSmiles(stk.Smiles().get_key(molecule))
     Draw.MolToFile(
         rdkit_mol, figures_dir / f"{ligand_name}_2d.png", size=(300, 300)
@@ -269,7 +267,7 @@ def explore_ligand(
     conf_dir = ligand_dir / f"confs_{ligand_name}"
     conf_dir.mkdir(exist_ok=True)
 
-    logging.info(f"building conformer ensemble of {ligand_name}")
+    logging.info("building conformer ensemble of %s", ligand_name)
 
     confs = molecule.to_rdkit_mol()
     etkdg = rdkit.srETKDGv3()
@@ -333,7 +331,10 @@ def explore_ligand(
     ligand_db.add_entries(entry)
 
     logging.info(
-        f"{num_confs} confs generated for {ligand_name} in {round(time.time()-st, 2)}s"
+        "%s confs generated for %s in %s s",
+        num_confs,
+        ligand_name,
+        round(time.time() - st, 2),
     )
 
 
@@ -356,7 +357,6 @@ def main() -> None:
     generate_all_ligands(
         ligand_dir=ligand_dir,
         figures_dir=figures_dir,
-        calculation_dir=calculation_dir,
         ligand_db=ligand_db,
     )
     logging.info("built %s ligands", ligand_db.num_entries)
