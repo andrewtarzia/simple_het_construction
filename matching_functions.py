@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from dataclasses import dataclass
 import matplotlib.patches as patches
+import stk
+import scipy.optimize as optimize
+from collections import abc
+import stko
 
 
 def vector_length():
@@ -41,8 +45,8 @@ def plot_pair_position(
 
     # Plot residuals.
     ax.plot(
-        (rigidbody2.get_x1(r2).x, rigidbody1.get_x1(r1).x),
-        (rigidbody2.get_x1(r2).y, rigidbody1.get_x1(r1).y),
+        (rigidbody2.get_x1(r2, phi2).x, rigidbody1.get_x1(r1, phi1).x),
+        (rigidbody2.get_x1(r2, phi2).y, rigidbody1.get_x1(r1, phi1).y),
         c="tab:red",
         alpha=1.0,
         # s=100,
@@ -50,8 +54,8 @@ def plot_pair_position(
         ls="--",
     )
     ax.plot(
-        (rigidbody2.get_x2(r2).x, rigidbody1.get_x2(r1).x),
-        (rigidbody2.get_x2(r2).y, rigidbody1.get_x2(r1).y),
+        (rigidbody2.get_x2(r2, phi2).x, rigidbody1.get_x2(r1, phi1).x),
+        (rigidbody2.get_x2(r2, phi2).y, rigidbody1.get_x2(r1, phi1).y),
         c="tab:red",
         alpha=1.0,
         # s=100,
@@ -59,8 +63,8 @@ def plot_pair_position(
         ls="--",
     )
     ax.plot(
-        (rigidbody3.get_x1(r3).x, rigidbody1.get_x1(r1).x),
-        (rigidbody3.get_x1(r3).y, rigidbody1.get_x1(r1).y),
+        (rigidbody3.get_x1(r3, phi3).x, rigidbody1.get_x1(r1, phi1).x),
+        (rigidbody3.get_x1(r3, phi3).y, rigidbody1.get_x1(r1, phi1).y),
         c="tab:green",
         alpha=1.0,
         # s=100,
@@ -68,8 +72,8 @@ def plot_pair_position(
         ls="--",
     )
     ax.plot(
-        (rigidbody3.get_x2(r3).x, rigidbody1.get_x2(r1).x),
-        (rigidbody3.get_x2(r3).y, rigidbody1.get_x2(r1).y),
+        (rigidbody3.get_x2(r3, phi3).x, rigidbody1.get_x2(r1, phi1).x),
+        (rigidbody3.get_x2(r3, phi3).y, rigidbody1.get_x2(r1, phi1).y),
         c="tab:green",
         alpha=1.0,
         # s=100,
@@ -79,8 +83,8 @@ def plot_pair_position(
 
     # Plot LHS ligand.
     ax.plot(
-        (rigidbody1.get_n1(r1).x, rigidbody1.get_n2(r1).x),
-        (rigidbody1.get_n1(r1).y, rigidbody1.get_n2(r1).y),
+        (rigidbody1.get_n1(r1, phi1).x, rigidbody1.get_n2(r1, phi1).x),
+        (rigidbody1.get_n1(r1, phi1).y, rigidbody1.get_n2(r1, phi1).y),
         c="tab:blue",
         alpha=1.0,
         # s=100,
@@ -91,8 +95,8 @@ def plot_pair_position(
     )
 
     ax.plot(
-        (rigidbody1.get_n1(r1).x, rigidbody1.get_x1(r1).x),
-        (rigidbody1.get_n1(r1).y, rigidbody1.get_x1(r1).y),
+        (rigidbody1.get_n1(r1, phi1).x, rigidbody1.get_x1(r1, phi1).x),
+        (rigidbody1.get_n1(r1, phi1).y, rigidbody1.get_x1(r1, phi1).y),
         c="tab:orange",
         alpha=1.0,
         # s=100,
@@ -103,8 +107,8 @@ def plot_pair_position(
     )
 
     ax.plot(
-        (rigidbody1.get_n2(r1).x, rigidbody1.get_x2(r1).x),
-        (rigidbody1.get_n2(r1).y, rigidbody1.get_x2(r1).y),
+        (rigidbody1.get_n2(r1, phi1).x, rigidbody1.get_x2(r1, phi1).x),
+        (rigidbody1.get_n2(r1, phi1).y, rigidbody1.get_x2(r1, phi1).y),
         c="tab:orange",
         alpha=1.0,
         # s=100,
@@ -116,8 +120,8 @@ def plot_pair_position(
 
     # Plot RHS ligand.
     ax.plot(
-        (rigidbody2.get_n1(r2).x, rigidbody2.get_n2(r2).x),
-        (rigidbody2.get_n1(r2).y, rigidbody2.get_n2(r2).y),
+        (rigidbody2.get_n1(r2, phi2).x, rigidbody2.get_n2(r2, phi2).x),
+        (rigidbody2.get_n1(r2, phi2).y, rigidbody2.get_n2(r2, phi2).y),
         c="tab:blue",
         alpha=1.0,
         # s=100,
@@ -128,8 +132,8 @@ def plot_pair_position(
     )
 
     ax.plot(
-        (rigidbody2.get_n1(r2).x, rigidbody2.get_x1(r2).x),
-        (rigidbody2.get_n1(r2).y, rigidbody2.get_x1(r2).y),
+        (rigidbody2.get_n1(r2, phi2).x, rigidbody2.get_x1(r2, phi2).x),
+        (rigidbody2.get_n1(r2, phi2).y, rigidbody2.get_x1(r2, phi2).y),
         c="tab:orange",
         alpha=1.0,
         # s=100,
@@ -140,8 +144,8 @@ def plot_pair_position(
     )
 
     ax.plot(
-        (rigidbody2.get_n2(r2).x, rigidbody2.get_x2(r2).x),
-        (rigidbody2.get_n2(r2).y, rigidbody2.get_x2(r2).y),
+        (rigidbody2.get_n2(r2, phi2).x, rigidbody2.get_x2(r2, phi2).x),
+        (rigidbody2.get_n2(r2, phi2).y, rigidbody2.get_x2(r2, phi2).y),
         c="tab:orange",
         alpha=1.0,
         # s=100,
@@ -153,8 +157,8 @@ def plot_pair_position(
 
     # Plot RHS ligand state 2.
     ax.plot(
-        (rigidbody3.get_n1(r3).x, rigidbody3.get_n2(r3).x),
-        (rigidbody3.get_n1(r3).y, rigidbody3.get_n2(r3).y),
+        (rigidbody3.get_n1(r3, phi3).x, rigidbody3.get_n2(r3, phi3).x),
+        (rigidbody3.get_n1(r3, phi3).y, rigidbody3.get_n2(r3, phi3).y),
         c="tab:cyan",
         alpha=1.0,
         # s=100,
@@ -164,8 +168,8 @@ def plot_pair_position(
         markeredgecolor="none",
     )
     ax.plot(
-        (rigidbody3.get_n1(r3).x, rigidbody3.get_x1(r3).x),
-        (rigidbody3.get_n1(r3).y, rigidbody3.get_x1(r3).y),
+        (rigidbody3.get_n1(r3, phi3).x, rigidbody3.get_x1(r3, phi3).x),
+        (rigidbody3.get_n1(r3, phi3).y, rigidbody3.get_x1(r3, phi3).y),
         c="tab:purple",
         alpha=1.0,
         # s=100,
@@ -176,8 +180,8 @@ def plot_pair_position(
     )
 
     ax.plot(
-        (rigidbody3.get_n2(r3).x, rigidbody3.get_x2(r3).x),
-        (rigidbody3.get_n2(r3).y, rigidbody3.get_x2(r3).y),
+        (rigidbody3.get_n2(r3, phi3).x, rigidbody3.get_x2(r3, phi3).x),
+        (rigidbody3.get_n2(r3, phi3).y, rigidbody3.get_x2(r3, phi3).y),
         c="tab:purple",
         alpha=1.0,
         # s=100,
@@ -188,42 +192,42 @@ def plot_pair_position(
     )
 
     circ = patches.Circle(
-        (rigidbody1.get_n1(r1).x, rigidbody1.get_n1(r1).y),
+        (rigidbody1.get_n1(r1, phi1).x, rigidbody1.get_n1(r1, phi1).y),
         2.02,
         alpha=0.2,
         fc="yellow",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
-        (rigidbody1.get_n2(r1).x, rigidbody1.get_n2(r1).y),
+        (rigidbody1.get_n2(r1, phi1).x, rigidbody1.get_n2(r1, phi1).y),
         2.02,
         alpha=0.2,
         fc="yellow",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
-        (rigidbody2.get_n1(r2).x, rigidbody2.get_n1(r2).y),
+        (rigidbody2.get_n1(r2, phi2).x, rigidbody2.get_n1(r2, phi2).y),
         2.02,
         alpha=0.2,
         fc="yellow",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
-        (rigidbody2.get_n2(r2).x, rigidbody2.get_n2(r2).y),
+        (rigidbody2.get_n2(r2, phi2).x, rigidbody2.get_n2(r2, phi2).y),
         2.02,
         alpha=0.2,
         fc="yellow",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
-        (rigidbody3.get_n1(r3).x, rigidbody3.get_n1(r3).y),
+        (rigidbody3.get_n1(r3, phi3).x, rigidbody3.get_n1(r3, phi3).y),
         2.02,
         alpha=0.2,
         fc="yellow",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
-        (rigidbody3.get_n2(r3).x, rigidbody3.get_n2(r3).y),
+        (rigidbody3.get_n2(r3, phi3).x, rigidbody3.get_n2(r3, phi3).y),
         2.02,
         alpha=0.2,
         fc="yellow",
@@ -260,8 +264,8 @@ def plot_pair_position(
 
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.axis("off")
-    ax.set_xlim(-10, 10)
-    ax.set_ylim(-10, 10)
+    ax.set_xlim(-15, 15)
+    ax.set_ylim(-15, 15)
     ax.set_xticks([])
     ax.set_yticks([])
 
@@ -510,6 +514,9 @@ class PairResult:
     state_1_parameters: abc.Sequence[float]
     state_2_parameters: abc.Sequence[float]
     set_parameters: abc.Sequence[float]
+
+
+def mismatch_test(c_dict1: dict, c_dict2: dict) -> PairResult:
     rigidbody1 = LhsRigidBody(
         nn_length=c_dict1["NN_distance"],
         theta1=c_dict1["NN_BCN_angles"][0],
