@@ -3,10 +3,9 @@
 import logging
 
 import pathlib
-
+import matplotlib.pyplot as plt
 import stk
 import itertools as it
-import matplotlib.pyplot as plt
 import atomlite
 from definitions import EnvVariables
 from study_2_build_ligands import explore_ligand
@@ -17,7 +16,7 @@ from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import rdMolTransforms, rdMolDescriptors, rdmolops
 import argparse
 import time
-from matching_functions import angle_test, mismatch_test
+from matching_functions import angle_test, mismatch_test, plot_pair_position
 
 
 def _parse_args() -> argparse.Namespace:
@@ -580,9 +579,283 @@ def main():
             key=key,
             ligand_db=ligand_db,
             pair_db=pair_db,
+            figures_dir=figures_dir,
         )
 
-        raise SystemExit
+    plot_targets_sets = {
+        "expt": (
+            ("e16_0", "e10_0"),
+            ("e16_0", "e17_0"),
+            ("e10_0", "e17_0"),
+            ("e11_0", "e10_0"),
+            ("e16_0", "e14_0"),
+            ("e18_0", "e14_0"),
+            ("e18_0", "e10_0"),
+            ("e12_0", "e10_0"),
+            ("e11_0", "e14_0"),
+            ("e12_0", "e14_0"),
+            ("e11_0", "e13_0"),
+            ("e12_0", "e13_0"),
+            ("e13_0", "e14_0"),
+            ("e11_0", "e12_0"),
+        ),
+        "2024": (
+            ("sla_0", "sl1_0"),
+            ("slb_0", "sl1_0"),
+            ("slc_0", "sl1_0"),
+            ("sld_0", "sl1_0"),
+            ("sla_0", "sl2_0"),
+            ("slb_0", "sl2_0"),
+            ("slc_0", "sl2_0"),
+            ("sld_0", "sl2_0"),
+        ),
+        "het": (
+            ("lab_0", "la_0"),
+            ("lab_0", "lb_0"),
+            ("lab_0", "lc_0"),
+            ("lab_0", "ld_0"),
+            ("m2h_0", "m4q_0"),
+            ("m2h_0", "m4p_0"),
+        ),
+    }
+    for pts in plot_targets_sets:
+        plot_targets = plot_targets_sets[pts]
+        fig, axs = plt.subplots(ncols=3, figsize=(16, 5))
+        ax, ax1, ax2 = axs
+        steps = range(len(plot_targets) - 1, -1, -1)
+        for i, (ligand1, ligand2) in zip(steps, plot_targets):
+            key = f"{ligand1}_{ligand2}"
+            entry = pair_db.get_property_entry(key)
+
+            xdata = [
+                entry.properties["pair_data"][i]["state_1_residual"]
+                for i in entry.properties["pair_data"]
+            ]
+            xmin = 0
+            xmax = 15
+            xwidth = 0.5
+            xbins = np.arange(xmin - xwidth, xmax + xwidth, xwidth)
+            ystep = 1
+            ax.hist(
+                x=xdata,
+                bins=xbins,
+                density=True,
+                bottom=i * ystep,
+                histtype="stepfilled",
+                stacked=True,
+                linewidth=1.0,
+                alpha=1.0,
+                edgecolor="k",
+                label=f"{entry.key}",
+            )
+            ax.plot(
+                (np.mean(xdata), np.mean(xdata)),
+                ((i + 1) * ystep, i * ystep),
+                alpha=1.0,
+                c="k",
+            )
+            ax.plot(
+                (np.min(xdata), np.min(xdata)),
+                ((i + 1) * ystep, i * ystep),
+                alpha=1.0,
+                c="k",
+            )
+
+            xdata = [
+                entry.properties["pair_data"][i]["state_2_residual"]
+                for i in entry.properties["pair_data"]
+            ]
+            xmin = 0
+            xmax = 15
+            xwidth = 0.5
+            xbins = np.arange(xmin - xwidth, xmax + xwidth, xwidth)
+            ystep = 1
+            ax1.hist(
+                x=xdata,
+                bins=xbins,
+                density=True,
+                bottom=i * ystep,
+                histtype="stepfilled",
+                stacked=True,
+                linewidth=1.0,
+                alpha=1.0,
+                edgecolor="k",
+                label=f"{entry.key}",
+            )
+            ax1.plot(
+                (np.mean(xdata), np.mean(xdata)),
+                ((i + 1) * ystep, i * ystep),
+                alpha=1.0,
+                c="k",
+            )
+            ax1.plot(
+                (np.min(xdata), np.min(xdata)),
+                ((i + 1) * ystep, i * ystep),
+                alpha=1.0,
+                c="k",
+            )
+
+            xdata = [
+                entry.properties["pair_data"][i]["state_1_residual"]
+                - entry.properties["pair_data"][i]["state_2_residual"]
+                for i in entry.properties["pair_data"]
+            ]
+            xmin = -1
+            xmax = 1
+            xwidth = 0.05
+            xbins = np.arange(xmin - xwidth, xmax + xwidth, xwidth)
+            ystep = 10
+            ax2.hist(
+                x=xdata,
+                bins=xbins,
+                density=True,
+                bottom=i * ystep,
+                histtype="stepfilled",
+                stacked=True,
+                linewidth=1.0,
+                alpha=1.0,
+                edgecolor="k",
+                label=f"{entry.key}",
+            )
+            ax2.plot(
+                (np.mean(xdata), np.mean(xdata)),
+                ((i + 1) * ystep, i * ystep),
+                alpha=1.0,
+                c="k",
+            )
+            ax2.plot(
+                (np.min(xdata), np.min(xdata)),
+                ((i + 1) * ystep, i * ystep),
+                alpha=1.0,
+                c="k",
+            )
+        ax.tick_params(axis="both", which="major", labelsize=16)
+        ax.set_xlabel("1-residuals", fontsize=16)
+        ax.set_ylabel("frequency", fontsize=16)
+        ax.set_yticks([])
+        ax.set_ylim(0, (steps[0] + 1.5) * 1)
+        ax.legend(fontsize=16)
+
+        ax1.tick_params(axis="both", which="major", labelsize=16)
+        ax1.set_xlabel("2-residuals", fontsize=16)
+        ax1.set_yticks([])
+        ax1.set_ylim(0, (steps[0] + 1.5) * 1)
+
+        ax2.tick_params(axis="both", which="major", labelsize=16)
+        ax2.set_xlabel("delta-residuals", fontsize=16)
+        ax2.set_yticks([])
+        ax2.set_ylim(0, (steps[0] + 1.5) * 10)
+
+        fig.tight_layout()
+        fig.savefig(
+            figures_dir / f"cs1_residuals_{pts}.png",
+            dpi=360,
+            bbox_inches="tight",
+        )
+        plt.close()
+
+    fig, axs = plt.subplots(ncols=3, figsize=(16, 5))
+    plot_targets = (
+        ("lab_0", "la_0"),
+        ("lab_0", "lb_0"),
+        ("lab_0", "lc_0"),
+        ("lab_0", "ld_0"),
+    )
+    steps = range(len(plot_targets) - 1, -1, -1)
+    for i, (ligand1, ligand2) in zip(steps, plot_targets):
+        key = f"{ligand1}_{ligand2}"
+        entry = pair_db.get_property_entry(key)
+        xmin = 0
+        xmax = 15
+        xwidth = 0.5
+        xbins = np.arange(xmin - xwidth, xmax + xwidth, xwidth)
+        ystep = 1
+
+        x1data = []
+        x2data = []
+        conf_dir = ligand_dir / "confs_lab_0"
+        for cid_name in entry.properties["pair_data"]:
+            la_conf = cid_name.split("-")[0]
+            print(cid_name, la_conf)
+            conf_mol = stk.BuildingBlock.init_from_file(
+                conf_dir / f"lab_0_c{la_conf}_cuff.mol"
+            )
+
+            torsion_state = "f" if get_amide_torsions(conf_mol)[0] < 90 else "b"  # noqa: PLR2004
+
+            if torsion_state == "f":
+                x1data.append(entry.properties["pair_data"][i]["state_1_residual"])
+            elif torsion_state == "b":
+                x2data.append(entry.properties["pair_data"][i]["state_1_residual"])
+            print(torsion_state)
+            print(f"lab_0_c{la_conf}_cuff.mol")
+            raise SystemExit
+        ax.hist(
+            x=x1data,
+            bins=xbins,
+            density=True,
+            bottom=i * ystep,
+            histtype="stepfilled",
+            stacked=True,
+            linewidth=1.0,
+            alpha=1.0,
+            edgecolor="none",
+            label=f"{entry.key}",
+        )
+        ax.plot(
+            (np.mean(x1data), np.mean(x1data)),
+            ((i + 1) * ystep, i * ystep),
+            alpha=1.0,
+            c="k",
+        )
+        ax.plot(
+            (np.min(x1data), np.min(x1data)),
+            ((i + 1) * ystep, i * ystep),
+            alpha=1.0,
+            c="k",
+        )
+
+        ax.hist(
+            x=x2data,
+            bins=xbins,
+            density=True,
+            bottom=i * ystep,
+            histtype="stepfilled",
+            stacked=True,
+            linewidth=1.0,
+            alpha=1.0,
+            edgecolor="k",
+            facecolor="none",
+            label=f"{entry.key}",
+        )
+        ax.plot(
+            (np.mean(x2data), np.mean(x2data)),
+            ((i + 1) * ystep, i * ystep),
+            alpha=1.0,
+            c="r",
+        )
+        ax.plot(
+            (np.min(x2data), np.min(x2data)),
+            ((i + 1) * ystep, i * ystep),
+            alpha=1.0,
+            c="r",
+        )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel("1-residuals", fontsize=16)
+    ax.set_ylabel("frequency", fontsize=16)
+    ax.set_yticks([])
+    ax.set_ylim(0, (steps[0] + 1.5) * 1)
+    ax.legend(fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        figures_dir / "lab_state_residuals.png",
+        dpi=360,
+        bbox_inches="tight",
+    )
+    plt.close()
+    raise SystemExit("plot residuals as a function of LAB state for four pairs")
 
 
 if __name__ == "__main__":
