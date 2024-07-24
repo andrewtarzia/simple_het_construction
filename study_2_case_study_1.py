@@ -232,7 +232,7 @@ def plot_ligand(
         "ld_0": (9.9,),
     }
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, (ax, ax1) = plt.subplots(ncols=2, figsize=(16, 5))
     entry = ligand_db.get_entry(ligand_name)
     conf_data = entry.properties["conf_data"]
     logging.info("remove conversion")
@@ -246,6 +246,15 @@ def plot_ligand(
     ax.scatter(
         [conf_data[i]["NN_distance"] for i in conf_data],
         [sum(conf_data[i]["NN_BCN_angles"]) for i in conf_data],
+        c="tab:gray",
+        s=20,
+        ec="none",
+        alpha=0.2,
+        label="all",
+    )
+    ax1.scatter(
+        [conf_data[i]["NN_BCN_angles"][0] for i in conf_data],
+        [conf_data[i]["NN_BCN_angles"][1] for i in conf_data],
         c="tab:gray",
         s=20,
         ec="none",
@@ -281,6 +290,22 @@ def plot_ligand(
             ec="none",
             label="low energy, f",
         )
+        ax1.scatter(
+            [conf_data[i]["NN_BCN_angles"][0] for i in states["b"]],
+            [conf_data[i]["NN_BCN_angles"][1] for i in states["b"]],
+            c="tab:blue",
+            s=20,
+            ec="none",
+            label="low energy, b",
+        )
+        ax1.scatter(
+            [conf_data[i]["NN_BCN_angles"][0] for i in states["f"]],
+            [conf_data[i]["NN_BCN_angles"][1] for i in states["f"]],
+            c="tab:orange",
+            s=20,
+            ec="none",
+            label="low energy, f",
+        )
 
     else:
         ax.scatter(
@@ -291,9 +316,18 @@ def plot_ligand(
             ec="none",
             label="low energy",
         )
+        ax1.scatter(
+            [conf_data[i]["NN_BCN_angles"][0] for i in low_energy_states],
+            [conf_data[i]["NN_BCN_angles"][1] for i in low_energy_states],
+            c="tab:blue",
+            s=20,
+            ec="none",
+            label="low energy",
+        )
 
-    for i in nnmaps[ligand_name]:
-        ax.axvline(x=i, c="k", alpha=0.4, ls="--")
+    if ligand_name in nnmaps:
+        for i in nnmaps[ligand_name]:
+            ax.axvline(x=i, c="k", alpha=0.4, ls="--")
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.set_ylabel("sum binder angles [deg]", fontsize=16)
     ax.set_ylim(0, 360)
@@ -301,6 +335,12 @@ def plot_ligand(
     ax.set_xlim(0, 30)
     ax.legend(fontsize=16)
 
+    ax1.tick_params(axis="both", which="major", labelsize=16)
+    ax1.set_xlabel("binder angle 1 [deg]", fontsize=16)
+    ax1.set_xlim(0, 360)
+    ax1.set_ylabel("binder angle 2 [deg]", fontsize=16)
+    ax1.set_ylim(0, 360)
+    ax1.plot((0, 360), (0, 360), c="k", ls="--")
     fig.tight_layout()
     fig.savefig(
         figures_dir / f"cs1_{ligand_name}.png",
