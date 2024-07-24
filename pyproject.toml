@@ -1,0 +1,112 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simple_het_construction"
+maintainers = [
+  { name = "Andrew Tarzia", email = "andrew.tarzia@gmail.com" },
+]
+dependencies = [
+  "atomlite",
+  "scipy",
+  "matplotlib",
+  "bbprepared",
+  "rmsd",
+  "numpy",
+  "stko",
+  "stk",
+  "rdkit",
+]
+requires-python = ">=3.11"
+dynamic = ["version"]
+readme = "README.rst"
+
+[project.optional-dependencies]
+dev = [
+  "ruff",
+  "moldoc",
+  "mypy",
+  "pip-tools",
+  # TODO: Remove pin when https://github.com/TvoroG/pytest-lazy-fixture/issues/65 is resolved.
+  # pytest-lazy-fixture 0.6.0 is incompatible with pytest 8.0.0
+  "pytest<8",
+  "pytest-benchmark",
+  "pytest-datadir",
+  "pytest-lazy-fixture",
+  "pytest-cov",
+  "sphinx",
+  "sphinx-copybutton",
+  "sphinx-rtd-theme",
+  "twine",
+]
+
+[project.urls]
+github = "https://github.com/andrewtarzia/simple_het_construction"
+
+[tool.setuptools_scm]
+write_to = "src/shc/_version.py"
+
+[tool.setuptools.packages.find]
+where = [
+  # list of folders that contain the packages (["."] by default)
+  "src",
+]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "ANN101",
+  "ANN102",
+  "ANN401",
+  "COM812",
+  "ISC001",
+  "FBT001",
+  "FBT002",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+testpaths = [
+  "tests",
+]
+python_files = [
+    "test_*.py",
+    "*_test.py",
+]
+python_functions = [
+  "test_*",
+]
+
+[tool.mypy]
+show_error_codes = true
+implicit_optional = false
+warn_no_return = true
+strict_optional = true
+
+[[tool.mypy.overrides]]
+module = [
+  "rdkit.*",
+  "scipy.*",
+  "pytest_lazyfixture.*",
+  "pathos.*",
+  "matplotlib.*",
+  "pandas.*",
+  "seaborn.*",
+  "mchammer.*",
+  "spindry.*",
+  "pymongo.*",
+  "vabene.*",
+  "setuptools.*",
+  "stk.*",
+  "stko.*",
+  "networkx.*",
+  "openbabel.*",
+  "MDAnalysis.*",
+]
+ignore_missing_imports = true

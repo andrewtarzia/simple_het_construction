@@ -1,25 +1,22 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Script to build the ligand in this project.
+"""Script to build the ligand in this project.
 
 Author: Andrew Tarzia
 
 """
 
+import itertools
+import json
 import logging
 import sys
-import json
-import itertools
+
 import numpy as np
-
-from env_set import liga_path, calc_path
 import plotting
-
-from run_ligand_analysis import get_test_1, get_test_2
 from definitions import EnvVariables
+from env_set import calc_path, liga_path
+from run_ligand_analysis import get_test_1, get_test_2
 
 
 def ligand_smiles():
@@ -37,7 +34,7 @@ def ligand_smiles():
 
 
 def main():
-    if not len(sys.argv) == 1:
+    if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
         sys.exit()
     else:
@@ -60,14 +57,16 @@ def main():
         for ligand in ligand_smiles():
             structure_results[ligand] = {}
             conf_data_file = _wd / f"{ligand}_{conf_data_suffix}.json"
-            with open(conf_data_file, "r") as f:
+            with open(conf_data_file) as f:
                 property_dict = json.load(f)
 
             for cid in property_dict:
                 pdi = property_dict[cid]["NN_BCN_angles"]
                 # 180 - angle, to make it the angle toward the binding
                 # interaction. Minus 90  to convert to the bite-angle.
-                ba = ((180 - pdi["NN_BCN1"]) - 90) + ((180 - pdi["NN_BCN2"]) - 90)
+                ba = ((180 - pdi["NN_BCN1"]) - 90) + (
+                    (180 - pdi["NN_BCN2"]) - 90
+                )
                 property_dict[cid]["bite_angle"] = ba
 
             structure_results[ligand] = property_dict
@@ -93,7 +92,9 @@ def main():
             large_l_dict = structure_results[large_l]
 
             # Iterate over the product of all conformers.
-            for small_cid, large_cid in itertools.product(small_l_dict, large_l_dict):
+            for small_cid, large_cid in itertools.product(
+                small_l_dict, large_l_dict
+            ):
                 cid_name = ",".join((small_cid, large_cid))
                 # Calculate geom score for both sides together.
                 large_c_dict = large_l_dict[large_cid]

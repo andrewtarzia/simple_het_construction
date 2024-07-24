@@ -1,30 +1,28 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Script to build all cages in this project.
+"""Script to build all cages in this project.
 
 Author: Andrew Tarzia
 
 """
 
-import logging
-import sys
 import glob
+import logging
 import os
-import stk
-from itertools import combinations
+import sys
 from dataclasses import dataclass
+from itertools import combinations
 
-from topologies import (
-    M30L60,
-    ligand_cage_topologies,
-    heteroleptic_cages,
-)
-from utilities import AromaticCNCFactory, AromaticCNC, get_furthest_pair_FGs
+import stk
 from env_set import cage_path, calc_path, liga_path
 from optimisation import optimisation_sequence
+from topologies import (
+    M30L60,
+    heteroleptic_cages,
+    ligand_cage_topologies,
+)
+from utilities import AromaticCNC, AromaticCNCFactory, get_furthest_pair_FGs
 
 
 def react_factory():
@@ -78,7 +76,7 @@ def homoleptic_m4l8(metal, ligand):
 def homoleptic_m6l12(metal, ligand):
     return stk.cage.M6L12Cube(
         building_blocks={
-            metal: range(0, 6),
+            metal: range(6),
             ligand: range(6, 18),
         },
         optimizer=stk.Collapser(),
@@ -89,7 +87,7 @@ def homoleptic_m6l12(metal, ligand):
 def homoleptic_m12l24(metal, ligand):
     return stk.cage.M12L24(
         building_blocks={
-            metal: range(0, 12),
+            metal: range(12),
             ligand: range(12, 36),
         },
         reaction_factory=react_factory(),
@@ -99,7 +97,7 @@ def homoleptic_m12l24(metal, ligand):
 def homoleptic_m24l48(metal, ligand):
     return stk.cage.M24L48(
         building_blocks={
-            metal: range(0, 24),
+            metal: range(24),
             ligand: range(24, 72),
         },
         reaction_factory=react_factory(),
@@ -226,7 +224,7 @@ def define_to_build(ligands):
 
 
 def main():
-    if not len(sys.argv) == 1:
+    if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
         sys.exit()
     else:

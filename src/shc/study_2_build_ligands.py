@@ -1,18 +1,18 @@
 """Script to build the ligand in this project."""
 
+import itertools as it
 import logging
 import pathlib
-from rdkit.Chem import Draw
+import time
 from collections import abc
+
+import atomlite
 import bbprep
 import stk
-import atomlite
 import stko
 from rdkit.Chem import AllChem as rdkit
-import time
-
+from rdkit.Chem import Draw
 from utilities import update_from_rdkit_conf
-import itertools as it
 
 
 def build_ligand(
@@ -110,7 +110,9 @@ def generate_all_ligands(
             total_expected,
             round(count / total_expected, 2),
         )
-        for (i1, link1), (i2, link2) in it.combinations(enumerate(linker_smiles), r=2):
+        for (i1, link1), (i2, link2) in it.combinations(
+            enumerate(linker_smiles), r=2
+        ):
             logging.info(
                 "l%s, l%s: at %s of %s (%s)",
                 i1,
@@ -259,7 +261,9 @@ def explore_ligand(
     ligand_db: atomlite.Database,
 ) -> None:
     rdkit_mol = rdkit.MolFromSmiles(stk.Smiles().get_key(molecule))
-    Draw.MolToFile(rdkit_mol, figures_dir / f"{ligand_name}_2d.png", size=(300, 300))
+    Draw.MolToFile(
+        rdkit_mol, figures_dir / f"{ligand_name}_2d.png", size=(300, 300)
+    )
 
     st = time.time()
     conf_dir = ligand_dir / f"confs_{ligand_name}"
@@ -280,7 +284,9 @@ def explore_ligand(
         conf_opt_file_name = f"{ligand_name}_c{cid}_cuff.mol"
 
         # Update stk_mol to conformer geometry.
-        new_mol = update_from_rdkit_conf(stk_mol=molecule, rdk_mol=confs, conf_id=cid)
+        new_mol = update_from_rdkit_conf(
+            stk_mol=molecule, rdk_mol=confs, conf_id=cid
+        )
         # Need to define the functional groups.
         new_mol = stk.BuildingBlock.init_from_molecule(
             molecule=new_mol,
@@ -333,8 +339,12 @@ def explore_ligand(
 
 def main():
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
-    calculation_dir = pathlib.Path("/home/atarzia/workingspace/cpl/calculations")
-    figures_dir = pathlib.Path("/home/atarzia/workingspace/cpl/figures/ligands_2d")
+    calculation_dir = pathlib.Path(
+        "/home/atarzia/workingspace/cpl/calculations"
+    )
+    figures_dir = pathlib.Path(
+        "/home/atarzia/workingspace/cpl/figures/ligands_2d"
+    )
     ligand_dir.mkdir(exist_ok=True)
     calculation_dir.mkdir(exist_ok=True)
     figures_dir.mkdir(exist_ok=True, parents=True)

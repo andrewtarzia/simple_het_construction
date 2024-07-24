@@ -1,26 +1,24 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Script to build the ligand in this project.
+"""Script to build the ligand in this project.
 
 Author: Andrew Tarzia
 
 """
 
-import logging
-import sys
-import os
 import json
+import logging
+import os
+import sys
 
-from env_set import liga_path, calc_path
 import plotting
 from definitions import EnvVariables
+from env_set import calc_path, liga_path
 
 
 def main():
-    if not len(sys.argv) == 1:
+    if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
         sys.exit()
     else:
@@ -32,7 +30,7 @@ def main():
     res_file = os.path.join(_wd, "all_ligand_res.json")
     figure_prefix = "etkdg"
 
-    with open(res_file, "r") as f:
+    with open(res_file) as f:
         structure_results = json.load(f)
 
     # Define minimum energies for all ligands.

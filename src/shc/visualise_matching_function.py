@@ -1,7 +1,8 @@
 """Script for visualising scoring function."""
 
-import matplotlib.pyplot as plt
 import pathlib
+
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -39,7 +40,8 @@ def matching_visualisation():
 
     fig.tight_layout()
     fig.savefig(
-        pathlib.Path("/home/atarzia/workingspace/cpl/figures/") / "ff_param.png",
+        pathlib.Path("/home/atarzia/workingspace/cpl/figures/")
+        / "ff_param.png",
         dpi=360,
         bbox_inches="tight",
     )

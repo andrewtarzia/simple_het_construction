@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Code to extract a topology from a molecule.
+"""Code to extract a topology from a molecule.
 
 Author: Andrew Tarzia
 
@@ -12,9 +10,8 @@ Author: Andrew Tarzia
 
 import stk
 import stko
-from rdkit.Chem import AllChem as rdkit
-
 from env_set import xtal_path
+from rdkit.Chem import AllChem as rdkit
 
 
 def extract_topo(struct, smarts, prefix, working_dir):
@@ -48,7 +45,7 @@ def main():
     _wd = xtal_path()
 
     bonds = []
-    with open(str(_wd / f"{prefix}_SandPdonly.bonds"), "r") as f:
+    with open(str(_wd / f"{prefix}_SandPdonly.bonds")) as f:
         for line in f.readlines():
             bline = line.strip()
             ids = bline.split()[1:]

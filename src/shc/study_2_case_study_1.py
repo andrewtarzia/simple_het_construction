@@ -1,22 +1,21 @@
 """Script to build the ligand in this project."""
 
-import logging
-
-import pathlib
-import matplotlib.pyplot as plt
-import stk
-import itertools as it
-import atomlite
-from definitions import EnvVariables
-from study_2_build_ligands import explore_ligand
-import stko
-
-import numpy as np
-from rdkit.Chem import AllChem as rdkit  # noqa: N813
-from rdkit.Chem import rdMolTransforms, rdMolDescriptors, rdmolops
 import argparse
+import itertools as it
+import logging
+import pathlib
 import time
+
+import atomlite
+import matplotlib.pyplot as plt
+import numpy as np
+import stk
+import stko
+from definitions import EnvVariables
 from matching_functions import angle_test, mismatch_test, plot_pair_position
+from rdkit.Chem import AllChem as rdkit  # noqa: N813
+from rdkit.Chem import rdMolDescriptors, rdmolops, rdMolTransforms
+from study_2_build_ligands import explore_ligand
 
 
 def _parse_args() -> argparse.Namespace:
@@ -63,7 +62,10 @@ def analyse_ligand_pair(
             ligand2_confs[cid_2]["UFFEnergy;kj/mol"]
             - ligand2_entry.properties["min_energy;kj/mol"] * 4.184
         )
-        if strain1 > EnvVariables.strain_cutoff or strain2 > EnvVariables.strain_cutoff:
+        if (
+            strain1 > EnvVariables.strain_cutoff
+            or strain2 > EnvVariables.strain_cutoff
+        ):
             continue
 
         # Check torsion.
@@ -87,8 +89,12 @@ def analyse_ligand_pair(
         pair_data[cid_name] = {
             "state_1_residual": float(pair_results.state_1_result),
             "state_2_residual": float(pair_results.state_2_result),
-            "state_1_parameters": [float(i) for i in pair_results.state_1_parameters],
-            "state_2_parameters": [float(i) for i in pair_results.state_2_parameters],
+            "state_1_parameters": [
+                float(i) for i in pair_results.state_1_parameters
+            ],
+            "state_2_parameters": [
+                float(i) for i in pair_results.state_2_parameters
+            ],
             "ligand1_key": ligand1,
             "ligand2_key": ligand2,
             "cid_1": cid_1,
@@ -125,7 +131,10 @@ def analyse_ligand_pair(
         ):
             best_pair = pair_results
             best_residual = min(
-                (float(pair_results.state_1_result), float(pair_results.state_2_result))
+                (
+                    float(pair_results.state_1_result),
+                    float(pair_results.state_2_result),
+                )
             )
 
     logging.info("in future, save this whole dict with comented code.")
@@ -146,13 +155,19 @@ def analyse_ligand_pair(
     )
 
     plot_pair_position(
-        r1=np.array((best_pair.set_parameters[0], best_pair.set_parameters[1])),
+        r1=np.array(
+            (best_pair.set_parameters[0], best_pair.set_parameters[1])
+        ),
         phi1=best_pair.set_parameters[2],
         rigidbody1=best_pair.rigidbody1,
-        r2=np.array((best_pair.state_1_parameters[0], best_pair.state_1_parameters[1])),
+        r2=np.array(
+            (best_pair.state_1_parameters[0], best_pair.state_1_parameters[1])
+        ),
         phi2=best_pair.state_1_parameters[2],
         rigidbody2=best_pair.rigidbody2,
-        r3=np.array((best_pair.state_2_parameters[0], best_pair.state_2_parameters[1])),
+        r3=np.array(
+            (best_pair.state_2_parameters[0], best_pair.state_2_parameters[1])
+        ),
         phi3=best_pair.state_2_parameters[2],
         rigidbody3=best_pair.rigidbody3,
         outname=figures_dir / f"best_{key}.png",
@@ -240,7 +255,8 @@ def plot_ligand(
     low_energy_states = [
         i
         for i in conf_data
-        if (conf_data[i]["UFFEnergy;kj/mol"] - min_energy) < EnvVariables.strain_cutoff
+        if (conf_data[i]["UFFEnergy;kj/mol"] - min_energy)
+        < EnvVariables.strain_cutoff
     ]
     ax.scatter(
         [conf_data[i]["NN_distance"] for i in conf_data],
@@ -269,7 +285,9 @@ def plot_ligand(
                 conf_dir / f"lab_0_c{conf}_cuff.mol"
             )
 
-            torsion_state = "f" if get_amide_torsions(conf_mol)[0] < 90 else "b"  # noqa: PLR2004
+            torsion_state = (
+                "f" if get_amide_torsions(conf_mol)[0] < 90 else "b"
+            )
 
             states[torsion_state].append(conf)
 
@@ -349,7 +367,9 @@ def plot_ligand(
     plt.close()
 
 
-def plot_flexes(ligand_db: atomlite.Database, figures_dir: pathlib.Path) -> None:
+def plot_flexes(
+    ligand_db: atomlite.Database, figures_dir: pathlib.Path
+) -> None:
     fig, axs = plt.subplots(ncols=2, figsize=(16, 5))
     ax, ax1 = axs
     all_xs = []
@@ -389,7 +409,8 @@ def plot_flexes(ligand_db: atomlite.Database, figures_dir: pathlib.Path) -> None
             ),
         )
         target_atom_ids = tuple(
-            list(i.get_bonder_ids())[0] for i in new_mol.get_functional_groups()
+            list(i.get_bonder_ids())[0]
+            for i in new_mol.get_functional_groups()
         )
         dist_matrix = rdmolops.GetDistanceMatrix(rdkit_mol)
         shuhei_length = dist_matrix[target_atom_ids[0]][target_atom_ids[1]]
@@ -402,12 +423,12 @@ def plot_flexes(ligand_db: atomlite.Database, figures_dir: pathlib.Path) -> None
         s=60,
         ec="k",
     )
-    for y, s in zip(all_ys, all_strs):
+    for y, s in zip(all_ys, all_strs, strict=False):
         ax.text(x=1.0, y=y, s=s, fontsize=16)
 
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_ylabel("$\sigma$ (sum binder angles) [deg]", fontsize=16)
-    ax.set_xlabel("$\sigma$ (N-N distance) [AA]", fontsize=16)
+    ax.set_ylabel(r"$\sigma$ (sum binder angles) [deg]", fontsize=16)
+    ax.set_xlabel(r"$\sigma$ (N-N distance) [AA]", fontsize=16)
     ax.set_ylim(0, None)
     ax.set_xlim(0, None)
 
@@ -418,7 +439,7 @@ def plot_flexes(ligand_db: atomlite.Database, figures_dir: pathlib.Path) -> None
         s=60,
         ec="k",
     )
-    for x, s in zip(all_shuhei_length, all_strs):
+    for x, s in zip(all_shuhei_length, all_strs, strict=False):
         ax1.text(x=x, y=1.0, s=s, fontsize=16)
 
     ax1.tick_params(axis="both", which="major", labelsize=16)
@@ -439,7 +460,9 @@ def plot_flexes(ligand_db: atomlite.Database, figures_dir: pathlib.Path) -> None
 def main():
     args = _parse_args()
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/case_study_1")
-    calculation_dir = pathlib.Path("/home/atarzia/workingspace/cpl/cs1_calculations")
+    calculation_dir = pathlib.Path(
+        "/home/atarzia/workingspace/cpl/cs1_calculations"
+    )
     figures_dir = pathlib.Path("/home/atarzia/workingspace/cpl/figures/cs1/")
     ligand_dir.mkdir(exist_ok=True)
     calculation_dir.mkdir(exist_ok=True)
@@ -501,7 +524,8 @@ def main():
             "CN=CC=5)=C4)=O)=C1)=CC=C2"
         ),
         "e18_0": (
-            "C1(=CC=NC=C1)C#CC1=CC2C3C=C(C#CC4=CC=NC=C4)C=CC=3C(OC)=C(O" "C)C=2C=C1"
+            "C1(=CC=NC=C1)C#CC1=CC2C3C=C(C#CC4=CC=NC=C4)C=CC=3C(OC)=C(O"
+            "C)C=2C=C1"
         ),
     }
 
@@ -623,7 +647,7 @@ def main():
         fig, axs = plt.subplots(ncols=3, figsize=(16, 5))
         ax, ax1, ax2 = axs
         steps = range(len(plot_targets) - 1, -1, -1)
-        for i, (ligand1, ligand2) in zip(steps, plot_targets):
+        for i, (ligand1, ligand2) in zip(steps, plot_targets, strict=False):
             key = f"{ligand1}_{ligand2}"
             entry = pair_db.get_property_entry(key)
 
@@ -762,7 +786,7 @@ def main():
         ("lab_0", "ld_0"),
     )
     steps = range(len(plot_targets) - 1, -1, -1)
-    for i, (ligand1, ligand2) in zip(steps, plot_targets):
+    for i, (ligand1, ligand2) in zip(steps, plot_targets, strict=False):
         key = f"{ligand1}_{ligand2}"
         entry = pair_db.get_property_entry(key)
         xmin = 0
@@ -781,12 +805,18 @@ def main():
                 conf_dir / f"lab_0_c{la_conf}_cuff.mol"
             )
 
-            torsion_state = "f" if get_amide_torsions(conf_mol)[0] < 90 else "b"  # noqa: PLR2004
+            torsion_state = (
+                "f" if get_amide_torsions(conf_mol)[0] < 90 else "b"
+            )
 
             if torsion_state == "f":
-                x1data.append(entry.properties["pair_data"][i]["state_1_residual"])
+                x1data.append(
+                    entry.properties["pair_data"][i]["state_1_residual"]
+                )
             elif torsion_state == "b":
-                x2data.append(entry.properties["pair_data"][i]["state_1_residual"])
+                x2data.append(
+                    entry.properties["pair_data"][i]["state_1_residual"]
+                )
             print(torsion_state)
             print(f"lab_0_c{la_conf}_cuff.mol")
             raise SystemExit
@@ -855,7 +885,9 @@ def main():
         bbox_inches="tight",
     )
     plt.close()
-    raise SystemExit("plot residuals as a function of LAB state for four pairs")
+    raise SystemExit(
+        "plot residuals as a function of LAB state for four pairs"
+    )
 
 
 if __name__ == "__main__":

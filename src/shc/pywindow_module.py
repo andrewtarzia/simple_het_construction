@@ -1,17 +1,16 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Module for pywindow functions.
+"""Module for pywindow functions.
 
 Author: Andrew Tarzia
 
 """
 
+import json
 import logging
 import os
-import json
+
 import pywindow as pw
 
 
@@ -31,7 +30,7 @@ class PyWindow:
         molecule.write(xyz_file)
         if os.path.exists(json_file):
             logging.info(f"loading {json_file}")
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 results = json.load(f)
         else:
             logging.info(f"running pywindow on {self._name}:")

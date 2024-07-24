@@ -1,20 +1,17 @@
 """Script to build the ligand in this project."""
 
+import itertools as it
 import logging
 import pathlib
-import atomlite
-import numpy as np
 import time
 
-import itertools as it
+import atomlite
+import numpy as np
 from definitions import EnvVariables
 
 
 def vector_length():
-    """
-    Mean value of bond distance to use in candidate selection.
-
-    """
+    """Mean value of bond distance to use in candidate selection."""
     return 2.02
 
 
@@ -72,7 +69,9 @@ def test_N_N_lengths(large_c_dict, small_c_dict):
 
 def main():
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
-    calculation_dir = pathlib.Path("/home/atarzia/workingspace/cpl/calculations")
+    calculation_dir = pathlib.Path(
+        "/home/atarzia/workingspace/cpl/calculations"
+    )
     figures_dir = pathlib.Path("/home/atarzia/workingspace/cpl/figures")
     ligand_dir.mkdir(exist_ok=True)
     calculation_dir.mkdir(exist_ok=True)

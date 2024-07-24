@@ -1,45 +1,40 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Script to build the ligand in this project.
+"""Script to build the ligand in this project.
 
 Author: Andrew Tarzia
 
 """
 
-import logging
-import sys
-from rdkit.Chem import Draw
-from definitions import EnvVariables
-import os
-import json
-import stk
-import stko
-import numpy as np
-from rdkit.Chem import AllChem as rdkit
 import itertools
+import json
+import logging
+import os
+import sys
 import time
 
-from env_set import liga_path, calc_path
+import numpy as np
 import plotting
+import stk
+import stko
+from definitions import EnvVariables
+from env_set import calc_path, liga_path
+from rdkit.Chem import AllChem as rdkit
+from rdkit.Chem import Draw
 from utilities import (
     AromaticCNCFactory,
-    update_from_rdkit_conf,
     calculate_N_centroid_N_angle,
-    calculate_NN_distance,
-    calculate_NN_BCN_angles,
     calculate_NCCN_dihedral,
+    calculate_NN_BCN_angles,
+    calculate_NN_distance,
     get_furthest_pair_FGs,
+    update_from_rdkit_conf,
 )
 
 
 def vector_length():
-    """
-    Mean value of bond distance to use in candidate selection.
-
-    """
+    """Mean value of bond distance to use in candidate selection."""
     return 2.02
 
 
@@ -100,11 +95,7 @@ def conformer_generation_uff(
     conf_data_file,
     calc_dir,
 ):
-    """
-    Build a large conformer ensemble with UFF optimisation.
-
-    """
-
+    """Build a large conformer ensemble with UFF optimisation."""
     logging.info(f"building conformer ensemble of {name}")
 
     confs = molecule.to_rdkit_mol()
@@ -120,9 +111,13 @@ def conformer_generation_uff(
     lig_conf_data = {}
     num_confs = 0
     for cid in cids:
-        conf_opt_file_name = str(lowe_output).replace("_lowe.mol", f"_c{cid}_cuff.mol")
+        conf_opt_file_name = str(lowe_output).replace(
+            "_lowe.mol", f"_c{cid}_cuff.mol"
+        )
         # Update stk_mol to conformer geometry.
-        new_mol = update_from_rdkit_conf(stk_mol=molecule, rdk_mol=confs, conf_id=cid)
+        new_mol = update_from_rdkit_conf(
+            stk_mol=molecule, rdk_mol=confs, conf_id=cid
+        )
         # Need to define the functional groups.
         new_mol = stk.BuildingBlock.init_from_molecule(
             molecule=new_mol,
@@ -178,27 +173,34 @@ def ligand_smiles():
             "6)C=CC=5)=CC=4)S3)=CC=2)C=NC=1"
         ),
         # Experimental.
-        "e10": ("C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"),
+        "e10": (
+            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
+        ),
         "e11": "C1N=CC=CC=1C1=CC2=C(C3=C(C2(C)C)C=C(C2=CN=CC=C2)C=C3)C=C1",
         "e12": "C1=CC=C(C2=CC3C(=O)C4C=C(C5=CN=CC=C5)C=CC=4C=3C=C2)C=N1",
         "e13": (
             "C1C=C(N2C(=O)C3=C(C=C4C(=C3)C3(C5=C(C4(C)CC3)C=C3C(C(N(C3="
             "O)C3C=CC=NC=3)=O)=C5)C)C2=O)C=NC=1"
         ),
-        "e14": ("C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1"),
-        "e16": ("C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"),
+        "e14": (
+            "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1"
+        ),
+        "e16": (
+            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
+        ),
         "e17": (
             "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
             "CN=CC=5)=C4)=O)=C1)=CC=C2"
         ),
         "e18": (
-            "C1(=CC=NC=C1)C#CC1=CC2C3C=C(C#CC4=CC=NC=C4)C=CC=3C(OC)=C(O" "C)C=2C=C1"
+            "C1(=CC=NC=C1)C#CC1=CC2C3C=C(C#CC4=CC=NC=C4)C=CC=3C(OC)=C(O"
+            "C)C=2C=C1"
         ),
     }
 
 
 def main():
-    if not len(sys.argv) == 1:
+    if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
         sys.exit()
     else:
@@ -237,7 +239,8 @@ def main():
                 calc_dir=_cd,
             )
             logging.info(
-                f"time taken for conf gen of {lig}: " f"{round(time.time()-st, 2)}s"
+                f"time taken for conf gen of {lig}: "
+                f"{round(time.time()-st, 2)}s"
             )
 
     experimental_ligand_outcomes = {
@@ -281,21 +284,23 @@ def main():
 
     structure_results = {}
     if os.path.exists(res_file):
-        with open(res_file, "r") as f:
+        with open(res_file) as f:
             structure_results = json.load(f)
     else:
         for ligand in ligand_smiles():
             st = time.time()
             structure_results[ligand] = {}
             conf_data_file = _wd / f"{ligand}_{conf_data_suffix}.json"
-            with open(conf_data_file, "r") as f:
+            with open(conf_data_file) as f:
                 property_dict = json.load(f)
 
             for cid in property_dict:
                 pdi = property_dict[cid]["NN_BCN_angles"]
                 # 180 - angle, to make it the angle toward the binding
                 # interaction. Minus 90  to convert to the bite-angle.
-                ba = ((180 - pdi["NN_BCN1"]) - 90) + ((180 - pdi["NN_BCN2"]) - 90)
+                ba = ((180 - pdi["NN_BCN1"]) - 90) + (
+                    (180 - pdi["NN_BCN2"]) - 90
+                )
                 property_dict[cid]["bite_angle"] = ba
 
             structure_results[ligand] = property_dict
@@ -329,7 +334,7 @@ def main():
 
     if os.path.exists(pair_file):
         logging.info(f"loading {pair_file}")
-        with open(pair_file, "r") as f:
+        with open(pair_file) as f:
             pair_info = json.load(f)
     else:
         pair_info = {}
@@ -344,7 +349,9 @@ def main():
             large_l_dict = structure_results[large_l]
 
             # Iterate over the product of all conformers.
-            for small_cid, large_cid in itertools.product(small_l_dict, large_l_dict):
+            for small_cid, large_cid in itertools.product(
+                small_l_dict, large_l_dict
+            ):
                 cid_name = ",".join((small_cid, large_cid))
                 # Calculate geom score for both sides together.
                 large_c_dict = large_l_dict[large_cid]

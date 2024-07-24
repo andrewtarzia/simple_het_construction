@@ -1,33 +1,30 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Module for utility functions.
+"""Module for utility functions.
 
 Author: Andrew Tarzia
 
 """
-import re
 
+import json
 import logging
 import os
+import re
+
+import numpy as np
+import pymatgen.core as pmg
 import stk
 import stko
-import numpy as np
-from scipy.spatial.distance import euclidean
-import pymatgen.core as pmg
+from env_set import xtb_path
 from pymatgen.analysis.local_env import (
     LocalStructOrderParams,
 )
-import json
-
-from env_set import xtb_path
+from scipy.spatial.distance import euclidean
 
 
 def unit_vector(vector):
-    """
-    Returns the unit vector of the vector.
+    """Returns the unit vector of the vector.
 
     https://stackoverflow.com/questions/2827393/
     angles-between-two-n-dimensional-vectors-in-python/
@@ -38,8 +35,7 @@ def unit_vector(vector):
 
 
 def angle_between(v1, v2, normal=None):
-    """
-    Returns the angle in radians between vectors 'v1' and 'v2'::
+    """Returns the angle in radians between vectors 'v1' and 'v2'::
 
         >>> angle_between((1, 0, 0), (0, 1, 0))
         1.5707963267948966
@@ -56,7 +52,6 @@ def angle_between(v1, v2, normal=None):
     cross product of the two vectors.
 
     """
-
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
     angle = np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
@@ -70,15 +65,14 @@ def angle_between(v1, v2, normal=None):
 
 
 def convert_stk_to_pymatgen(stk_mol):
-    """
-    Convert stk.Molecule to pymatgen.Molecule.
+    """Convert stk.Molecule to pymatgen.Molecule.
 
     Parameters
     ----------
     stk_mol : :class:`stk.Molecule`
         Stk molecule to convert.
 
-    Returns
+    Returns:
     -------
     pmg_mol : :class:`pymatgen.Molecule`
         Corresponding pymatgen Molecule.
@@ -94,8 +88,7 @@ def convert_stk_to_pymatgen(stk_mol):
 def calculate_sites_order_values(
     molecule, site_idxs, target_species_type=None, neigh_idxs=None
 ):
-    """
-    Calculate order parameters around metal centres.
+    """Calculate order parameters around metal centres.
 
     Parameters
     ----------
@@ -114,7 +107,7 @@ def calculate_sites_order_values(
         Defaults to :class:`NoneType` for when using
         :class:`pmg.Structure` - i.e. a structure with a lattice.
 
-    Returns
+    Returns:
     -------
     results : :class:`dict`
         Dictionary of format
@@ -128,7 +121,6 @@ def calculate_sites_order_values(
         }.
 
     """
-
     results = {}
 
     if target_species_type is None:
@@ -148,23 +140,26 @@ def calculate_sites_order_values(
             site_results = loc_ops.get_order_parameters(
                 structure=molecule, n=site, target_spec=[targ_species]
             )
-            results[site] = {i: j for i, j in zip(types, site_results)}
+            results[site] = {
+                i: j for i, j in zip(types, site_results, strict=False)
+            }
     else:
-        for site, neigh in zip(site_idxs, neigh_idxs):
+        for site, neigh in zip(site_idxs, neigh_idxs, strict=False):
             site_results = loc_ops.get_order_parameters(
                 structure=molecule,
                 n=site,
                 indices_neighs=neigh,
                 target_spec=targ_species,
             )
-            results[site] = {i: j for i, j in zip(types, site_results)}
+            results[site] = {
+                i: j for i, j in zip(types, site_results, strict=False)
+            }
 
     return results
 
 
 def get_order_values(mol, metal, per_site=False):
-    """
-    Calculate order parameters around metal centres.
+    """Calculate order parameters around metal centres.
 
     Parameters
     ----------
@@ -177,14 +172,13 @@ def get_order_values(mol, metal, per_site=False):
     per_site : :class:`bool`
         Defaults to False. True if the OPs for each site are desired.
 
-    Returns
+    Returns:
     -------
     results : :class:`dict`
         Dictionary of order parameter max/mins/averages if `per_site`
         is False.
 
     """
-
     pmg_mol = convert_stk_to_pymatgen(stk_mol=mol)
     # Get sites of interest and their neighbours.
     sites = []
@@ -252,7 +246,7 @@ def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
         output_file = os.path.join(calc_dir, f"{name}_{solvent_str}_xtb.ey")
 
     if os.path.exists(output_file):
-        with open(output_file, "r") as f:
+        with open(output_file) as f:
             lines = f.readlines()
         for line in lines:
             energy = float(line.rstrip())
@@ -289,7 +283,6 @@ class XTBSasa(stko.XTBEnergy):
 
 
 def get_xtb_sasa(molecule, name, charge, calc_dir, solvent):
-
     solvent_model = "alpb"
     solvent_str = solvent
     solvent_grid = "verytight"
@@ -298,7 +291,7 @@ def get_xtb_sasa(molecule, name, charge, calc_dir, solvent):
     output_file = os.path.join(calc_dir, f"{name}_{solvent_str}_sasa.json")
 
     if os.path.exists(output_file):
-        with open(output_file, "r") as f:
+        with open(output_file) as f:
             sasa_data = json.load(f)
 
     else:
@@ -317,7 +310,7 @@ def get_xtb_sasa(molecule, name, charge, calc_dir, solvent):
         )
         next(xtb.calculate(mol=molecule))
 
-        with open(os.path.join(output_dir, "energy.output"), "r") as f:
+        with open(os.path.join(output_dir, "energy.output")) as f:
             lines = f.readlines()
         switch = False
         sasa_data = []
@@ -374,10 +367,9 @@ def get_xtb_gsasa(name, calc_dir, solvent):
     # later.
 
     nums = re.compile(r"[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
-    with open(energy_file, "r") as f:
+    with open(energy_file) as f:
         for line in f.readlines():
             if "-> Gsasa" in line:
-
                 string = nums.search(line.rstrip())
                 gsasa = float(string.group(0))
                 break
@@ -403,10 +395,9 @@ def get_xtb_gsolv(name, calc_dir, solvent):
     energy_file = os.path.join(output_dir, "energy.output")
 
     nums = re.compile(r"[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
-    with open(energy_file, "r") as f:
+    with open(energy_file) as f:
         for line in f.readlines():
             if ":: -> Gsolv" in line:
-
                 string = nums.search(line.rstrip())
 
                 gsolv = float(string.group(0))
@@ -435,7 +426,7 @@ def get_xtb_free_energy(molecule, name, charge, calc_dir, solvent):
         freq_file = os.path.join(calc_dir, f"{name}_{solvent_str}_xtb.freq")
 
     if os.path.exists(output_file):
-        with open(output_file, "r") as f:
+        with open(output_file) as f:
             lines = f.readlines()
         for line in lines:
             total_free_energy = float(line.rstrip())
@@ -488,10 +479,9 @@ def get_xtb_enthalpy(molecule, name, charge, calc_dir, solvent):
     energy_file = os.path.join(output_dir, "energy.output")
 
     nums = re.compile(r"[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
-    with open(energy_file, "r") as f:
+    with open(energy_file) as f:
         for line in f.readlines():
             if "TOTAL ENTHALPY" in line:
-
                 string = nums.search(line.rstrip())
 
                 enthalpy = float(string.group(0))
@@ -502,7 +492,7 @@ def get_xtb_enthalpy(molecule, name, charge, calc_dir, solvent):
 
 
 def get_dft_energy(name, txt_file):
-    with open(txt_file, "r") as f:
+    with open(txt_file) as f:
         lines = f.readlines()
     for line in lines:
         if name in line:
@@ -525,7 +515,7 @@ def get_xtb_strain(
 ):
     ls_file = os.path.join(calc_dir, f"{name}_strain_xtb.json")
     if os.path.exists(ls_file):
-        with open(ls_file, "r") as f:
+        with open(ls_file) as f:
             strain_energies = json.load(f)
         return strain_energies
     strain_energies = {}
@@ -605,8 +595,7 @@ def get_xtb_strain(
 
 
 def update_from_rdkit_conf(stk_mol, rdk_mol, conf_id):
-    """
-    Update the structure to match `conf_id` of `mol`.
+    """Update the structure to match `conf_id` of `mol`.
 
     Parameters
     ----------
@@ -619,13 +608,12 @@ def update_from_rdkit_conf(stk_mol, rdk_mol, conf_id):
     conf_id : :class:`int`
         The conformer ID of the `mol` to update from.
 
-    Returns
+    Returns:
     -------
     :class:`.Molecule`
         The molecule.
 
     """
-
     pos_mat = rdk_mol.GetConformer(id=conf_id).GetPositions()
     return stk_mol.with_position_matrix(pos_mat)
 

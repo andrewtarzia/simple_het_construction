@@ -1,29 +1,27 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Script to build the ligand in this project.
+"""Script to build the ligand in this project.
 
 Author: Andrew Tarzia
 
 """
 
 import logging
-import sys
 import os
+import sys
+
 import stk
 import stko
+from env_set import calc_path, figu_path, liga_path, xtb_path
 from rdkit.Chem import AllChem as rdkit
 from rdkit.Chem import Draw
-
-from env_set import liga_path, calc_path, xtb_path, figu_path
 from utilities import (
     AromaticCNCFactory,
-    update_from_rdkit_conf,
     calculate_N_centroid_N_angle,
     get_furthest_pair_FGs,
     get_xtb_energy,
+    update_from_rdkit_conf,
 )
 
 
@@ -41,8 +39,7 @@ def draw_grid(names, smiles, image_file):
 
 
 def select_conformer_xtb(molecule, name, lowe_output, calc_dir):
-    """
-    Select and optimize a conformer with desired directionality.
+    """Select and optimize a conformer with desired directionality.
 
     Currently:
         Best directionality will be defined by the smallest
@@ -190,7 +187,7 @@ def ligand_smiles():
 
 
 def main():
-    if not len(sys.argv) == 1:
+    if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
         sys.exit()
     else:

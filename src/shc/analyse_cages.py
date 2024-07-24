@@ -1,41 +1,38 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Script to analyse all cages constructed.
+"""Script to analyse all cages constructed.
 
 Author: Andrew Tarzia
 
 """
 
-import logging
 import glob
-import sys
-import os
 import json
-import stk
-
-from env_set import cage_path, calc_path, liga_path, project_path
-from utilities import (
-    get_order_values,
-    get_xtb_energy,
-    AromaticCNCFactory,
-    get_xtb_gsasa,
-    get_xtb_strain,
-    get_furthest_pair_FGs,
-    get_xtb_enthalpy,
-    get_xtb_sasa,
-    get_xtb_gsolv,
-    get_stab_energy,
-    get_pore_angle,
-    get_mm_distance,
-    get_xtb_free_energy,
-)
-from pywindow_module import PyWindow
+import logging
+import os
+import sys
 
 import plotting
-from topologies import ligand_cage_topologies, heteroleptic_cages
+import stk
+from env_set import cage_path, calc_path, liga_path, project_path
+from pywindow_module import PyWindow
+from topologies import heteroleptic_cages, ligand_cage_topologies
+from utilities import (
+    AromaticCNCFactory,
+    get_furthest_pair_FGs,
+    get_mm_distance,
+    get_order_values,
+    get_pore_angle,
+    get_stab_energy,
+    get_xtb_energy,
+    get_xtb_enthalpy,
+    get_xtb_free_energy,
+    get_xtb_gsasa,
+    get_xtb_gsolv,
+    get_xtb_sasa,
+    get_xtb_strain,
+)
 
 
 def get_min_order_parameter(molecule):
@@ -44,7 +41,7 @@ def get_min_order_parameter(molecule):
 
 
 def main():
-    if not len(sys.argv) == 1:
+    if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 1 arguments:")
         sys.exit()
     else:
@@ -132,7 +129,7 @@ def main():
     }
     structure_res_file = os.path.join(_wd, "all_structure_res.json")
     if os.path.exists(structure_res_file):
-        with open(structure_res_file, "r") as f:
+        with open(structure_res_file) as f:
             structure_results = json.load(f)
     else:
         for s_file in structure_files:

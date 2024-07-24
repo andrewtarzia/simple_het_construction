@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Module for optimisation functions.
+"""Module for optimisation functions.
 
 Author: Andrew Tarzia
 
@@ -11,9 +9,9 @@ Author: Andrew Tarzia
 
 import logging
 import os
-import stko
 
 import env_set
+import stko
 
 
 def optimisation_sequence(mol, name, charge, calc_dir):

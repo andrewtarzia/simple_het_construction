@@ -1,23 +1,21 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Distributed under the terms of the MIT License.
 
-"""
-Module for plotting functions.
+"""Module for plotting functions.
 
 Author: Andrew Tarzia
 
 """
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import logging
-import numpy as np
 import os
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
 from env_set import figu_path
-from utilities import name_parser, name_conversion, expt_name_conversion
 from run_ligand_analysis import vector_length
+from utilities import expt_name_conversion, name_conversion, name_parser
 
 
 def c_and_m_properties():
@@ -239,7 +237,9 @@ def plot_all_geom_scores_simplified(
 
     width = 0.8
     bottom = np.zeros(len(pair_to_x))
-    for meas, c in zip(["a", "l", "g"], ["#083D77", "#F56476", "none"]):
+    for meas, c in zip(
+        ["a", "l", "g"], ["#083D77", "#F56476", "none"], strict=False
+    ):
         # for meas, c in zip(["a", "l"], ["#083D77", "#F56476"]):
         x = [pair_to_x[i]["x"] for i in pair_to_x]
         y = [np.mean(pair_to_x[i][meas]) for i in pair_to_x]
@@ -359,12 +359,10 @@ def gs_table(results_dict, dihedral_cutoff):
                 good_geoms += 1
 
         logging.info(
-            (
-                f"{pair_name}: {round(min_geom_score, 2)}, "
-                f"{round((good_geoms/total_tested)*100, 0)} "
-                f"{round(np.mean(geom_scores), 2)} "
-                f"({round(np.std(geom_scores), 2)}) "
-            )
+            f"{pair_name}: {round(min_geom_score, 2)}, "
+            f"{round((good_geoms/total_tested)*100, 0)} "
+            f"{round(np.mean(geom_scores), 2)} "
+            f"({round(np.std(geom_scores), 2)}) "
         )
 
 
@@ -446,8 +444,7 @@ def plot_conformer_props(
 
 
 def simple_beeswarm(y, nbins=None, width=1.0):
-    """
-    Returns x coordinates for the points in ``y``, so that plotting ``x`` and
+    """Returns x coordinates for the points in ``y``, so that plotting ``x`` and
     ``y`` results in a bee swarm plot.
     """
     y = np.asarray(y)
@@ -463,7 +460,7 @@ def simple_beeswarm(y, nbins=None, width=1.0):
 
     # Divide indices into bins
     ibs = []  # np.nonzero((y>=ybins[0])*(y<=ybins[1]))[0]]
-    for ymin, ymax in zip(ybins[:-1], ybins[1:]):
+    for ymin, ymax in zip(ybins[:-1], ybins[1:], strict=False):
         i = np.nonzero((y > ymin) * (y <= ymax))[0]
         ibs.append(i)
 
@@ -530,7 +527,9 @@ def plot_all_ligand_pairings_simplified(
 
     width = 0.8
     bottom = np.zeros(12)
-    for meas, c in zip(["a", "l", "g"], ["#083D77", "#F56476", "none"]):
+    for meas, c in zip(
+        ["a", "l", "g"], ["#083D77", "#F56476", "none"], strict=False
+    ):
         # for meas, c in zip(["a", "l"], ["#083D77", "#F56476"]):
         x = [pair_to_x[i]["x"] for i in pair_to_x]
         y = [np.mean(pair_to_x[i][meas]) for i in pair_to_x]
@@ -597,7 +596,7 @@ def plot_all_ligand_pairings_simplified(
     ax.text(x=5.2, y=1.5, s=name_conversion()["l2"], fontsize=16)
     ax.text(x=9.2, y=1.5, s=name_conversion()["l3"], fontsize=16)
 
-    ax.set_xticks(range(0, 12))
+    ax.set_xticks(range(12))
     ax.set_xticklabels(
         [f"{name_conversion()[i[1]]}" for i in pair_to_x],
         # rotation=20,
@@ -631,7 +630,7 @@ def plot_all_ligand_pairings(
     )
     flat_axs = axs.flatten()
 
-    for pair_name, ax in zip(results_dict, flat_axs):
+    for pair_name, ax in zip(results_dict, flat_axs, strict=False):
         small_l, large_l = pair_name.split(",")
         if "e" in small_l or "e" in large_l:
             continue
@@ -726,7 +725,7 @@ def plot_all_ligand_pairings_2dhist(
     xmax = 2.0
     ymax = 2.0
 
-    for pair_name, ax in zip(results_dict, flat_axs):
+    for pair_name, ax in zip(results_dict, flat_axs, strict=False):
         small_l, large_l = pair_name.split(",")
         if "e" in small_l or "e" in large_l:
             continue
@@ -818,7 +817,7 @@ def plot_all_ligand_pairings_conformers(
     lhs_anchor = (-1.5, 0)
     rhs_anchor = (1.5, 0)
 
-    for pair_name, ax in zip(results_dict, flat_axs):
+    for pair_name, ax in zip(results_dict, flat_axs, strict=False):
         small_l, large_l = pair_name.split(",")
         if "e" in small_l or "e" in large_l:
             continue
@@ -1040,7 +1039,7 @@ def plot_all_ligand_pairings_2dhist_fig5(
         "l1,la",
     )
 
-    for pair_name, ax in zip(targets, flat_axs):
+    for pair_name, ax in zip(targets, flat_axs, strict=False):
         small_l, large_l = pair_name.split(",")
         if "e" in small_l or "e" in large_l:
             continue
@@ -1235,7 +1234,6 @@ def plot_single_distribution(
 
 
 def plot_strain_pore_sasa(results_dict, outname):
-
     xlab_prop = axes_labels("pore_diameter_opt")
     ylab_prop = axes_labels("xtb_sasa")
     clab_prop = axes_labels("xtb_lig_strain_au")
@@ -1323,7 +1321,6 @@ def plot_strain_pore_sasa(results_dict, outname):
 
 
 def plot_strain(results_dict, outname, yproperty):
-
     cms = c_and_m_properties()
     lab_prop = axes_labels(yproperty)
     conv = lab_prop[2]
@@ -1399,7 +1396,6 @@ def plot_strain(results_dict, outname, yproperty):
 
 
 def plot_sasa(results_dict, outname, yproperty):
-
     cms = c_and_m_properties()
     lab_prop = axes_labels(yproperty)
 
@@ -1475,7 +1471,6 @@ def plot_sasa(results_dict, outname, yproperty):
 
 
 def plot_pore(results_dict, outname, yproperty):
-
     cms = c_and_m_properties()
     lab_prop = axes_labels(yproperty)
 
@@ -1868,7 +1863,6 @@ def plot_topo_energy(results_dict, outname, solvent=None):
 
 
 def plot_gsolv(results_dict, outname, yproperty):
-
     cms = c_and_m_properties()
     lab_prop = axes_labels(yproperty)
     conv = lab_prop[2]
@@ -1957,7 +1951,6 @@ def plot_gsolv(results_dict, outname, yproperty):
 
 
 def plot_gsasa(results_dict, outname, yproperty):
-
     cms = c_and_m_properties()
     lab_prop = axes_labels(yproperty)
     conv = lab_prop[2]
@@ -2051,7 +2044,6 @@ def plot_gsasa(results_dict, outname, yproperty):
 
 
 def plot_all_contributions(results_dict, outname):
-
     l1s = {"l1": "m6_l1", "l2": "m12_l2"}
     l2s = {"la": "m2_la", "lb": "m2_lb", "lc": "m2_lc", "ld": "m2_ld"}
     to_plot = {

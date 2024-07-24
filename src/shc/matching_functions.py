@@ -1,20 +1,18 @@
 """Module for matching functions."""
 
+from collections import abc
+from dataclasses import dataclass
+
 import matplotlib.pyplot as plt
 import numpy as np
-from dataclasses import dataclass
-import matplotlib.patches as patches
 import stk
-import scipy.optimize as optimize
-from collections import abc
 import stko
+from matplotlib import patches
+from scipy import optimize
 
 
 def vector_length():
-    """
-    Mean value of bond distance to use in candidate selection.
-
-    """
+    """Mean value of bond distance to use in candidate selection."""
     return 2.02
 
 
@@ -473,30 +471,38 @@ class Pair:
         phi2: float,
     ) -> float:
         distance_residual = np.linalg.norm(
-            self.rhs.get_x1(r2, phi2).as_array() - self.lhs.get_x1(r1, phi1).as_array()
+            self.rhs.get_x1(r2, phi2).as_array()
+            - self.lhs.get_x1(r1, phi1).as_array()
         ) + np.linalg.norm(
-            self.rhs.get_x2(r2, phi2).as_array() - self.lhs.get_x2(r1, phi1).as_array()
+            self.rhs.get_x2(r2, phi2).as_array()
+            - self.lhs.get_x2(r1, phi1).as_array()
         )
 
         rhs_x1n1 = (
-            self.rhs.get_x1(r2, phi2).as_array() - self.rhs.get_n1(r2, phi2).as_array()
+            self.rhs.get_x1(r2, phi2).as_array()
+            - self.rhs.get_n1(r2, phi2).as_array()
         )
         rhs_x2n2 = (
-            self.rhs.get_x2(r2, phi2).as_array() - self.rhs.get_n2(r2, phi2).as_array()
+            self.rhs.get_x2(r2, phi2).as_array()
+            - self.rhs.get_n2(r2, phi2).as_array()
         )
         lhs_x1n1 = (
-            self.lhs.get_x1(r1, phi1).as_array() - self.lhs.get_n1(r1, phi1).as_array()
+            self.lhs.get_x1(r1, phi1).as_array()
+            - self.lhs.get_n1(r1, phi1).as_array()
         )
         lhs_x2n2 = (
-            self.lhs.get_x2(r1, phi1).as_array() - self.lhs.get_n2(r1, phi1).as_array()
+            self.lhs.get_x2(r1, phi1).as_array()
+            - self.lhs.get_n2(r1, phi1).as_array()
         )
 
         # They should be aligned, but opposite.
         angle_1_residual = abs(
-            np.degrees(stko.vector_angle(vector1=lhs_x1n1, vector2=rhs_x1n1)) - 180
+            np.degrees(stko.vector_angle(vector1=lhs_x1n1, vector2=rhs_x1n1))
+            - 180
         )
         angle_2_residual = abs(
-            np.degrees(stko.vector_angle(vector1=lhs_x2n2, vector2=rhs_x2n2)) - 180
+            np.degrees(stko.vector_angle(vector1=lhs_x2n2, vector2=rhs_x2n2))
+            - 180
         )
 
         angle_residual = angle_1_residual + angle_2_residual
@@ -545,7 +551,10 @@ def mismatch_test(c_dict1: dict, c_dict2: dict) -> PairResult:
         r1x, r1y, phi1 = set_state
         r2x, r2y, phi2 = params
         return Pair(lhs=rigidbody1, rhs=rigidbody2).calculate_residual(
-            r1=np.array((r1x, r1y)), phi1=phi1, r2=np.array((r2x, r2y)), phi2=phi2
+            r1=np.array((r1x, r1y)),
+            phi1=phi1,
+            r2=np.array((r2x, r2y)),
+            phi2=phi2,
         )
 
     initial_guesses = ([0, 0, 20], [0, 0, -20])  # , [0, 0, 0], )
@@ -576,7 +585,10 @@ def mismatch_test(c_dict1: dict, c_dict2: dict) -> PairResult:
         r1x, r1y, phi1 = set_state
         r2x, r2y, phi2 = params
         return Pair(lhs=rigidbody1, rhs=rigidbody3).calculate_residual(
-            r1=np.array((r1x, r1y)), phi1=phi1, r2=np.array((r2x, r2y)), phi2=phi2
+            r1=np.array((r1x, r1y)),
+            phi1=phi1,
+            r2=np.array((r2x, r2y)),
+            phi2=phi2,
         )
 
     state_2_results = []
