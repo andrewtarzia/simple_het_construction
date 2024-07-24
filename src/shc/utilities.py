@@ -1,11 +1,4 @@
-#!/usr/bin/env python
-# Distributed under the terms of the MIT License.
-
-"""Module for utility functions.
-
-Author: Andrew Tarzia
-
-"""
+"""Module for utility functions."""
 
 import json
 import logging
@@ -16,10 +9,7 @@ import numpy as np
 import pymatgen.core as pmg
 import stk
 import stko
-from env_set import xtb_path
-from pymatgen.analysis.local_env import (
-    LocalStructOrderParams,
-)
+from pymatgen.analysis.local_env import LocalStructOrderParams
 from scipy.spatial.distance import euclidean
 
 

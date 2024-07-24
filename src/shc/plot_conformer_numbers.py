@@ -14,10 +14,10 @@ import sys
 
 import plotting
 from definitions import EnvVariables
-from env_set import calc_path, liga_path
 
 
-def main():
+def main() -> None:
+    """Run script."""
     if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
         sys.exit()

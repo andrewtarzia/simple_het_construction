@@ -6,12 +6,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def ff(x, y):
-    ff = x / 20 + y / 2
-    return ff
+def ff(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """Fitness function."""
+    return x / 20 + y / 2
 
 
-def matching_visualisation():
+def matching_visualisation() -> None:
+    """Visualise fitness function."""
     x_range = np.linspace(0.01, 180, 100)
     y_range = np.linspace(0.01, 5, 100)
     x_lbl = "angle residual"
@@ -49,6 +50,7 @@ def matching_visualisation():
 
 
 def main() -> None:
+    """Run script."""
     matching_visualisation()
 
 

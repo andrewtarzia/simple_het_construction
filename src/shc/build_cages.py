@@ -1,21 +1,12 @@
-#!/usr/bin/env python
-# Distributed under the terms of the MIT License.
-
-"""Script to build all cages in this project.
-
-Author: Andrew Tarzia
-
-"""
+"""Script to build all cages in this project."""
 
 import glob
 import logging
-import os
-import sys
 from dataclasses import dataclass
 from itertools import combinations
 
 import stk
-from env_set import cage_path, calc_path, liga_path
+from definitions import Study1EnvVariables
 from optimisation import optimisation_sequence
 from topologies import (
     M30L60,
@@ -24,94 +15,125 @@ from topologies import (
 )
 from utilities import AromaticCNC, AromaticCNCFactory, get_furthest_pair_FGs
 
-
-def react_factory():
-    return stk.DativeReactionFactory(
-        stk.GenericReactionFactory(
-            bond_orders={
-                frozenset(
-                    {
-                        AromaticCNC,
-                        stk.SingleAtom,
-                    }
-                ): 9,
-            },
-        ),
-    )
+react_factory = stk.DativeReactionFactory(
+    stk.GenericReactionFactory(
+        bond_orders={
+            frozenset(
+                {
+                    AromaticCNC,
+                    stk.SingleAtom,
+                }
+            ): 9,
+        },
+    ),
+)
 
 
-def homoleptic_m2l4(metal, ligand):
+def homoleptic_m2l4(
+    metal: stk.BuildingBlock,
+    ligand: stk.BuildingBlock,
+) -> stk.ConstructedMolecule:
+    """Make cage."""
     return stk.cage.M2L4Lantern(
         building_blocks={
             metal: (0, 1),
             ligand: (2, 3, 4, 5),
         },
         optimizer=stk.MCHammer(target_bond_length=2.5),
-        reaction_factory=react_factory(),
+        reaction_factory=react_factory,
     )
 
 
-def homoleptic_m3l6(metal, ligand):
+def homoleptic_m3l6(
+    metal: stk.BuildingBlock,
+    ligand: stk.BuildingBlock,
+) -> stk.ConstructedMolecule:
+    """Make cage."""
     return stk.cage.M3L6(
         building_blocks={
             metal: (0, 1, 2),
             ligand: range(3, 9),
         },
         optimizer=stk.MCHammer(target_bond_length=2.5),
-        reaction_factory=react_factory(),
+        reaction_factory=react_factory,
     )
 
 
-def homoleptic_m4l8(metal, ligand):
+def homoleptic_m4l8(
+    metal: stk.BuildingBlock,
+    ligand: stk.BuildingBlock,
+) -> stk.ConstructedMolecule:
+    """Make cage."""
     return stk.cage.M4L8(
         building_blocks={
             metal: (0, 1, 2, 3),
             ligand: range(4, 12),
         },
         optimizer=stk.MCHammer(target_bond_length=2.5),
-        reaction_factory=react_factory(),
+        reaction_factory=react_factory,
     )
 
 
-def homoleptic_m6l12(metal, ligand):
+def homoleptic_m6l12(
+    metal: stk.BuildingBlock,
+    ligand: stk.BuildingBlock,
+) -> stk.ConstructedMolecule:
+    """Make cage."""
     return stk.cage.M6L12Cube(
         building_blocks={
             metal: range(6),
             ligand: range(6, 18),
         },
         optimizer=stk.Collapser(),
-        reaction_factory=react_factory(),
+        reaction_factory=react_factory,
     )
 
 
-def homoleptic_m12l24(metal, ligand):
+def homoleptic_m12l24(
+    metal: stk.BuildingBlock,
+    ligand: stk.BuildingBlock,
+) -> stk.ConstructedMolecule:
+    """Make cage."""
     return stk.cage.M12L24(
         building_blocks={
             metal: range(12),
             ligand: range(12, 36),
         },
-        reaction_factory=react_factory(),
+        reaction_factory=react_factory,
     )
 
 
-def homoleptic_m24l48(metal, ligand):
+def homoleptic_m24l48(
+    metal: stk.BuildingBlock,
+    ligand: stk.BuildingBlock,
+) -> stk.ConstructedMolecule:
+    """Make cage."""
     return stk.cage.M24L48(
         building_blocks={
             metal: range(24),
             ligand: range(24, 72),
         },
-        reaction_factory=react_factory(),
+        reaction_factory=react_factory,
     )
 
 
-def homoleptic_m30l60(metal, ligand):
+def homoleptic_m30l60(
+    metal: stk.BuildingBlock,
+    ligand: stk.BuildingBlock,
+) -> stk.ConstructedMolecule:
+    """Make cage."""
     return M30L60(
         building_blocks=(metal, ligand),
-        reaction_factory=react_factory(),
+        reaction_factory=react_factory,
     )
 
 
-def heteroleptic_cis(metal, ligand1, ligand2):
+def heteroleptic_cis(
+    metal: stk.BuildingBlock,
+    ligand1: stk.BuildingBlock,
+    ligand2: stk.BuildingBlock,
+) -> stk.ConstructedMolecule:
+    """Make cage."""
     return stk.cage.M2L4Lantern(
         building_blocks={
             metal: (0, 1),
@@ -119,11 +141,16 @@ def heteroleptic_cis(metal, ligand1, ligand2):
             ligand2: (4, 5),
         },
         optimizer=stk.MCHammer(target_bond_length=2.5),
-        reaction_factory=react_factory(),
+        reaction_factory=react_factory,
     )
 
 
-def heteroleptic_trans(metal, ligand1, ligand2):
+def heteroleptic_trans(
+    metal: stk.BuildingBlock,
+    ligand1: stk.BuildingBlock,
+    ligand2: stk.BuildingBlock,
+) -> stk.ConstructedMolecule:
+    """Make cage."""
     return stk.cage.M2L4Lantern(
         building_blocks={
             metal: (0, 1),
@@ -131,17 +158,22 @@ def heteroleptic_trans(metal, ligand1, ligand2):
             ligand2: (3, 5),
         },
         optimizer=stk.MCHammer(target_bond_length=2.5),
-        reaction_factory=react_factory(),
+        reaction_factory=react_factory,
     )
 
 
 @dataclass
 class CageInfo:
+    """Hold cage information."""
+
     tg: stk.TopologyGraph
     charge: int
 
 
-def define_to_build(ligands):
+def define_to_build(  # noqa: C901
+    ligands: dict[str, stk.BuildingBlock],
+) -> dict[str, CageInfo]:
+    """Define cages to build."""
     pd = stk.BuildingBlock(
         smiles="[Pd+2]",
         functional_groups=(
@@ -219,18 +251,13 @@ def define_to_build(ligands):
             charge=4,
         )
 
-    logging.info(f"there are {len(to_build)} cages to build")
+    logging.info("there are %s cages to build", len(to_build))
     return to_build
 
 
-def main():
-    if len(sys.argv) != 1:
-        logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
-        sys.exit()
-    else:
-        pass
-
-    li_path = liga_path()
+def main() -> None:
+    """Run script."""
+    li_path = Study1EnvVariables.liga_path
     li_suffix = "_opt.mol"
     ligands = {
         i.split("/")[-1].replace(li_suffix, ""): (
@@ -239,7 +266,7 @@ def main():
                 functional_groups=(AromaticCNCFactory(),),
             )
         )
-        for i in glob.glob(str(li_path / f"*{li_suffix}"))
+        for i in glob.glob(str(li_path / f"*{li_suffix}"))  # noqa: PTH207
     }
     ligands = {
         i: ligands[i].with_functional_groups(
@@ -248,29 +275,25 @@ def main():
         for i in ligands
     }
 
-    _wd = cage_path()
-    _cd = calc_path()
-
-    if not os.path.exists(_wd):
-        os.mkdir(_wd)
-
-    if not os.path.exists(_cd):
-        os.mkdir(_cd)
+    _wd = Study1EnvVariables.cage_path
+    _cd = Study1EnvVariables.calc_path
+    _wd.mkdir(exist_ok=True)
+    _cd.mkdir(exist_ok=True)
 
     # Define cages to build.
     cages_to_build = define_to_build(ligands)
     # Build them all.
     for cage_name in cages_to_build:
         cage_info = cages_to_build[cage_name]
-        unopt_file = os.path.join(_wd, f"{cage_name}_unopt.mol")
-        opt_file = os.path.join(_wd, f"{cage_name}_opt.mol")
+        unopt_file = _wd / f"{cage_name}_unopt.mol"
+        opt_file = _wd / f"{cage_name}_opt.mol"
 
-        logging.info(f"building {cage_name}")
+        logging.info("building %s", cage_name)
         unopt_mol = stk.ConstructedMolecule(cage_info.tg)
         unopt_mol.write(unopt_file)
 
-        if not os.path.exists(opt_file):
-            logging.info(f"optimising {cage_name}")
+        if not opt_file.exists():
+            logging.info("optimising %s", cage_name)
             opt_mol = optimisation_sequence(
                 mol=unopt_mol,
                 name=cage_name,

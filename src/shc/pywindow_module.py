@@ -1,11 +1,4 @@
-#!/usr/bin/env python
-# Distributed under the terms of the MIT License.
-
-"""Module for pywindow functions.
-
-Author: Andrew Tarzia
-
-"""
+"""Module for pywindow functions."""
 
 import json
 import logging

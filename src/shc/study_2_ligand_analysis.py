@@ -67,7 +67,8 @@ def test_N_N_lengths(large_c_dict, small_c_dict):
         )
 
 
-def main():
+def main() -> None:  # noqa: PLR0915
+    """Run script."""
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
     calculation_dir = pathlib.Path(
         "/home/atarzia/workingspace/cpl/calculations"

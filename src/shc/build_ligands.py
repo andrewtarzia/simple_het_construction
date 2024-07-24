@@ -1,11 +1,4 @@
-#!/usr/bin/env python
-# Distributed under the terms of the MIT License.
-
-"""Script to build the ligand in this project.
-
-Author: Andrew Tarzia
-
-"""
+"""Script to build the ligand in this project."""
 
 import logging
 import os
@@ -13,7 +6,6 @@ import sys
 
 import stk
 import stko
-from env_set import calc_path, figu_path, liga_path, xtb_path
 from rdkit.Chem import AllChem as rdkit
 from rdkit.Chem import Draw
 from utilities import (
@@ -186,7 +178,8 @@ def ligand_smiles():
     }
 
 
-def main():
+def main() -> None:
+    """Run script."""
     if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
         sys.exit()

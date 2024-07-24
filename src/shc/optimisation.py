@@ -1,16 +1,8 @@
-#!/usr/bin/env python
-# Distributed under the terms of the MIT License.
-
-"""Module for optimisation functions.
-
-Author: Andrew Tarzia
-
-"""
+"""Module for optimisation functions."""
 
 import logging
 import os
 
-import env_set
 import stko
 
 

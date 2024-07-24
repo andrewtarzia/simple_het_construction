@@ -1,11 +1,4 @@
-#!/usr/bin/env python
-# Distributed under the terms of the MIT License.
-
-"""Script to build the ligand in this project.
-
-Author: Andrew Tarzia
-
-"""
+"""Script to build the ligand in this project."""
 
 import itertools
 import json
@@ -19,8 +12,7 @@ import plotting
 import stk
 import stko
 from definitions import EnvVariables
-from env_set import calc_path, liga_path
-from rdkit.Chem import AllChem as rdkit
+from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import Draw
 from utilities import (
     AromaticCNCFactory,
@@ -199,7 +191,8 @@ def ligand_smiles():
     }
 
 
-def main():
+def main() -> None:  # noqa: C901, PLR0912, PLR0915
+    """Run script."""
     if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
         sys.exit()

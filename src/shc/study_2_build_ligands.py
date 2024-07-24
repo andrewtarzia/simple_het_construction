@@ -337,7 +337,8 @@ def explore_ligand(
     )
 
 
-def main():
+def main() -> None:
+    """Run script."""
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
     calculation_dir = pathlib.Path(
         "/home/atarzia/workingspace/cpl/calculations"

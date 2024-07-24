@@ -1,21 +1,12 @@
-#!/usr/bin/env python
-# Distributed under the terms of the MIT License.
-
-"""Script to analyse all cages constructed.
-
-Author: Andrew Tarzia
-
-"""
+"""Script to analyse all cages constructed."""
 
 import glob
 import json
 import logging
 import os
-import sys
 
 import plotting
 import stk
-from env_set import cage_path, calc_path, liga_path, project_path
 from pywindow_module import PyWindow
 from topologies import heteroleptic_cages, ligand_cage_topologies
 from utilities import (
@@ -40,13 +31,8 @@ def get_min_order_parameter(molecule):
     return order_results["sq_plan"]["min"]
 
 
-def main():
-    if len(sys.argv) != 1:
-        logging.info(f"Usage: {__file__}\n" "   Expected 1 arguments:")
-        sys.exit()
-    else:
-        pass
-
+def main() -> None:  # noqa: C901, PLR0912, PLR0915
+    """Run script."""
     li_path = liga_path()
     ligands = {
         i.split("/")[-1].replace("_opt.mol", ""): (

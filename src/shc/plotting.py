@@ -1,11 +1,4 @@
-#!/usr/bin/env python
-# Distributed under the terms of the MIT License.
-
-"""Module for plotting functions.
-
-Author: Andrew Tarzia
-
-"""
+"""Module for plotting functions."""
 
 import logging
 import os
@@ -13,7 +6,6 @@ import os
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-from env_set import figu_path
 from run_ligand_analysis import vector_length
 from utilities import expt_name_conversion, name_conversion, name_parser
 

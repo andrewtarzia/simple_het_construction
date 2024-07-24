@@ -457,7 +457,8 @@ def plot_flexes(
     plt.close()
 
 
-def main():
+def main() -> None:  # noqa: C901, PLR0912, PLR0915
+    """Run script."""
     args = _parse_args()
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/case_study_1")
     calculation_dir = pathlib.Path(
