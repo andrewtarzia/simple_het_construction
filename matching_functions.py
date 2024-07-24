@@ -461,22 +461,55 @@ class Pair:
     lhs: LhsRigidBody
     rhs: RhsRigidBody
 
-    def calculate_residual(self, r1: float, r2: float) -> float:
-        return np.linalg.norm(
-            self.rhs.get_x1(r2).as_array() - self.lhs.get_x1(r1).as_array()
+    def calculate_residual(
+        self,
+        r1: float,
+        phi1: float,
+        r2: float,
+        phi2: float,
+    ) -> float:
+        distance_residual = np.linalg.norm(
+            self.rhs.get_x1(r2, phi2).as_array() - self.lhs.get_x1(r1, phi1).as_array()
         ) + np.linalg.norm(
-            self.rhs.get_x2(r2).as_array() - self.lhs.get_x2(r1).as_array()
+            self.rhs.get_x2(r2, phi2).as_array() - self.lhs.get_x2(r1, phi1).as_array()
         )
 
+        rhs_x1n1 = (
+            self.rhs.get_x1(r2, phi2).as_array() - self.rhs.get_n1(r2, phi2).as_array()
+        )
+        rhs_x2n2 = (
+            self.rhs.get_x2(r2, phi2).as_array() - self.rhs.get_n2(r2, phi2).as_array()
+        )
+        lhs_x1n1 = (
+            self.lhs.get_x1(r1, phi1).as_array() - self.lhs.get_n1(r1, phi1).as_array()
+        )
+        lhs_x2n2 = (
+            self.lhs.get_x2(r1, phi1).as_array() - self.lhs.get_n2(r1, phi1).as_array()
+        )
 
-def mismatch_test(c_dict1: dict, c_dict2: dict) -> tuple[float, float]:
-    r1 = np.array((-4, 0))
-    r2 = np.array((0, 0))
-    r3 = np.array((0, 0))
-    phi1 = 90
-    phi2 = 90
-    phi3 = 90
+        # They should be aligned, but opposite.
+        angle_1_residual = abs(
+            np.degrees(stko.vector_angle(vector1=lhs_x1n1, vector2=rhs_x1n1)) - 180
+        )
+        angle_2_residual = abs(
+            np.degrees(stko.vector_angle(vector1=lhs_x2n2, vector2=rhs_x2n2)) - 180
+        )
 
+        angle_residual = angle_1_residual + angle_2_residual
+
+        return distance_residual / 2 + angle_residual / 20
+
+
+@dataclass
+class PairResult:
+    rigidbody1: LhsRigidBody
+    rigidbody2: RhsRigidBody
+    rigidbody3: RhsRigidBody
+    state_1_result: float
+    state_2_result: float
+    state_1_parameters: abc.Sequence[float]
+    state_2_parameters: abc.Sequence[float]
+    set_parameters: abc.Sequence[float]
     rigidbody1 = LhsRigidBody(
         nn_length=c_dict1["NN_distance"],
         theta1=c_dict1["NN_BCN_angles"][0],
