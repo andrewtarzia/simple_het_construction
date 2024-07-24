@@ -38,6 +38,7 @@ def analyse_ligand_pair(
     key: str,
     ligand_db: atomlite.Database,
     pair_db: atomlite.Database,
+    figures_dir: pathlib.Path,
 ):
     ligand1_entry = ligand_db.get_entry(ligand1)
     ligand1_confs = ligand1_entry.properties["conf_data"]
@@ -45,16 +46,16 @@ def analyse_ligand_pair(
     ligand2_confs = ligand2_entry.properties["conf_data"]
     st = time.time()
     num_pairs = 0
-    min_geom_score = 1e24
-    print("check this to pair count", len(ligand1_confs), len(ligand2_confs))
+    num_pairs_passed = 0
     pair_data = {}
-
+    best_pair = None
+    best_residual = 1e24
     # Iterate over the product of all conformers.
     for cid_1, cid_2 in it.product(ligand1_confs, ligand2_confs):
         cid_name = f"{cid_1}-{cid_2}"
 
+        num_pairs += 1
         # Check strain.
-        logging.info("remove conversion")
         strain1 = (
             ligand1_confs[cid_1]["UFFEnergy;kj/mol"]
             - ligand1_entry.properties["min_energy;kj/mol"] * 4.184
@@ -70,23 +71,16 @@ def analyse_ligand_pair(
         torsion1 = abs(ligand1_confs[cid_1]["NCCN_dihedral"])
         torsion2 = abs(ligand2_confs[cid_2]["NCCN_dihedral"])
         if (
-            torsion1 > EnvVariables.dihedral_cutoff
-            or torsion2 > EnvVariables.dihedral_cutoff
+            torsion1 > EnvVariables.cs1_dihedral_cutoff
+            or torsion2 > EnvVariables.cs1_dihedral_cutoff
         ):
             continue
 
         # Calculate geom score for both sides together.
         c_dict1 = ligand1_confs[cid_1]
         c_dict2 = ligand2_confs[cid_2]
-        print(c_dict1, c_dict2)
-        print(cid_1, cid_2, key)
-
-        logging.info(
-            "should I pick large and small, or just define the alg so it does not matter?"
-        )
 
         # Calculate final geometrical properties.
-        # T1.
         angle_dev = angle_test(c_dict1=c_dict1, c_dict2=c_dict2)
 
         pair_results = mismatch_test(c_dict1=c_dict1, c_dict2=c_dict2)
@@ -125,19 +119,44 @@ def analyse_ligand_pair(
             property=angle_dev,
             commit=False,
         )
+        num_pairs_passed += 1
+        if (
+            float(pair_results.state_1_result) < best_residual
+            or float(pair_results.state_2_result) < best_residual
+        ):
+            best_pair = pair_results
+            best_residual = min(
+                (float(pair_results.state_1_result), float(pair_results.state_2_result))
+            )
+
+    logging.info("in future, save this whole dict with comented code.")
+    # print("t", pair_db.has_property_entry(key))
+    # entry = atomlite.PropertyEntry(
+    #     key=key,
+    #     properties={"pair_data": pair_data},
+    # )
+    # pair_db.update_properties(entries=entry)
+    # print("t2", pair_db.has_property_entry(key))
+    pair_db.connection.commit()
     ft = time.time()
     logging.info(
-        f"time taken for pairing {ligand1}, {ligand2}: "
-        f"{round(1000*(ft-st), 2)}ms "
-        f"({round(1000*(ft-st)/num_pairs)}ms"
-        f" per pair) - {num_pairs} pairs"
+        f"pairing {ligand1}, {ligand2}: "
+        f"{round((ft-st), 2)}s "
+        f"({round(1000*(ft-st)/num_pairs)}s"
+        f" per pair) - {num_pairs_passed} pairs passed"
     )
-    print(
-        "check this to pair count",
-        len(ligand1_confs),
-        len(ligand2_confs),
-        len(ligand1_confs) * len(ligand2_confs),
-        num_pairs,
+
+    plot_pair_position(
+        r1=np.array((best_pair.set_parameters[0], best_pair.set_parameters[1])),
+        phi1=best_pair.set_parameters[2],
+        rigidbody1=best_pair.rigidbody1,
+        r2=np.array((best_pair.state_1_parameters[0], best_pair.state_1_parameters[1])),
+        phi2=best_pair.state_1_parameters[2],
+        rigidbody2=best_pair.rigidbody2,
+        r3=np.array((best_pair.state_2_parameters[0], best_pair.state_2_parameters[1])),
+        phi3=best_pair.state_2_parameters[2],
+        rigidbody3=best_pair.rigidbody3,
+        outname=figures_dir / f"best_{key}.png",
     )
 
 
