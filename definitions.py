@@ -3,3 +3,4 @@ class EnvVariables:
 
     dihedral_cutoff = 10
     strain_cutoff = 5
+    cs1_dihedral_cutoff = 20
