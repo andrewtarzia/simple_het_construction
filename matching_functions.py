@@ -286,21 +286,78 @@ class Point:
 class RigidBody:
     """Define the rigid body for the optimisation."""
 
-    def get_n1(self, r: np.ndarray) -> Point:
-        return Point(x=self._n1[0] + r[0], y=self._n1[1] + r[1])
+    def get_n1(self, r: np.ndarray, phi: float) -> Point:
+        if phi != 0:
+            # From origin x, y.
+            x = self._n1[0]
+            y = self._n1[1]
+            # Rotated.
+            axis = np.array((0, 0, 1))
+            rot_mat = stk.rotation_matrix_arbitrary_axis(np.radians(phi), axis)
 
-    def get_n2(self, r: np.ndarray) -> Point:
-        return Point(x=self._n2[0] + r[0], y=self._n2[1] + r[1])
+            rotated = rot_mat @ np.array((x, y, 0))
 
-    def get_x1(self, r: np.ndarray) -> Point:
-        return Point(
-            x=self._n1[0] + r[0] + self._x1[0], y=self._n1[1] + r[1] + self._x1[1]
-        )
+            # Add r.
+            x, y = rotated[:2] + r
 
-    def get_x2(self, r: np.ndarray) -> Point:
-        return Point(
-            x=self._n2[0] + r[0] + self._x2[0], y=self._n2[1] + r[1] + self._x2[1]
-        )
+        else:
+            x = self._n1[0] + r[0]
+            y = self._n1[1] + r[1]
+        return Point(x, y)
+
+    def get_n2(self, r: np.ndarray, phi: float) -> Point:
+        if phi != 0:
+            # From origin x, y.
+            x = self._n2[0]
+            y = self._n2[1]
+            # Rotated.
+            axis = np.array((0, 0, 1))
+            rot_mat = stk.rotation_matrix_arbitrary_axis(np.radians(phi), axis)
+
+            rotated = rot_mat @ np.array((x, y, 0))
+
+            # Add r.
+            x, y = rotated[:2] + r
+        else:
+            x = self._n2[0] + r[0]
+            y = self._n2[1] + r[1]
+        return Point(x, y)
+
+    def get_x1(self, r: np.ndarray, phi: float) -> Point:
+        if phi != 0:
+            # From origin x, y.
+            x = self._n1[0] + self._x1[0]
+            y = self._n1[1] + self._x1[1]
+            # Rotated.
+            axis = np.array((0, 0, 1))
+            rot_mat = stk.rotation_matrix_arbitrary_axis(np.radians(phi), axis)
+
+            rotated = rot_mat @ np.array((x, y, 0))
+
+            # Add r.
+            x, y = rotated[:2] + r
+        else:
+            x = self._n1[0] + r[0] + self._x1[0]
+            y = self._n1[1] + r[1] + self._x1[1]
+        return Point(x, y)
+
+    def get_x2(self, r: np.ndarray, phi: float) -> Point:
+        if phi != 0:
+            # From origin x, y.
+            x = self._n2[0] + self._x2[0]
+            y = self._n2[1] + self._x2[1]
+            # Rotated.
+            axis = np.array((0, 0, 1))
+            rot_mat = stk.rotation_matrix_arbitrary_axis(np.radians(phi), axis)
+
+            rotated = rot_mat @ np.array((x, y, 0))
+
+            # Add r.
+            x, y = rotated[:2] + r
+        else:
+            x = self._n2[0] + r[0] + self._x2[0]
+            y = self._n2[1] + r[1] + self._x2[1]
+        return Point(x, y)
 
 
 class LhsRigidBody(RigidBody):
