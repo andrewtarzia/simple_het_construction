@@ -530,27 +530,109 @@ class PairResult:
         theta2=c_dict2["NN_BCN_angles"][0],
         vector_length=vector_length(),
     )
-    raise SystemExit("automate handling of phi")
-    plot_pair_position(
-        r1=r1,
-        phi1=phi1,
-        rigidbody1=rigidbody1,
-        r2=r2,
-        phi2=phi2,
-        rigidbody2=rigidbody2,
-        r3=r3,
-        phi3=phi3,
-        rigidbody3=rigidbody3,
-        outname="test.png",
-    )
-    residuals = (
-        Pair(lhs=rigidbody1, rhs=rigidbody2).calculate_residual(r1=r1, r2=r2),
-        Pair(lhs=rigidbody1, rhs=rigidbody3).calculate_residual(r1=r1, r2=r3),
-    )
-    print(residuals)
 
-    raise SystemExit("define initial coordinate positions")
-    raise SystemExit("for both states")
-    raise SystemExit("visualise coordinate positions")
-    raise SystemExit("optimise coordinate positions")
-    return residuals
+    set_state = [-4, 0, 0]
+
+    # Opt state 1.
+    def f(params):
+        r1x, r1y, phi1 = set_state
+        r2x, r2y, phi2 = params
+        return Pair(lhs=rigidbody1, rhs=rigidbody2).calculate_residual(
+            r1=np.array((r1x, r1y)), phi1=phi1, r2=np.array((r2x, r2y)), phi2=phi2
+        )
+
+    # initial_guesses = ([-4, 0, 0, 0, 0, 0], [-4, 0, 0, 0, 0, 20], [-4, 0, 0, 0, 0, -20])
+    initial_guesses = ([0, 0, 20], [0, 0, -20])  # , [0, 0, 0], )
+    state_1_results = []
+    state_1_sets = []
+    for initial_guess in initial_guesses:
+        result = optimize.minimize(
+            f,
+            initial_guess,
+            # bounds=((-10, 0), (-5, 10), (-90, 90), (-5, 10), (-10, 0), (-90, 90)),
+            bounds=((-5, 10), (-10, 0), (-45, 45)),
+        )
+
+        state_1_sets.append(result.x)
+        state_1_results.append(
+            Pair(lhs=rigidbody1, rhs=rigidbody2).calculate_residual(
+                # r1=np.array((result.x[0], result.x[1])),
+                # phi1=result.x[2],
+                # r2=np.array((result.x[3], result.x[4])),
+                # phi2=result.x[5],
+                r1=np.array((set_state[0], set_state[1])),
+                phi1=set_state[2],
+                r2=np.array((result.x[0], result.x[1])),
+                phi2=result.x[2],
+            )
+        )
+
+    state_1_result = min(state_1_results)
+    state_1_parameters = state_1_sets[state_1_results.index(state_1_result)]
+
+    # Opt state 2.
+    def f(params):
+        r1x, r1y, phi1 = set_state
+        r2x, r2y, phi2 = params
+        return Pair(lhs=rigidbody1, rhs=rigidbody3).calculate_residual(
+            r1=np.array((r1x, r1y)), phi1=phi1, r2=np.array((r2x, r2y)), phi2=phi2
+        )
+
+    state_2_results = []
+    state_2_sets = []
+    for initial_guess in initial_guesses:
+        result = optimize.minimize(
+            f,
+            initial_guess,
+            # bounds=((-10, 0), (-5, 10), (-90, 90), (-5, 10), (-10, 0), (-90, 90)),
+            bounds=((-5, 10), (-10, 0), (-45, 45)),
+        )
+
+        state_2_sets.append(result.x)
+        state_2_results.append(
+            Pair(lhs=rigidbody1, rhs=rigidbody3).calculate_residual(
+                # r1=np.array((result.x[0], result.x[1])),
+                # phi1=result.x[2],
+                # r2=np.array((result.x[3], result.x[4])),
+                # phi2=result.x[5],
+                r1=np.array((set_state[0], set_state[1])),
+                phi1=set_state[2],
+                r2=np.array((result.x[0], result.x[1])),
+                phi2=result.x[2],
+            )
+        )
+
+    state_2_result = min(state_2_results)
+    state_2_parameters = state_2_sets[state_2_results.index(state_2_result)]
+
+    # plot_pair_position(
+    #     # r1=np.array((state_1_parameters[0], state_1_parameters[1])),
+    #     # phi1=state_1_parameters[2],
+    #     # rigidbody1=rigidbody1,
+    #     # r2=np.array((state_1_parameters[3], state_1_parameters[4])),
+    #     # phi2=state_1_parameters[5],
+    #     # rigidbody2=rigidbody2,
+    #     # r3=np.array((state_2_parameters[3], state_2_parameters[4])),
+    #     # phi3=state_2_parameters[5],
+    #     r1=np.array((set_state[0], set_state[1])),
+    #     phi1=set_state[2],
+    #     rigidbody1=rigidbody1,
+    #     r2=np.array((state_1_parameters[0], state_1_parameters[1])),
+    #     phi2=state_1_parameters[2],
+    #     rigidbody2=rigidbody2,
+    #     r3=np.array((state_2_parameters[0], state_2_parameters[1])),
+    #     phi3=state_2_parameters[2],
+    #     rigidbody3=rigidbody3,
+    #     outname="test.png",
+    # )
+
+    return PairResult(
+        rigidbody1=rigidbody1,
+        rigidbody2=rigidbody2,
+        rigidbody3=rigidbody3,
+        state_1_result=state_1_result,
+        state_2_result=state_2_result,
+        state_1_parameters=state_1_parameters,
+        state_2_parameters=state_2_parameters,
+        set_parameters=set_state,
+    )
