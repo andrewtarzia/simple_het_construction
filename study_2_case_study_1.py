@@ -88,35 +88,43 @@ def analyse_ligand_pair(
         # Calculate final geometrical properties.
         # T1.
         angle_dev = angle_test(c_dict1=c_dict1, c_dict2=c_dict2)
-        print(angle_dev)
 
-        residuals = mismatch_test(c_dict1=c_dict1, c_dict2=c_dict2)
-        print(key, residuals, "same for lc, ld")
+        pair_results = mismatch_test(c_dict1=c_dict1, c_dict2=c_dict2)
 
-        raise SystemExit
-        geom_score = abs(angle_dev - 1) + abs(length_dev - 1)
-
-        min_geom_score = min((geom_score, min_geom_score))
         pair_data[cid_name] = {
-            "geom_score": geom_score,
-            "large_key": large_key,
-            "small_key": small_key,
-            "large_dihedral": large_c_dict["NCCN_dihedral"],
-            "small_dihedral": small_c_dict["NCCN_dihedral"],
+            "state_1_residual": float(pair_results.state_1_result),
+            "state_2_residual": float(pair_results.state_2_result),
+            "state_1_parameters": [float(i) for i in pair_results.state_1_parameters],
+            "state_2_parameters": [float(i) for i in pair_results.state_2_parameters],
+            "ligand1_key": ligand1,
+            "ligand2_key": ligand2,
+            "cid_1": cid_1,
+            "cid_2": cid_2,
+            "torsion1": torsion1,
+            "torsion2": torsion2,
+            "strain1": strain1,
+            "strain2": strain2,
             "angle_deviation": angle_dev,
-            "length_deviation": length_dev,
-            "large_dict": large_c_dict,
-            "small_dict": small_c_dict,
         }
-        num_pairs += 1
-    logging.info("need to handle the two different isomers of matching")
-    print("t", pair_db.has_property_entry(key))
-    entry = atomlite.PropertyEntry(
-        key=key,
-        properties={"pair_data": pair_data},
-    )
-    pair_db.update_entries(entries=entry)
-    print("t2", pair_db.has_property_entry(key))
+
+        pair_db.set_property(
+            key=key,
+            path=f"$.pair_data.{cid_name}.state_1_residual",
+            property=float(pair_results.state_1_result),
+            commit=False,
+        )
+        pair_db.set_property(
+            key=key,
+            path=f"$.pair_data.{cid_name}.state_2_residual",
+            property=float(pair_results.state_2_result),
+            commit=False,
+        )
+        pair_db.set_property(
+            key=key,
+            path=f"$.pair_data.{cid_name}.angle_deviation",
+            property=angle_dev,
+            commit=False,
+        )
     ft = time.time()
     logging.info(
         f"time taken for pairing {ligand1}, {ligand2}: "
