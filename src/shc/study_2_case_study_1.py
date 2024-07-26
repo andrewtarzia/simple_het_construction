@@ -1,4 +1,4 @@
-"""Script to build the ligand in this project."""
+"""Script to build the ligands in this case study."""
 
 import argparse
 import itertools as it
