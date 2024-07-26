@@ -15,6 +15,42 @@ from rdkit.Chem import Draw
 from utilities import update_from_rdkit_conf
 
 
+def symmetry_check(
+    building_blocks: abc.Sequence[stk.BuildingBlock],
+    composition: str,
+    repeating_unit: str,
+) -> bool:
+    """Check if a ligand will be symmetric."""
+    base = ord("A")
+    ru = tuple(ord(letter) - base for letter in repeating_unit)
+    bb_smiles = [stk.Smiles().get_key(i) for i in building_blocks]
+
+    if composition == "ae":
+        return bb_smiles[0] == bb_smiles[1]
+
+    if composition in ("ace", "abe", "ace", "ade"):
+        return bb_smiles[ru[0]] == bb_smiles[ru[2]]
+
+    if composition in ("abce", "adce", "acbe", "acde"):
+        outers = bb_smiles[ru[0]] == bb_smiles[ru[3]]
+        inners = bb_smiles[ru[1]] == bb_smiles[ru[2]]
+        return outers and inners
+
+    if composition in ("abca", "ebce", "adca", "edce"):
+        return bb_smiles[ru[1]] == bb_smiles[ru[2]]
+
+    if composition in ("abcde", "adcbe", "abcbe", "adcde"):
+        outers = bb_smiles[ru[0]] == bb_smiles[ru[4]]
+        inners = bb_smiles[ru[1]] == bb_smiles[ru[3]]
+        return outers and inners
+
+    if composition in ("abcda", "ebcde"):
+        return bb_smiles[ru[1]] == bb_smiles[ru[3]]
+
+    msg = f"missing definition for {composition}"
+    raise NotImplementedError(msg)
+
+
 def normalise_names(name: str) -> str:
     """Normalise names.
 
@@ -118,7 +154,6 @@ def build_ligand(  # noqa: PLR0913
                 molecule=molecule,
                 ligand_name=ligand_name,
                 ligand_dir=ligand_dir,
-                figures_dir=figures_dir,
                 ligand_db=deduped_db,
             )
 
@@ -372,6 +407,16 @@ def generate_all_ligands(
                 for option in options:
                     ligand_name = options[option]["name"]
                     ligand_name = normalise_names(ligand_name)
+
+                    is_symmetric = symmetry_check(
+                        composition=option,
+                        building_blocks=options[option]["bbs"],
+                        repeating_unit=options[option]["ru"],
+                    )
+
+                    if is_symmetric:
+
+                        continue
 
                     build_ligand(
                         ligand_name=ligand_name,
