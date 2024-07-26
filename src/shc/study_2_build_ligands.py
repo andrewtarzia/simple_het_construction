@@ -140,6 +140,11 @@ def build_ligand(  # noqa: PLR0913
         )
 
     if passes_dedupe(molecule=molecule, ligand_dir=ligand_dir):
+        Draw.MolToFile(
+            rdkit.MolFromSmiles(stk.Smiles().get_key(molecule)),
+            figures_dir / f"{ligand_name}_2d_new.png",
+            size=(300, 300),
+        )
         molecule = stko.ETKDG().optimize(molecule)
         if ligand_db.has_entry(key=ligand_name) and not deduped_db.has_entry(
             key=ligand_name
@@ -163,53 +168,74 @@ def build_ligand(  # noqa: PLR0913
 def generate_all_ligands(
     ligand_dir: pathlib.Path,
     figures_dir: pathlib.Path,
+    components_dir: pathlib.Path,
     ligand_db: atomlite.Database,
     deduped_db: atomlite.Database,
 ) -> None:
     """Iterate and generate through all components."""
-    core_smiles = (
+    core_smiles = {
         # From 10.1002/anie.202106721
-        "Brc1ccc(Br)cc1",
-        "Brc1cccc(Br)c1",
-        "Brc1ccc2[nH]c3ccc(Br)cc3c2c1",
-        "Brc1ccc2ccc(Br)cc2c1",
+        0: "Brc1ccc(Br)cc1",
+        1: "Brc1cccc(Br)c1",
+        2: "Brc1ccc2[nH]c3ccc(Br)cc3c2c1",
+        3: "Brc1ccc2ccc(Br)cc2c1",
         #####
-        "C(#CBr)Br",
-        "CC1=C(C=CC=C1Br)Br",
-        "C1=CC=C2C(=C1)C(=C3C=CC=CC3=C2Br)Br",
-        "CC1=C(C(=C(C(=C1Br)C)C)Br)C",
-        "C1=C(SC(=C1)Br)Br",
-        "C1=CC2=C(C=C1Br)C3=C(O2)C=CC(=C3)Br",
-        "C1=C(OC(=C1)Br)Br",
-        "C1=CC2=C(C=C1Br)C3=C(C2=O)C=CC(=C3)Br",
-        "C1=CC2=C(C=C(C=C2)Br)C3=C1C=CC(=C3)Br",
-        "CN1C2=C(C=C(C=C2)Br)C(=O)C3=C1C=CC(=C3)Br",
-    )
-    linker_smiles = (
-        "C1=CC(=CC=C1Br)Br",
-        "Brc1cccc(Br)c1",
-        "BrC#CBr",
-        "C1=CC=C2C(=C1)C(=C3C=CC=CC3=C2Br)Br",
-    )
-    binder_smiles = (
+        4: "C(#CBr)Br",
+        # 5: "CC1=C(C=CC=C1Br)Br",
+        # 6: "C1=CC=C2C(=C1)C(=C3C=CC=CC3=C2Br)Br",
+        # 7: "CC1=C(C(=C(C(=C1Br)C)C)Br)C",
+        8: "C1=C(SC(=C1)Br)Br",
+        9: "C1=CC2=C(C=C1Br)C3=C(O2)C=CC(=C3)Br",
+        10: "C1=C(OC(=C1)Br)Br",
+        11: "C1=CC2=C(C=C1Br)C3=C(C2=O)C=CC(=C3)Br",
+        12: "C1=CC2=C(C=C(C=C2)Br)C3=C1C=CC(=C3)Br",
+        13: "CN1C2=C(C=C(C=C2)Br)C(=O)C3=C1C=CC(=C3)Br",
+        14: "C1=CC=C(C(=C1)Br)Br",
+    }
+    linker_smiles = {
+        0: "C1=CC(=CC=C1Br)Br",
+        1: "Brc1cccc(Br)c1",
+        2: "BrC#CBr",
+        # 3: "C1=CC=C2C(=C1)C(=C3C=CC=CC3=C2Br)Br",
+        4: "C1=CC=C(C(=C1)Br)Br",
+    }
+    binder_smiles = {
         # From 10.1002/anie.202106721
-        "Brc1ccncc1",
-        "Brc1cccnc1",
+        0: "Brc1ccncc1",
+        1: "Brc1cccnc1",
         # "BrC#Cc1cccnc1",
         # But removed the alkyne, cause its in the linker.
-        "C1=CC2=C(C=CN=C2)C(=C1)Br",
-        "C1=CC2=C(C=NC=C2)C(=C1)Br",
-        "C1=CC2=C(C=CC=N2)C(=C1)Br",
+        2: "C1=CC2=C(C=CN=C2)C(=C1)Br",
+        3: "C1=CC2=C(C=NC=C2)C(=C1)Br",
+        4: "C1=CC2=C(C=CC=N2)C(=C1)Br",
         #####
-        "CC1=C(C=NC=C1)Br",
+        # 5: "CC1=C(C=NC=C1)Br",
         # "C1=CC(=CN=C1)C#CBr",  # noqa: ERA001
         # "C1C=C(C)C(C#CBr)=CN=1",  # noqa: ERA001
-        "C1=CN(C=N1)Br",
-        "CN1C=NC=C1Br",
-        "C1=CC=C2C(=C1)C=NC=C2Br",
-        "C1=CC=C2C(=C1)C=C(C=N2)Br",
+        6: "C1=CN(C=N1)Br",
+        7: "CN1C=NC=C1Br",
+        8: "C1=CC=C2C(=C1)C=NC=C2Br",
+        9: "C1=CC=C2C(=C1)C=C(C=N2)Br",
         # "C1=CC=C2C(=C1)C(=C3C=CC=CC3=N2)Br",  # noqa: ERA001
-    )
+    }
+
+    for lig in core_smiles:
+        rdkit_mol = rdkit.MolFromSmiles(core_smiles[lig])
+        Draw.MolToFile(
+            rdkit_mol, components_dir / f"core_{lig}_2d.png", size=(300, 300)
+        )
+
+    for lig in linker_smiles:
+        rdkit_mol = rdkit.MolFromSmiles(linker_smiles[lig])
+        Draw.MolToFile(
+            rdkit_mol, components_dir / f"link_{lig}_2d.png", size=(300, 300)
+        )
+
+    for lig in binder_smiles:
+        rdkit_mol = rdkit.MolFromSmiles(binder_smiles[lig])
+        Draw.MolToFile(
+            rdkit_mol, components_dir / f"bind_{lig}_2d.png", size=(300, 300)
+        )
 
     count = 0
     total_expected = 64260
@@ -434,15 +460,9 @@ def explore_ligand(
     molecule: stk.Molecule,
     ligand_name: str,
     ligand_dir: pathlib.Path,
-    figures_dir: pathlib.Path,
     ligand_db: atomlite.Database,
 ) -> None:
     """Do conformer scan."""
-    rdkit_mol = rdkit.MolFromSmiles(stk.Smiles().get_key(molecule))
-    Draw.MolToFile(
-        rdkit_mol, figures_dir / f"{ligand_name}_2d.png", size=(300, 300)
-    )
-
     st = time.time()
     conf_dir = ligand_dir / f"confs_{ligand_name}"
     conf_dir.mkdir(exist_ok=True)
@@ -527,9 +547,13 @@ def main() -> None:
     figures_dir = pathlib.Path(
         "/home/atarzia/workingspace/cpl/figures/ligands_2d"
     )
+    components_dir = pathlib.Path(
+        "/home/atarzia/workingspace/cpl/figures/components_2d"
+    )
     ligand_dir.mkdir(exist_ok=True)
     calculation_dir.mkdir(exist_ok=True)
     figures_dir.mkdir(exist_ok=True, parents=True)
+    components_dir.mkdir(exist_ok=True, parents=True)
 
     ligand_db = atomlite.Database(ligand_dir / "ligands.db")
     deduped_db = atomlite.Database(ligand_dir / "deduped_ligands.db")
@@ -538,6 +562,7 @@ def main() -> None:
     generate_all_ligands(
         ligand_dir=ligand_dir,
         figures_dir=figures_dir,
+        components_dir=components_dir,
         ligand_db=ligand_db,
         deduped_db=deduped_db,
     )
