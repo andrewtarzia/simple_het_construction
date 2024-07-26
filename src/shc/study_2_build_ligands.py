@@ -234,6 +234,62 @@ def generate_all_ligands(
                         ),
                         "ru": "BADAC",
                     },
+                    "abca": {
+                        "name": f"abca_{k1}-{i1}-{j}-x-x",
+                        "bbs": (
+                            stk.BuildingBlock(link1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(core, [stk.BromoFactory()]),
+                        ),
+                        "ru": "BACB",
+                    },
+                    "ebce": {
+                        "name": f"ebce_x-{i1}-{j}-x-{k2}",
+                        "bbs": (
+                            stk.BuildingBlock(link1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind2, [stk.BromoFactory()]),
+                            stk.BuildingBlock(core, [stk.BromoFactory()]),
+                        ),
+                        "ru": "BACB",
+                    },
+                    "adca": {
+                        "name": f"adca_{k1}-x-{j}-{i2}-x",
+                        "bbs": (
+                            stk.BuildingBlock(link2, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(core, [stk.BromoFactory()]),
+                        ),
+                        "ru": "BACB",
+                    },
+                    "edce": {
+                        "name": f"edce_x-x-{j}-{i2}-{k2}",
+                        "bbs": (
+                            stk.BuildingBlock(link2, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind2, [stk.BromoFactory()]),
+                            stk.BuildingBlock(core, [stk.BromoFactory()]),
+                        ),
+                        "ru": "BACB",
+                    },
+                    "abcda": {
+                        "name": f"abcda_{k1}-{i1}-{j}-{i2}-x",
+                        "bbs": (
+                            stk.BuildingBlock(link1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(link2, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(core, [stk.BromoFactory()]),
+                        ),
+                        "ru": "CADBC",
+                    },
+                    "ebcde": {
+                        "name": f"ebcde_x-{i1}-{j}-{i2}-{k2}",
+                        "bbs": (
+                            stk.BuildingBlock(link1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(link2, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind2, [stk.BromoFactory()]),
+                            stk.BuildingBlock(core, [stk.BromoFactory()]),
+                        ),
+                        "ru": "CADBC",
+                    },
                 }
 
                 for option in options:
