@@ -11,57 +11,7 @@ import stko
 from definitions import EnvVariables
 from matplotlib import colors
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
-from rdkit.Chem import rdMolDescriptors, rdmolops, rdMolTransforms
-
-
-def extract_torsions(
-    molecule: stk.Molecule,
-    smarts: str,
-    expected_num_atoms: int,
-    scanned_ids: tuple[int, int, int, int],
-    expected_num_torsions: int,
-) -> tuple[float, float]:
-    """Extract two torsions from a molecule."""
-    rdkit_molecule = molecule.to_rdkit_mol()
-    matches = rdkit_molecule.GetSubstructMatches(
-        query=rdkit.MolFromSmarts(smarts),
-    )
-
-    torsions = []
-    for match in matches:
-        if len(match) != expected_num_atoms:
-            msg = f"{len(match)} not as expected ({expected_num_atoms})"
-            raise RuntimeError(msg)
-        torsions.append(
-            abs(
-                rdMolTransforms.GetDihedralDeg(
-                    rdkit_molecule.GetConformer(0),
-                    match[scanned_ids[0]],
-                    match[scanned_ids[1]],
-                    match[scanned_ids[2]],
-                    match[scanned_ids[3]],
-                )
-            )
-        )
-    if len(torsions) != expected_num_torsions:
-        msg = f"{len(torsions)} found, not {expected_num_torsions}!"
-        raise RuntimeError(msg)
-    return tuple(torsions)
-
-
-def get_amide_torsions(molecule: stk.Molecule) -> tuple[float, float]:
-    """Get the centre alkene torsion from COOH."""
-    smarts = "[#6X3H0]~[#6X3H1]~[#6X3H0]~[#6X3H0](=[#8])~[#7]"
-    expected_num_atoms = 6
-    scanned_ids = (1, 2, 3, 5)
-
-    return extract_torsions(
-        molecule=molecule,
-        smarts=smarts,
-        expected_num_atoms=expected_num_atoms,
-        scanned_ids=scanned_ids,
-        expected_num_torsions=1,
-    )
+from rdkit.Chem import rdMolDescriptors, rdmolops
 
 
 def get_num_alkynes(rdkit_mol: rdkit.Mol) -> int:
@@ -178,6 +128,70 @@ def plot_flexes(
     plt.close()
 
 
+def plot_asymmetries(
+    ligand_db: atomlite.Database,
+    figures_dir: pathlib.Path,
+) -> None:
+    """Plot ligand flexibilities."""
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    all_xs = []
+    all_ys = []
+    for entry in ligand_db.get_entries():
+        conf_data = entry.properties["conf_data"]
+        min_energy = min([conf_data[i]["UFFEnergy;kj/mol"] for i in conf_data])
+        low_energy_states = [
+            i
+            for i in conf_data
+            if (conf_data[i]["UFFEnergy;kj/mol"] - min_energy)
+            < EnvVariables.strain_cutoff
+        ]
+
+        delta_angles = [
+            abs(
+                conf_data[i]["NN_BCN_angles"][0]
+                - conf_data[i]["NN_BCN_angles"][1]
+            )
+            for i in low_energy_states
+        ]
+        num_stable = len(low_energy_states)
+
+        all_xs.append(num_stable)
+        all_ys.append(np.mean(delta_angles))
+
+    norm = colors.LogNorm()
+    cm = colors.LinearSegmentedColormap.from_list(
+        "test", [(1.0, 1.0, 1.0), (255 / 255, 87 / 255, 51 / 255)], N=10
+    )
+    hist = ax.hist2d(
+        all_xs,
+        all_ys,
+        bins=[40, 40],
+        range=[(0, 500), (0, int(max(all_ys) + 1))],
+        density=False,
+        norm=norm,
+        cmap=cm,
+    )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel("num stable conformers", fontsize=16)
+    ax.set_ylabel(r"mean |$\Delta$ binder angles| [deg]", fontsize=16)
+    ax.set_xlim(0, None)
+    ax.set_ylim(0, None)
+    ax.set_title(len(all_xs), fontsize=16)
+    cbar = fig.colorbar(hist[3], ax=ax)
+    cbar.ax.set_ylabel("count", fontsize=16)
+    cbar.ax.tick_params(labelsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        figures_dir / "all_asymmetries.png",
+        dpi=720,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
 def main() -> None:
     """Run script."""
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
@@ -198,6 +212,8 @@ def main() -> None:
         "%s ligands in key database",
         atomlite.Database(ligand_dir / "keys.db").num_entries() / 3,
     )
+
+    plot_asymmetries(ligand_db=deduped_db, figures_dir=figures_dir)
     plot_flexes(ligand_db=deduped_db, figures_dir=figures_dir)
 
 
