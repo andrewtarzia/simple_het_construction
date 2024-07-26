@@ -238,33 +238,33 @@ def generate_all_ligands(
         )
 
     count = 0
-    total_expected = 64260
-    for j, core in enumerate(core_smiles):
-        logging.info(
-            "c%s: at count %s of %s (%s)",
-            j,
-            count,
-            total_expected,
-            round(count / total_expected, 2),
-        )
-        for (i1, link1), (i2, link2) in it.combinations(
-            enumerate(linker_smiles), r=2
-        ):
-            logging.info(
-                "l%s, l%s: at %s of %s (%s)",
-                i1,
-                i2,
-                count,
-                total_expected,
-                round(count / total_expected, 2),
-            )
-            for (k1, bind1), (k2, bind2) in it.combinations(
-                enumerate(binder_smiles), r=2
-            ):
+
+    for core_name in core_smiles:
+        core = core_smiles[core_name]
+        logging.info("c%s: at count %s", core_name, count)
+
+        for link1_name, link2_name in it.combinations(linker_smiles, r=2):
+            link1 = linker_smiles[link1_name]
+            link2 = linker_smiles[link2_name]
+            logging.info("l%s, l%s: at %s", link1_name, link2_name, count)
+
+            for bind1_name, bind2_name in it.combinations(binder_smiles, r=2):
+                bind1 = binder_smiles[bind1_name]
+                bind2 = binder_smiles[bind2_name]
                 # Build all options from a-b-c-d-e configurations.
                 options = {
+                    "ae": {
+                        "name": (f"ae_{bind1_name}-x-x-x-{bind2_name}"),
+                        "bbs": (
+                            stk.BuildingBlock(bind1, [stk.BromoFactory()]),
+                            stk.BuildingBlock(bind2, [stk.BromoFactory()]),
+                        ),
+                        "ru": "BA",
+                    },
                     "ace": {
-                        "name": f"ace_{k1}-x-{j}-x-{k2}",
+                        "name": (
+                            f"ace_{bind1_name}-x-{core_name}-x-{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(core, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -273,7 +273,9 @@ def generate_all_ligands(
                         "ru": "BAC",
                     },
                     "abe": {
-                        "name": f"abe_{k1}-{i1}-x-x-{k2}",
+                        "name": (
+                            f"abe_{bind1_name}-{link1_name}-x-x-{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link1, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -282,7 +284,9 @@ def generate_all_ligands(
                         "ru": "BAC",
                     },
                     "ade": {
-                        "name": f"ade_{k1}-x-x-{i2}-{k2}",
+                        "name": (
+                            f"ade_{bind1_name}-x-x-{link2_name}-{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link2, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -291,7 +295,10 @@ def generate_all_ligands(
                         "ru": "BAC",
                     },
                     "abce": {
-                        "name": f"abce_{k1}-{i1}-{j}-x-{k2}",
+                        "name": (
+                            f"abce_{bind1_name}-{link1_name}-{core_name}-x-"
+                            f"{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link1, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -301,7 +308,10 @@ def generate_all_ligands(
                         "ru": "BADC",
                     },
                     "adce": {
-                        "name": f"adce_{k1}-x-{j}-{i2}-{k2}",
+                        "name": (
+                            f"adce_{bind1_name}-x-{core_name}-{link2_name}-"
+                            f"{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link2, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -311,7 +321,10 @@ def generate_all_ligands(
                         "ru": "BADC",
                     },
                     "acbe": {
-                        "name": f"acbe_{k1}-{i1}-{j}-x-{k2}",
+                        "name": (
+                            f"acbe_{bind1_name}-{link1_name}-{core_name}-x-"
+                            f"{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link1, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -321,7 +334,10 @@ def generate_all_ligands(
                         "ru": "BDAC",
                     },
                     "acde": {
-                        "name": f"acde_{k1}-x-{j}-{i2}-{k2}",
+                        "name": (
+                            f"acde_{bind1_name}-x-{core_name}-{link2_name}-"
+                            f"{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link2, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -331,7 +347,10 @@ def generate_all_ligands(
                         "ru": "BDAC",
                     },
                     "abcde": {
-                        "name": f"abcde_{k1}-{i1}-{j}-{i2}-{k2}",
+                        "name": (
+                            f"abcde_{bind1_name}-{link1_name}-{core_name}-"
+                            f"{link2_name}-{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link1, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -342,7 +361,10 @@ def generate_all_ligands(
                         "ru": "BADEC",
                     },
                     "adcbe": {
-                        "name": f"adcbe_{k1}-{i1}-{j}-{i2}-{k2}",
+                        "name": (
+                            f"adcbe_{bind1_name}-{link1_name}-{core_name}-"
+                            f"{link2_name}-{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link2, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -353,7 +375,10 @@ def generate_all_ligands(
                         "ru": "BADEC",
                     },
                     "abcbe": {
-                        "name": f"abcbe_{k1}-{i1}-{j}-x-{k2}",
+                        "name": (
+                            f"abcbe_{bind1_name}-{link1_name}-{core_name}-x-"
+                            f"{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link1, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -363,7 +388,10 @@ def generate_all_ligands(
                         "ru": "BADAC",
                     },
                     "adcde": {
-                        "name": f"adcde_{k1}-x-{j}-{i2}-{k2}",
+                        "name": (
+                            f"adcde_{bind1_name}-x-{core_name}-{link2_name}-"
+                            f"{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link2, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -373,7 +401,9 @@ def generate_all_ligands(
                         "ru": "BADAC",
                     },
                     "abca": {
-                        "name": f"abca_{k1}-{i1}-{j}-x-x",
+                        "name": (
+                            f"abca_{bind1_name}-{link1_name}-{core_name}-x-x"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link1, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -382,7 +412,9 @@ def generate_all_ligands(
                         "ru": "BACB",
                     },
                     "ebce": {
-                        "name": f"ebce_x-{i1}-{j}-x-{k2}",
+                        "name": (
+                            f"ebce_x-{link1_name}-{core_name}-x-{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link1, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind2, [stk.BromoFactory()]),
@@ -391,7 +423,9 @@ def generate_all_ligands(
                         "ru": "BACB",
                     },
                     "adca": {
-                        "name": f"adca_{k1}-x-{j}-{i2}-x",
+                        "name": (
+                            f"adca_{bind1_name}-x-{core_name}-{link2_name}-x"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link2, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind1, [stk.BromoFactory()]),
@@ -400,7 +434,9 @@ def generate_all_ligands(
                         "ru": "BACB",
                     },
                     "edce": {
-                        "name": f"edce_x-x-{j}-{i2}-{k2}",
+                        "name": (
+                            f"edce_x-x-{core_name}-{link2_name}-{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link2, [stk.BromoFactory()]),
                             stk.BuildingBlock(bind2, [stk.BromoFactory()]),
@@ -409,7 +445,10 @@ def generate_all_ligands(
                         "ru": "BACB",
                     },
                     "abcda": {
-                        "name": f"abcda_{k1}-{i1}-{j}-{i2}-x",
+                        "name": (
+                            f"abcda_{bind1_name}-{link1_name}-{core_name}-"
+                            f"{link2_name}-x"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link1, [stk.BromoFactory()]),
                             stk.BuildingBlock(link2, [stk.BromoFactory()]),
@@ -419,7 +458,10 @@ def generate_all_ligands(
                         "ru": "CADBC",
                     },
                     "ebcde": {
-                        "name": f"ebcde_x-{i1}-{j}-{i2}-{k2}",
+                        "name": (
+                            f"ebcde_x-{link1_name}-{core_name}-{link2_name}-"
+                            f"{bind2_name}"
+                        ),
                         "bbs": (
                             stk.BuildingBlock(link1, [stk.BromoFactory()]),
                             stk.BuildingBlock(link2, [stk.BromoFactory()]),
