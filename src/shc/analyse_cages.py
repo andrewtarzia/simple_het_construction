@@ -5,9 +5,9 @@ import json
 import logging
 import os
 
-import plotting
 import stk
 from pywindow_module import PyWindow
+from study_1_cage_plotting import plot_strain_pore_sasa
 from topologies import heteroleptic_cages, ligand_cage_topologies
 from utilities import (
     AromaticCNCFactory,
@@ -260,7 +260,7 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 name, structure_results[name]["pw_results"]["pore_volume_opt"]
             )
 
-    plotting.plot_strain_pore_sasa(
+    plot_strain_pore_sasa(
         results_dict=structure_results,
         outname="strain_pore_sasa",
     )
