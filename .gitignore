@@ -20,3 +20,5 @@ tests/failures.txt
 .benchmarks
 .pytest_cache
 .ruff_cache
+
+tests/study_1_reproduce/test_output
