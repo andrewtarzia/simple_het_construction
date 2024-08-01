@@ -655,7 +655,35 @@ def main() -> None:
         ligand_db=ligand_db,
         deduped_db=deduped_db,
     )
-    logging.info("built %s ligands", ligand_db.num_entries())
+
+    logging.info("cleaning up for removed components")
+    rmed_cores = (5, 6, 7, 12)
+    rmed_linkers = (3,)
+    rmed_binders = (5, 8, 9)
+    entries_to_delete = []
+    for entry in deduped_db.get_entries():
+        comp_split = entry.properties["composition_pattern"].split("-")
+        b1, l1, c, l2, b2 = comp_split
+        if (
+            (
+                b1 != "x"
+                and int(b1) in rmed_binders
+                or b2 != "x"
+                and int(b2) in rmed_binders
+            )
+            or l1 != "x"
+            and int(l1) in rmed_linkers
+            or (
+                l2 != "x"
+                and int(l2) in rmed_linkers
+                or c != "x"
+                and int(c) in rmed_cores
+            )
+        ):
+            entries_to_delete.append(entry.key)
+
+    logging.info("removing %s ligands", len(entries_to_delete))
+    deduped_db.remove_entries(keys=entries_to_delete)
     logging.info("built %s deduped ligands", deduped_db.num_entries())
     logging.info(
         "%s ligands in key database",
