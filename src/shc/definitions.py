@@ -6,7 +6,7 @@ import pathlib
 class EnvVariables:
     """Define the variables for working environment."""
 
-    dihedral_cutoff = 10
+    dihedral_cutoff = 30
     strain_cutoff = 5
     cs1_dihedral_cutoff = 20
 
