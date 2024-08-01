@@ -1,19 +1,22 @@
-"""Script to build the ligand in this project."""
+"""Script to analyse ligand space."""
 
 import json
 import logging
-import os
+import pathlib
 
-from definitions import EnvVariables
+import matplotlib.pyplot as plt
+
+from shc.definitions import EnvVariables
 
 
 def plot_conformer_props(
-    structure_results,
-    outname,
-    dihedral_cutoff,
-    strain_cutoff,
-    low_energy_values,
-):
+    structure_results: dict,
+    dihedral_cutoff: float,
+    strain_cutoff: float,
+    low_energy_values: dict,
+    output_path: pathlib.Path,
+) -> None:
+    """Plot conformer properties."""
     logging.info("plotting: plot_conformer_props")
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -45,20 +48,20 @@ def plot_conformer_props(
                 within_torsion[cid] = within_strain[cid]
 
         after_torsion = len(within_torsion)
-        print(ligand, original_number, after_rmsd, after_strain, after_torsion)
+        logging.info(
+            "%s: %s, %s, %s, %s",
+            ligand,
+            original_number,
+            after_rmsd,
+            after_strain,
+            after_torsion,
+        )
         if ligand in ("l1", "l2", "l3"):
-            if ligand == "l1":
-                # label = f"{name_conversion()[ligand]}: {after_torsion}"
-                label = r"1$^{\mathrm{X}}$"
-            else:
-                label = None
+            label = "1$^{\\mathrm{X}}$" if ligand == "l1" else None
             c = "#26547C"
         else:
             c = "#FE6D73"
-            if ligand == "la":
-                label = r"2$^{\mathrm{X}}$"
-            else:
-                label = None
+            label = "2$^{\\mathrm{X}}$" if ligand == "la" else None
         ax.plot(
             [0, 1, 2, 3],
             [original_number, after_rmsd, after_strain, after_torsion],
@@ -76,24 +79,21 @@ def plot_conformer_props(
     ax.legend(fontsize=16)
 
     fig.tight_layout()
-    fig.savefig(
-        os.path.join(figu_path(), f"{outname}"),
-        dpi=720,
-        bbox_inches="tight",
-    )
+    fig.savefig(output_path, dpi=720, bbox_inches="tight")
     plt.close()
 
 
 def main() -> None:
     """Run script."""
-    raise SystemExit("convert this to taking a db as an arg to show")
-    _wd = liga_path()
-    _cd = calc_path()
+    working_dir = pathlib.Path("/home/atarzia/workingspace/cpl/study_1")
+    figures_dir = pathlib.Path(
+        "/home/atarzia/workingspace/cpl/figures/study_1"
+    )
 
-    res_file = os.path.join(_wd, "all_ligand_res.json")
+    res_file = working_dir / "all_ligand_res.json"
     figure_prefix = "etkdg"
 
-    with open(res_file) as f:
+    with res_file.open("r") as f:
         structure_results = json.load(f)
 
     # Define minimum energies for all ligands.
@@ -111,7 +111,7 @@ def main() -> None:
 
     plot_conformer_props(
         structure_results=structure_results,
-        outname=f"{figure_prefix}_conformer_properties.png",
+        output_path=figures_dir / f"{figure_prefix}_conformer_properties.png",
         dihedral_cutoff=EnvVariables.dihedral_cutoff,
         strain_cutoff=EnvVariables.strain_cutoff,
         low_energy_values=low_energy_values,
