@@ -297,21 +297,21 @@ def mismatch_test(
         nn_length=c_dict1["NN_distance"],
         theta1=c_dict1["NN_BCN_angles"][0],
         theta2=c_dict1["NN_BCN_angles"][1],
-        vector_length=vector_length(),
+        vector_length=vector_length,
     )
 
     rigidbody2 = RhsRigidBody(
         nn_length=c_dict2["NN_distance"],
         theta1=c_dict2["NN_BCN_angles"][0],
         theta2=c_dict2["NN_BCN_angles"][1],
-        vector_length=vector_length(),
+        vector_length=vector_length,
     )
 
     rigidbody3 = RhsRigidBody(
         nn_length=c_dict2["NN_distance"],
         theta1=c_dict2["NN_BCN_angles"][1],
         theta2=c_dict2["NN_BCN_angles"][0],
-        vector_length=vector_length(),
+        vector_length=vector_length,
     )
 
     set_state = [-4, 0, 0]
