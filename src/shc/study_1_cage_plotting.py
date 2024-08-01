@@ -5,7 +5,8 @@ import os
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-from study_1_plotting import axes_labels
+
+from shc.study_1_plotting import axes_labels
 
 
 def plot_strain_pore_sasa(results_dict, outname):
