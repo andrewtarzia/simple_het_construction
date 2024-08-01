@@ -13,6 +13,8 @@ import stko
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import Draw
 
+from shc.utilities import update_from_rdkit_conf
+
 core_smiles = {
     # From 10.1002/anie.202106721
     0: "Brc1ccc(Br)cc1",
@@ -112,35 +114,25 @@ def normalise_names(name: str) -> str:
     return name
 
 
-def passes_dedupe(molecule: stk.Molecule, ligand_dir: pathlib.Path) -> bool:
+def passes_dedupe(molecule: stk.Molecule, key_db: atomlite.Database) -> bool:
     """Check if ligand is in dedupe databases."""
-    key_db = atomlite.Database(ligand_dir / "keys.db")
     smiles = stk.Smiles().get_key(molecule)
     if key_db.has_entry(smiles):
         return False
+
     inchi = stk.Inchi().get_key(molecule)
     if key_db.has_entry(inchi):
-        molecule.write("1i.mol")
-        stk.BuildingBlock.init_from_rdkit_mol(
-            atomlite.json_to_rdkit(key_db.get_entry(inchi).molecule)
-        ).write("2i.mol")
-        raise SystemExit
         return False
+
     inchi_key = stk.InchiKey().get_key(molecule)
-    if key_db.has_entry(inchi_key):
-        molecule.write("1ik.mol")
-        stk.BuildingBlock.init_from_rdkit_mol(
-            atomlite.json_to_rdkit(key_db.get_entry(inchi_key).molecule)
-        ).write("2ik.mol")
-        raise SystemExit
+    if key_db.has_entry(inchi_key):  # noqa: SIM103
         return False
 
     return True
 
 
-def update_keys_db(molecule: stk.Molecule, ligand_dir: pathlib.Path) -> None:
+def update_keys_db(molecule: stk.Molecule, key_db: atomlite.Database) -> None:
     """Update keys db."""
-    key_db = atomlite.Database(ligand_dir / "keys.db")
     smiles = stk.Smiles().get_key(molecule)
     inchi = stk.Inchi().get_key(molecule)
     inchi_key = stk.InchiKey().get_key(molecule)
@@ -168,15 +160,14 @@ def build_ligand(  # noqa: PLR0913
     ligand_name: str,
     ligand_dir: pathlib.Path,
     figures_dir: pathlib.Path,
-    ligand_db: atomlite.Database,
     deduped_db: atomlite.Database,
+    key_db: atomlite.Database,
 ) -> None:
     """Build a ligand."""
     lowe_file = ligand_dir / f"{ligand_name}_lowe.mol"
     if lowe_file.exists():
         molecule = stk.BuildingBlock.init_from_file(lowe_file)
     else:
-        # Build polymer.
         molecule = stk.ConstructedMolecule(
             topology_graph=stk.polymer.Linear(
                 building_blocks=building_blocks,
@@ -186,19 +177,13 @@ def build_ligand(  # noqa: PLR0913
             )
         )
 
-    if passes_dedupe(molecule=molecule, ligand_dir=ligand_dir):
+    if passes_dedupe(molecule=molecule, key_db=key_db):
         Draw.MolToFile(
             rdkit.MolFromSmiles(stk.Smiles().get_key(molecule)),
             figures_dir / f"{ligand_name}_2d_new.png",
             size=(300, 300),
         )
         molecule = stko.ETKDG().optimize(molecule)
-        if ligand_db.has_entry(key=ligand_name) and not deduped_db.has_entry(
-            key=ligand_name
-        ):
-            # Bring to deduped db.
-            lig_entry = ligand_db.get_entry(key=ligand_name)
-            deduped_db.add_entries(lig_entry)
 
         # Check if in db.
         if not deduped_db.has_entry(key=ligand_name):
@@ -209,62 +194,20 @@ def build_ligand(  # noqa: PLR0913
                 ligand_db=deduped_db,
             )
 
-        update_keys_db(molecule, ligand_dir)
+        update_keys_db(molecule, key_db)
 
 
-def generate_all_ligands(
+def generate_all_ligands(  # noqa: C901
     ligand_dir: pathlib.Path,
     figures_dir: pathlib.Path,
     components_dir: pathlib.Path,
-    ligand_db: atomlite.Database,
     deduped_db: atomlite.Database,
 ) -> None:
     """Iterate and generate through all components."""
-    core_smiles = {
-        # From 10.1002/anie.202106721
-        0: "Brc1ccc(Br)cc1",
-        1: "Brc1cccc(Br)c1",
-        2: "Brc1ccc2[nH]c3ccc(Br)cc3c2c1",
-        3: "Brc1ccc2ccc(Br)cc2c1",
-        #####
-        4: "C(#CBr)Br",
-        # 5: "CC1=C(C=CC=C1Br)Br",
-        # 6: "C1=CC=C2C(=C1)C(=C3C=CC=CC3=C2Br)Br",
-        # 7: "CC1=C(C(=C(C(=C1Br)C)C)Br)C",
-        8: "C1=C(SC(=C1)Br)Br",
-        9: "C1=CC2=C(C=C1Br)C3=C(O2)C=CC(=C3)Br",
-        10: "C1=C(OC(=C1)Br)Br",
-        11: "C1=CC2=C(C=C1Br)C3=C(C2=O)C=CC(=C3)Br",
-        12: "C1=CC2=C(C=C(C=C2)Br)C3=C1C=CC(=C3)Br",
-        13: "CN1C2=C(C=C(C=C2)Br)C(=O)C3=C1C=CC(=C3)Br",
-        14: "C1=CC=C(C(=C1)Br)Br",
-    }
-    linker_smiles = {
-        0: "C1=CC(=CC=C1Br)Br",
-        1: "Brc1cccc(Br)c1",
-        2: "BrC#CBr",
-        # 3: "C1=CC=C2C(=C1)C(=C3C=CC=CC3=C2Br)Br",
-        4: "C1=CC=C(C(=C1)Br)Br",
-    }
-    binder_smiles = {
-        # From 10.1002/anie.202106721
-        0: "Brc1ccncc1",
-        1: "Brc1cccnc1",
-        # "BrC#Cc1cccnc1",
-        # But removed the alkyne, cause its in the linker.
-        2: "C1=CC2=C(C=CN=C2)C(=C1)Br",
-        3: "C1=CC2=C(C=NC=C2)C(=C1)Br",
-        4: "C1=CC2=C(C=CC=N2)C(=C1)Br",
-        #####
-        # 5: "CC1=C(C=NC=C1)Br",
-        # "C1=CC(=CN=C1)C#CBr",  # noqa: ERA001
-        # "C1C=C(C)C(C#CBr)=CN=1",  # noqa: ERA001
-        6: "C1=CN(C=N1)Br",
-        7: "CN1C=NC=C1Br",
-        8: "C1=CC=C2C(=C1)C=NC=C2Br",
-        9: "C1=CC=C2C(=C1)C=C(C=N2)Br",
-        # "C1=CC=C2C(=C1)C(=C3C=CC=CC3=N2)Br",  # noqa: ERA001
-    }
+    # Start a fresh keys db for deduping.
+    if (ligand_dir / "keys.db").exists():
+        (ligand_dir / "keys.db").unlink()
+    key_db = atomlite.Database(ligand_dir / "keys.db")
 
     for lig in core_smiles:
         rdkit_mol = rdkit.MolFromSmiles(core_smiles[lig])
@@ -530,7 +473,11 @@ def generate_all_ligands(
                     )
 
                     if is_symmetric:
-
+                        if deduped_db.has_entry(ligand_name):
+                            deduped_db.remove_entries(ligand_name)
+                            logging.info(
+                                "deleting %s because symmetric", ligand_name
+                            )
                         continue
 
                     build_ligand(
@@ -539,8 +486,8 @@ def generate_all_ligands(
                         repeating_unit=options[option]["ru"],
                         ligand_dir=ligand_dir,
                         figures_dir=figures_dir,
-                        ligand_db=ligand_db,
                         deduped_db=deduped_db,
+                        key_db=key_db,
                     )
                     count += 1
 
@@ -612,7 +559,7 @@ def explore_ligand(
         ).to_rdkit_mol(),
         properties={
             "conf_data": lig_conf_data,
-            "min_energy;kj/mol": min_energy,
+            "min_energy;kj/mol": min_energy * 4.184,
             "ligand_pattern": ligand_name.split("_")[0],
             "composition_pattern": ligand_name.split("_")[1],
         },
@@ -644,7 +591,6 @@ def main() -> None:
     figures_dir.mkdir(exist_ok=True, parents=True)
     components_dir.mkdir(exist_ok=True, parents=True)
 
-    ligand_db = atomlite.Database(ligand_dir / "ligands.db")
     deduped_db = atomlite.Database(ligand_dir / "deduped_ligands.db")
 
     # Generate all ligands from core, binder and connector pools.
@@ -652,9 +598,10 @@ def main() -> None:
         ligand_dir=ligand_dir,
         figures_dir=figures_dir,
         components_dir=components_dir,
-        ligand_db=ligand_db,
         deduped_db=deduped_db,
     )
+
+    logging.info("built %s ligands", deduped_db.num_entries())
 
     logging.info("cleaning up for removed components")
     rmed_cores = (5, 6, 7, 12)
@@ -685,10 +632,6 @@ def main() -> None:
     logging.info("removing %s ligands", len(entries_to_delete))
     deduped_db.remove_entries(keys=entries_to_delete)
     logging.info("built %s deduped ligands", deduped_db.num_entries())
-    logging.info(
-        "%s ligands in key database",
-        atomlite.Database(ligand_dir / "keys.db").num_entries() / 3,
-    )
 
 
 if __name__ == "__main__":
