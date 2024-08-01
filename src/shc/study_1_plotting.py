@@ -160,7 +160,7 @@ def axes_labels(prop: str) -> tuple[str, tuple[float, float], abc.Callable]:
             None,
         ),
         "NcentroidN_angle": (
-            "N-centroid-N angle [deg]",
+            "N-centroid-N angle [$^\\circ$]",
             (90, 180),
             no_conv,
         ),
@@ -170,37 +170,37 @@ def axes_labels(prop: str) -> tuple[str, tuple[float, float], abc.Callable]:
             no_conv,
         ),
         "NN_BCN_angles": (
-            "theta [deg]",
+            "theta [$^\\circ$]",
             (0, 180),
             no_conv,
         ),
         "bite_angle": (
-            "bite angle [deg]",
+            "bite angle [$^\\circ$]",
             (-180, 180),
             no_conv,
         ),
         "NCCN_dihedral": (
-            "abs. NCCN dihedral [deg]",
+            "abs. NCCN dihedral [$^\\circ$]",
             (0, 180),
             no_conv,
         ),
         "avg_heli": (
-            "avg. helicity [deg]",
+            "avg. helicity [$^\\circ$]",
             (0, 180),
             no_conv,
         ),
         "min_heli": (
-            "min. helicity [deg]",
+            "min. helicity [$^\\circ$]",
             (0, 180),
             no_conv,
         ),
         "max_heli": (
-            "max. helicity [deg]",
+            "max. helicity [$^\\circ$]",
             (0, 220),
             no_conv,
         ),
         "pore_angle": (
-            "M-centroid-M [deg]",
+            "M-centroid-M [$^\\circ$]",
             (0, 185),
             no_conv,
         ),
