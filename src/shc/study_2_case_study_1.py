@@ -11,11 +11,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import stk
 import stko
-from definitions import EnvVariables
-from matching_functions import angle_test, mismatch_test, plot_pair_position
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import rdMolDescriptors, rdmolops, rdMolTransforms
-from study_2_build_ligands import explore_ligand
+
+from shc.definitions import EnvVariables
+from shc.matching_functions import (
+    angle_test,
+    mismatch_test,
+    plot_pair_position,
+)
+from shc.study_2_build_ligands import explore_ligand
 
 
 def _parse_args() -> argparse.Namespace:
@@ -57,11 +62,11 @@ def analyse_ligand_pair(  # noqa: PLR0913
         # Check strain.
         strain1 = (
             ligand1_confs[cid_1]["UFFEnergy;kj/mol"]
-            - ligand1_entry.properties["min_energy;kj/mol"] * 4.184
+            - ligand1_entry.properties["min_energy;kj/mol"]
         )
         strain2 = (
             ligand2_confs[cid_2]["UFFEnergy;kj/mol"]
-            - ligand2_entry.properties["min_energy;kj/mol"] * 4.184
+            - ligand2_entry.properties["min_energy;kj/mol"]
         )
         if (
             strain1 > EnvVariables.strain_cutoff
@@ -253,7 +258,7 @@ def plot_ligand(
     entry = ligand_db.get_entry(ligand_name)
     conf_data = entry.properties["conf_data"]
     logging.info("remove conversion")
-    min_energy = entry.properties["min_energy;kj/mol"] * 4.184
+    min_energy = entry.properties["min_energy;kj/mol"]
 
     low_energy_states = [
         i
@@ -349,16 +354,16 @@ def plot_ligand(
         for i in nnmaps[ligand_name]:
             ax.axvline(x=i, c="k", alpha=0.4, ls="--")
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_ylabel("sum binder angles [deg]", fontsize=16)
+    ax.set_ylabel(r"sum binder angles [$^\circ$]", fontsize=16)
     ax.set_ylim(0, 360)
-    ax.set_xlabel("N-N distance [AA]", fontsize=16)
+    ax.set_xlabel(r"N-N distance [$\mathrm{\AA}$]", fontsize=16)
     ax.set_xlim(0, 30)
     ax.legend(fontsize=16)
 
     ax1.tick_params(axis="both", which="major", labelsize=16)
-    ax1.set_xlabel("binder angle 1 [deg]", fontsize=16)
+    ax1.set_xlabel(r"binder angle 1 [$^\circ$]", fontsize=16)
     ax1.set_xlim(0, 360)
-    ax1.set_ylabel("binder angle 2 [deg]", fontsize=16)
+    ax1.set_ylabel(r"binder angle 2 [$^\circ$]", fontsize=16)
     ax1.set_ylim(0, 360)
     ax1.plot((0, 360), (0, 360), c="k", ls="--")
     fig.tight_layout()
@@ -432,8 +437,8 @@ def plot_flexes(
         ax.text(x=1.0, y=y, s=s, fontsize=16)
 
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_ylabel(r"$\sigma$ (sum binder angles) [deg]", fontsize=16)
-    ax.set_xlabel(r"$\sigma$ (N-N distance) [AA]", fontsize=16)
+    ax.set_ylabel(r"$\sigma$ (sum binder angles) [$^\circ$]", fontsize=16)
+    ax.set_xlabel(r"$\sigma$ (N-N distance) [$\mathrm{\AA}$]", fontsize=16)
     ax.set_ylim(0, None)
     ax.set_xlim(0, None)
 
@@ -555,7 +560,6 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 molecule=molecule,
                 ligand_name=lname,
                 ligand_dir=ligand_dir,
-                figures_dir=figures_dir,
                 ligand_db=ligand_db,
             )
 
