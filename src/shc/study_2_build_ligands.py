@@ -12,7 +12,54 @@ import stk
 import stko
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import Draw
-from utilities import update_from_rdkit_conf
+
+core_smiles = {
+    # From 10.1002/anie.202106721
+    0: "Brc1ccc(Br)cc1",
+    1: "Brc1cccc(Br)c1",
+    2: "Brc1ccc2[nH]c3ccc(Br)cc3c2c1",
+    3: "Brc1ccc2ccc(Br)cc2c1",
+    #####
+    4: "C(#CBr)Br",
+    # 5: "CC1=C(C=CC=C1Br)Br",
+    # 6: "C1=CC=C2C(=C1)C(=C3C=CC=CC3=C2Br)Br",
+    # 7: "CC1=C(C(=C(C(=C1Br)C)C)Br)C",
+    8: "C1=C(SC(=C1)Br)Br",
+    9: "C1=CC2=C(C=C1Br)C3=C(O2)C=CC(=C3)Br",
+    10: "C1=C(OC(=C1)Br)Br",
+    11: "C1=CC2=C(C=C1Br)C3=C(C2=O)C=CC(=C3)Br",
+    # 12: "C1=CC2=C(C=C(C=C2)Br)C3=C1C=CC(=C3)Br",
+    13: "CN1C2=C(C=C(C=C2)Br)C(=O)C3=C1C=CC(=C3)Br",
+    14: "C1=CC=C(C(=C1)Br)Br",
+    15: "C1=C(N=NN1Br)Br",
+}
+linker_smiles = {
+    0: "C1=CC(=CC=C1Br)Br",
+    1: "Brc1cccc(Br)c1",
+    2: "BrC#CBr",
+    # 3: "C1=CC=C2C(=C1)C(=C3C=CC=CC3=C2Br)Br",
+    4: "C1=CC=C(C(=C1)Br)Br",
+    5: "C1=C(N=NN1Br)Br",
+}
+binder_smiles = {
+    # From 10.1002/anie.202106721
+    0: "Brc1ccncc1",
+    1: "Brc1cccnc1",
+    # "BrC#Cc1cccnc1",
+    # But removed the alkyne, cause its in the linker.
+    2: "C1=CC2=C(C=CN=C2)C(=C1)Br",
+    3: "C1=CC2=C(C=NC=C2)C(=C1)Br",
+    4: "C1=CC2=C(C=CC=N2)C(=C1)Br",
+    #####
+    # 5: "CC1=C(C=NC=C1)Br",
+    # "C1=CC(=CN=C1)C#CBr",  # noqa: ERA001
+    # "C1C=C(C)C(C#CBr)=CN=1",  # noqa: ERA001
+    6: "C1=CN(C=N1)Br",
+    7: "CN1C=NC=C1Br",
+    # 8: "C1=CC=C2C(=C1)C=NC=C2Br",
+    # 9: "C1=CC=C2C(=C1)C=C(C=N2)Br",
+    # "C1=CC=C2C(=C1)C(=C3C=CC=CC3=N2)Br",  # noqa: ERA001
+}
 
 
 def symmetry_check(
