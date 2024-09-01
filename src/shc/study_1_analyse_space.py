@@ -6,7 +6,7 @@ import pathlib
 
 import matplotlib.pyplot as plt
 
-from shc.definitions import EnvVariables
+from shc.definitions import Study1EnvVariables
 
 
 def plot_conformer_props(
@@ -112,8 +112,8 @@ def main() -> None:
     plot_conformer_props(
         structure_results=structure_results,
         output_path=figures_dir / f"{figure_prefix}_conformer_properties.png",
-        dihedral_cutoff=EnvVariables.dihedral_cutoff,
-        strain_cutoff=EnvVariables.strain_cutoff,
+        dihedral_cutoff=Study1EnvVariables.dihedral_cutoff,
+        strain_cutoff=Study1EnvVariables.strain_cutoff,
         low_energy_values=low_energy_values,
     )
 
