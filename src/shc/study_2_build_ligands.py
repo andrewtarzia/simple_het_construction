@@ -8,11 +8,14 @@ from collections import abc
 
 import atomlite
 import bbprep
+import numpy as np
 import stk
 import stko
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import Draw
+from rmsd import kabsch_rmsd
 
+from shc.definitions import EnvVariables
 from shc.utilities import update_from_rdkit_conf
 
 core_smiles = {
@@ -504,22 +507,24 @@ def explore_ligand(
     conf_dir.mkdir(exist_ok=True)
 
     logging.info("building conformer ensemble of %s", ligand_name)
-
     confs = molecule.to_rdkit_mol()
     etkdg = rdkit.srETKDGv3()
     etkdg.randomSeed = 1000
-    etkdg.pruneRmsThresh = 0.2
     cids = rdkit.EmbedMultipleConfs(mol=confs, numConfs=500, params=etkdg)
 
     lig_conf_data = {}
-    num_confs = 0
-    min_energy = 1e24
+
+    num_confs_kept = 0
+    conformers_kept = []
+    min_energy = float("inf")
     for cid in cids:
         conf_opt_file_name = f"{ligand_name}_c{cid}_cuff.mol"
 
         # Update stk_mol to conformer geometry.
         new_mol = update_from_rdkit_conf(
-            stk_mol=molecule, rdk_mol=confs, conf_id=cid
+            stk_mol=molecule,
+            rdk_mol=confs,
+            conf_id=cid,
         )
         # Need to define the functional groups.
         new_mol = stk.BuildingBlock.init_from_molecule(
@@ -536,10 +541,53 @@ def explore_ligand(
 
         new_mol = stko.UFF().optimize(mol=new_mol)
         energy = stko.UFFEnergy().get_energy(new_mol)
-        new_mol.write(conf_dir / conf_opt_file_name)
         if energy < min_energy:
             min_energy = energy
             new_mol.write(ligand_dir / f"{ligand_name}_lowe.mol")
+
+        min_rmsd = float("inf")
+        if len(conformers_kept) == 0:
+            conformers_kept.append((cid, new_mol))
+
+        else:
+            # Get heavy-atom RMSD to all other conformers and check if it is
+            # within threshold to any of them.
+            for _, conformer in conformers_kept:
+                rmsd = kabsch_rmsd(
+                    np.array(
+                        tuple(
+                            conformer.get_atomic_positions(
+                                atom_ids=tuple(
+                                    i.get_id()
+                                    for i in conformer.get_atoms()
+                                    if i.get_atomic_number() != 1
+                                ),
+                            )
+                        )
+                    ),
+                    np.array(
+                        tuple(
+                            new_mol.get_atomic_positions(
+                                atom_ids=tuple(
+                                    i.get_id()
+                                    for i in new_mol.get_atoms()
+                                    if i.get_atomic_number() != 1
+                                ),
+                            )
+                        )
+                    ),
+                    translate=True,
+                )
+
+                min_rmsd = min((min_rmsd, rmsd))
+                if min_rmsd < EnvVariables.rmsd_threshold:
+                    break
+
+        # If any RMSD is less than threshold, skip.
+        if min_rmsd < EnvVariables.rmsd_threshold:
+            continue
+
+        new_mol.write(conf_dir / conf_opt_file_name)
 
         analyser = stko.molecule_analysis.DitopicThreeSiteAnalyser()
 
@@ -550,7 +598,7 @@ def explore_ligand(
             "NN_BCN_angles": analyser.get_binder_angles(new_mol),
             "UFFEnergy;kj/mol": energy * 4.184,
         }
-        num_confs += 1
+        num_confs_kept += 1
 
     entry = atomlite.Entry.from_rdkit(
         key=ligand_name,
@@ -567,15 +615,17 @@ def explore_ligand(
     ligand_db.add_entries(entry)
 
     logging.info(
-        "%s confs generated for %s in %s s",
-        num_confs,
+        "%s confs generated for %s, %s kept, in %s s",
+        cid,
         ligand_name,
+        num_confs_kept,
         round(time.time() - st, 2),
     )
 
 
 def main() -> None:
     """Run script."""
+    raise SystemExit("rerun build ligands to not use RMSD weirdly")
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
     calculation_dir = pathlib.Path(
         "/home/atarzia/workingspace/cpl/calculations"

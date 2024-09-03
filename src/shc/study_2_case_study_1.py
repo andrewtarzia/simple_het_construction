@@ -470,7 +470,7 @@ def plot_flexes(
 def main() -> None:  # noqa: C901, PLR0912, PLR0915
     """Run script."""
     args = _parse_args()
-    ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/case_study_1")
+    ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/cs1_ligands")
     calculation_dir = pathlib.Path(
         "/home/atarzia/workingspace/cpl/cs1_calculations"
     )
@@ -479,7 +479,7 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
     calculation_dir.mkdir(exist_ok=True)
     figures_dir.mkdir(exist_ok=True, parents=True)
 
-    ligand_db = atomlite.Database(ligand_dir / "case_study_1.db")
+    ligand_db = atomlite.Database(ligand_dir / "cs1_ligands.db")
     pair_db = atomlite.Database(ligand_dir / "cs1_pairs.db")
 
     # Build all ligands.

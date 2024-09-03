@@ -9,6 +9,7 @@ class EnvVariables:
     dihedral_cutoff = 30
     strain_cutoff = 5
     cs1_dihedral_cutoff = 20
+    rmsd_threshold = 0.2
 
 
 class Study1EnvVariables:
@@ -16,6 +17,7 @@ class Study1EnvVariables:
 
     dihedral_cutoff = 10
     strain_cutoff = 5
+    rmsd_threshold = 0.2
 
     project_path = pathlib.Path("/home/atarzia/workingspace/simple_het/")
     liga_path = project_path / "liga"

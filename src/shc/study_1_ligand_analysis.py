@@ -12,6 +12,7 @@ import stk
 import stko
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import Draw
+from rmsd import kabsch_rmsd
 
 from shc.definitions import Study1EnvVariables
 from shc.matching_functions import vector_length
@@ -83,7 +84,6 @@ def conformer_generation_uff(
     confs = molecule.to_rdkit_mol()
     etkdg = rdkit.srETKDGv3()
     etkdg.randomSeed = 1000
-    etkdg.pruneRmsThresh = 0.2
     cids = rdkit.EmbedMultipleConfs(
         mol=confs,
         numConfs=500,
@@ -91,14 +91,18 @@ def conformer_generation_uff(
     )
 
     lig_conf_data = {}
-    num_confs = 0
+    num_confs_generated = 0
+    num_confs_kept = 0
+    conformers_kept = []
     for cid in cids:
         conf_opt_file_name = str(lowe_output).replace(
             "_lowe.mol", f"_c{cid}_cuff.mol"
         )
         # Update stk_mol to conformer geometry.
         new_mol = update_from_rdkit_conf(
-            stk_mol=molecule, rdk_mol=confs, conf_id=cid
+            stk_mol=molecule,
+            rdk_mol=confs,
+            conf_id=cid,
         )
         # Need to define the functional groups.
         new_mol = stk.BuildingBlock.init_from_molecule(
@@ -113,8 +117,52 @@ def conformer_generation_uff(
 
         new_mol = stko.UFF().optimize(mol=new_mol)
         energy = stko.UFFEnergy().get_energy(new_mol)
-        new_mol.write(conf_opt_file_name)
+        num_confs_generated += 1
 
+        min_rmsd = float("inf")
+        if len(conformers_kept) == 0:
+            conformers_kept.append((cid, new_mol))
+
+        else:
+            # Get heavy-atom RMSD to all other conformers and check if it is
+            # within threshold to any of them.
+            for _, conformer in conformers_kept:
+                rmsd = kabsch_rmsd(
+                    np.array(
+                        tuple(
+                            conformer.get_atomic_positions(
+                                atom_ids=tuple(
+                                    i.get_id()
+                                    for i in conformer.get_atoms()
+                                    if i.get_atomic_number() != 1
+                                ),
+                            )
+                        )
+                    ),
+                    np.array(
+                        tuple(
+                            new_mol.get_atomic_positions(
+                                atom_ids=tuple(
+                                    i.get_id()
+                                    for i in new_mol.get_atoms()
+                                    if i.get_atomic_number() != 1
+                                ),
+                            )
+                        )
+                    ),
+                    translate=True,
+                )
+
+                min_rmsd = min((min_rmsd, rmsd))
+                if min_rmsd < Study1EnvVariables.rmsd_threshold:
+                    break
+
+        # If any RMSD is less than threshold, skip.
+        if min_rmsd < Study1EnvVariables.rmsd_threshold:
+            continue
+
+        new_mol.write(conf_opt_file_name)
+        conformers_kept.append((cid, new_mol))
         angle = calculate_n_centroid_n_angle(new_mol)
 
         lig_conf_data[cid] = {
@@ -124,8 +172,14 @@ def conformer_generation_uff(
             "NN_BCN_angles": calculate_nn_bcn_angles(new_mol),
             "UFFEnergy;kj/mol": energy * 4.184,
         }
-        num_confs += 1
-    logging.info("%s conformers generated for %s", num_confs, name)
+        num_confs_kept += 1
+
+    logging.info(
+        "%s conformers generated for %s, kept %s",
+        num_confs_generated,
+        name,
+        num_confs_kept,
+    )
 
     with conf_data_file.open("w") as f:
         json.dump(lig_conf_data, f)
@@ -224,7 +278,7 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
             logging.info(
                 "time taken for conf gen of %s: " "%s s",
                 lig,
-                {round(time.time() - st, 2)},
+                round(time.time() - st, 2),
             )
 
     experimental_ligand_outcomes = {
