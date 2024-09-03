@@ -213,6 +213,7 @@ dependencies:
       - pymongo==4.1.1
       - pywindowx==0.0.4
       - rdkit-pypi==2022.3.4
+      - rmsd==1.5.1
       - scikit-learn==1.1.1
       - seaborn==0.11.2
       - sklearn==0.0

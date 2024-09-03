@@ -17,12 +17,13 @@ import os
 import json
 import stk
 import stko
+from rmsd import kabsch_rmsd
 import numpy as np
 from rdkit.Chem import AllChem as rdkit
 import itertools
 import time
 
-from env_set import liga_path, calc_path
+from env_set import liga_path
 import plotting
 from utilities import (
     AromaticCNCFactory,
@@ -98,35 +99,36 @@ def conformer_generation_uff(
     name,
     lowe_output,
     conf_data_file,
-    calc_dir,
 ):
     """
     Build a large conformer ensemble with UFF optimisation.
 
     """
-
+    rmsd_threshold = 0.2
     logging.info(f"building conformer ensemble of {name}")
 
     confs = molecule.to_rdkit_mol()
     etkdg = rdkit.srETKDGv3()
     etkdg.randomSeed = 1000
-    etkdg.pruneRmsThresh = 0.2
     cids = rdkit.EmbedMultipleConfs(
         mol=confs,
         numConfs=500,
         params=etkdg,
-        # pruneRmsThresh=0.2,
     )
 
     lig_conf_data = {}
-    num_confs = 0
+    num_confs_generated = 0
+    num_confs_kept = 0
+    conformers_kept = []
     for cid in cids:
         conf_opt_file_name = str(lowe_output).replace(
             "_lowe.mol", f"_c{cid}_cuff.mol"
         )
         # Update stk_mol to conformer geometry.
         new_mol = update_from_rdkit_conf(
-            stk_mol=molecule, rdk_mol=confs, conf_id=cid
+            stk_mol=molecule,
+            rdk_mol=confs,
+            conf_id=cid,
         )
         # Need to define the functional groups.
         new_mol = stk.BuildingBlock.init_from_molecule(
@@ -140,8 +142,52 @@ def conformer_generation_uff(
 
         new_mol = stko.UFF().optimize(mol=new_mol)
         energy = stko.UFFEnergy().get_energy(new_mol)
-        new_mol.write(conf_opt_file_name)
+        num_confs_generated += 1
 
+        min_rmsd = float("inf")
+        if len(conformers_kept) == 0:
+            conformers_kept.append((cid, new_mol))
+
+        else:
+            # Get heavy-atom RMSD to all other conformers and check if it is
+            # within threshold to any of them.
+            for _, conformer in conformers_kept:
+                rmsd = kabsch_rmsd(
+                    np.array(
+                        tuple(
+                            conformer.get_atomic_positions(
+                                atom_ids=tuple(
+                                    i.get_id()
+                                    for i in conformer.get_atoms()
+                                    if i.get_atomic_number() != 1
+                                ),
+                            )
+                        )
+                    ),
+                    np.array(
+                        tuple(
+                            new_mol.get_atomic_positions(
+                                atom_ids=tuple(
+                                    i.get_id()
+                                    for i in new_mol.get_atoms()
+                                    if i.get_atomic_number() != 1
+                                ),
+                            )
+                        )
+                    ),
+                    translate=True,
+                )
+
+                min_rmsd = min((min_rmsd, rmsd))
+                if min_rmsd < rmsd_threshold:
+                    break
+
+        # If any RMSD is less than threshold, skip.
+        if min_rmsd < rmsd_threshold:
+            continue
+
+        new_mol.write(conf_opt_file_name)
+        conformers_kept.append((cid, new_mol))
         NCCN_dihedral = abs(calculate_NCCN_dihedral(new_mol))
         angle = calculate_N_centroid_N_angle(new_mol)
 
@@ -152,8 +198,14 @@ def conformer_generation_uff(
             "NN_BCN_angles": calculate_NN_BCN_angles(new_mol),
             "UFFEnergy;kj/mol": energy * 4.184,
         }
-        num_confs += 1
-    logging.info(f"{num_confs} conformers generated for {name}")
+        num_confs_kept += 1
+
+    logging.info(
+        "%s conformers generated for %s, kept %s",
+        num_confs_generated,
+        name,
+        num_confs_kept,
+    )
 
     with open(conf_data_file, "w") as f:
         json.dump(lig_conf_data, f)
@@ -217,7 +269,6 @@ def main():
         pass
 
     _wd = liga_path()
-    _cd = calc_path()
 
     dihedral_cutoff = 10
     strain_cutoff = 5
@@ -249,7 +300,6 @@ def main():
                 name=lig,
                 lowe_output=lowe_file,
                 conf_data_file=confuff_data_file,
-                calc_dir=_cd,
             )
             logging.info(
                 f"time taken for conf gen of {lig}: "
@@ -465,7 +515,7 @@ def main():
         dihedral_cutoff=dihedral_cutoff,
         outname=f"{figure_prefix}_all_lp_conformers.pdf",
     )
-
+    raise SystemExit
     # Figures not in SI.
     for pair_name in pair_info:
         small_l, large_l = pair_name.split(",")
