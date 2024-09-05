@@ -513,7 +513,6 @@ def explore_ligand(
     cids = rdkit.EmbedMultipleConfs(mol=confs, numConfs=500, params=etkdg)
 
     lig_conf_data = {}
-
     num_confs_kept = 0
     conformers_kept = []
     min_energy = float("inf")
@@ -588,7 +587,7 @@ def explore_ligand(
             continue
 
         new_mol.write(conf_dir / conf_opt_file_name)
-
+        conformers_kept.append((cid, new_mol))
         analyser = stko.molecule_analysis.DitopicThreeSiteAnalyser()
 
         lig_conf_data[cid] = {
