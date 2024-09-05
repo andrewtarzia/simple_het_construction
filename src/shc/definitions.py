@@ -9,7 +9,9 @@ class EnvVariables:
     dihedral_cutoff = 30
     strain_cutoff = 5
     cs1_dihedral_cutoff = 20
+    study1_dihedral_cutoff = 10
     rmsd_threshold = 0.2
+    xtb_path = pathlib.Path("/home/atarzia/miniforge3/envs/cpl/bin/xtb")
 
 
 class Study1EnvVariables:
