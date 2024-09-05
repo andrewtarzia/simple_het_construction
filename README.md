@@ -3,6 +3,8 @@ Python code for the construction and analysis of heteroleptic cages
 
 DOI for publication: **AWAITING**.
 
+DOI for ChemRxiv: [10.26434/chemrxiv-2024-s0mmw](https://doi.org/10.26434/chemrxiv-2024-s0mmw).
+
 The library is built off of [`stk`](https://stk.readthedocs.io/en/stable/)
 
 # Installation
