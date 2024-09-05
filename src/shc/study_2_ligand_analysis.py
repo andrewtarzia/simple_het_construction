@@ -7,7 +7,8 @@ import time
 
 import atomlite
 import numpy as np
-from definitions import EnvVariables
+
+from shc.definitions import EnvVariables
 
 
 def vector_length():
@@ -69,6 +70,7 @@ def test_N_N_lengths(large_c_dict, small_c_dict):
 
 def main() -> None:  # noqa: PLR0915
     """Run script."""
+    raise SystemExit("rerun build ligands to not use RMSD weirdly")
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
     calculation_dir = pathlib.Path(
         "/home/atarzia/workingspace/cpl/calculations"
@@ -78,11 +80,10 @@ def main() -> None:  # noqa: PLR0915
     calculation_dir.mkdir(exist_ok=True)
     figures_dir.mkdir(exist_ok=True)
 
-    ligand_db = atomlite.Database(ligand_dir / "ligands.db")
+    ligand_db = atomlite.Database(ligand_dir / "deduped_ligands.db")
     pair_db = atomlite.Database(ligand_dir / "pairs.db")
 
-    raise SystemExit("plot distributions of two flex measures from lC")
-    raise SystemExit("plot distributions of two measures from shuhei paper")
+    raise SystemExit("do not run until `fix min energy in ligand dbs` done")
 
     # Define minimum energies for all ligands.
     logging.info("remove this, I think")
