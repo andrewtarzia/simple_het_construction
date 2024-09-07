@@ -12,6 +12,7 @@ class EnvVariables:
     study1_dihedral_cutoff = 10
     rmsd_threshold = 0.2
     xtb_path = pathlib.Path("/home/atarzia/miniforge3/envs/cpl/bin/xtb")
+    gulp_path = pathlib.Path("/home/atarzia/software/gulp-6.1.2/Src/gulp")
 
 
 class Study1EnvVariables:
