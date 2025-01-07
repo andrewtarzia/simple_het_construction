@@ -225,6 +225,8 @@ class Pair:
 
     lhs: LhsRigidBody
     rhs: RhsRigidBody
+    angle_divider: float
+    length_divider: float
 
     def calculate_residual(
         self,
@@ -271,7 +273,10 @@ class Pair:
 
         angle_residual = angle_1_residual + angle_2_residual
 
-        return distance_residual / 2 + angle_residual / 20
+        return (
+            distance_residual / self.length_divider
+            + angle_residual / self.angle_divider
+        )
 
 
 @dataclass
@@ -291,6 +296,8 @@ class PairResult:
 def mismatch_test(
     c_dict1: dict[str, float | tuple],
     c_dict2: dict[str, float | tuple],
+    angle_divider: float,
+    length_divider: float,
 ) -> PairResult:
     """Test mismatch."""
     rigidbody1 = LhsRigidBody(
@@ -320,7 +327,12 @@ def mismatch_test(
     def f(params: abc.Sequence[float]) -> float:
         r1x, r1y, phi1 = set_state
         r2x, r2y, phi2 = params
-        return Pair(lhs=rigidbody1, rhs=rigidbody2).calculate_residual(
+        return Pair(
+            lhs=rigidbody1,
+            rhs=rigidbody2,
+            angle_divider=angle_divider,
+            length_divider=length_divider,
+        ).calculate_residual(
             r1=np.array((r1x, r1y)),
             phi1=phi1,
             r2=np.array((r2x, r2y)),
@@ -339,7 +351,12 @@ def mismatch_test(
 
         state_1_sets.append(result.x)
         state_1_results.append(
-            Pair(lhs=rigidbody1, rhs=rigidbody2).calculate_residual(
+            Pair(
+                lhs=rigidbody1,
+                rhs=rigidbody2,
+                angle_divider=angle_divider,
+                length_divider=length_divider,
+            ).calculate_residual(
                 r1=np.array((set_state[0], set_state[1])),
                 phi1=set_state[2],
                 r2=np.array((result.x[0], result.x[1])),
@@ -354,7 +371,12 @@ def mismatch_test(
     def f(params: abc.Sequence[float]) -> float:
         r1x, r1y, phi1 = set_state
         r2x, r2y, phi2 = params
-        return Pair(lhs=rigidbody1, rhs=rigidbody3).calculate_residual(
+        return Pair(
+            lhs=rigidbody1,
+            rhs=rigidbody3,
+            angle_divider=angle_divider,
+            length_divider=length_divider,
+        ).calculate_residual(
             r1=np.array((r1x, r1y)),
             phi1=phi1,
             r2=np.array((r2x, r2y)),
@@ -372,7 +394,12 @@ def mismatch_test(
 
         state_2_sets.append(result.x)
         state_2_results.append(
-            Pair(lhs=rigidbody1, rhs=rigidbody3).calculate_residual(
+            Pair(
+                lhs=rigidbody1,
+                rhs=rigidbody3,
+                angle_divider=angle_divider,
+                length_divider=length_divider,
+            ).calculate_residual(
                 r1=np.array((set_state[0], set_state[1])),
                 phi1=set_state[2],
                 r2=np.array((result.x[0], result.x[1])),
