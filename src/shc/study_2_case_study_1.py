@@ -12,8 +12,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import stk
 import stko
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import rdMolDescriptors, rdmolops, rdMolTransforms
+from scipy.stats import linregress
 
 from shc.definitions import EnvVariables, Study1EnvVariables
 from shc.matching_functions import (
@@ -22,6 +25,7 @@ from shc.matching_functions import (
     plot_pair_position,
 )
 from shc.study_2_build_ligands import explore_ligand
+from shc.visualise_scoring_function import scoring_function
 
 
 def _parse_args() -> argparse.Namespace:
@@ -43,6 +47,9 @@ def analyse_ligand_pair(  # noqa: PLR0913
     ligand_db: atomlite.Database,
     pair_db: atomlite.Database,
     figures_dir: pathlib.Path,
+    ar: float,
+    lr: float,
+    prefix: str,
 ) -> None:
     """Analyse a pair of ligands."""
     ligand1_entry = ligand_db.get_entry(ligand1)
@@ -94,7 +101,12 @@ def analyse_ligand_pair(  # noqa: PLR0913
         # Calculate final geometrical properties.
         angle_dev = angle_test(c_dict1=c_dict1, c_dict2=c_dict2)
 
-        pair_results = mismatch_test(c_dict1=c_dict1, c_dict2=c_dict2)
+        pair_results = mismatch_test(
+            c_dict1=c_dict1,
+            c_dict2=c_dict2,
+            length_divider=lr,
+            angle_divider=ar,
+        )
 
         pair_data[cid_name] = {
             "state_1_residual": float(pair_results.state_1_result),
@@ -180,7 +192,7 @@ def analyse_ligand_pair(  # noqa: PLR0913
         ),
         phi3=best_pair.state_2_parameters[2],
         rigidbody3=best_pair.rigidbody3,
-        outname=figures_dir / f"best_{key}.png",
+        outname=figures_dir / f"{prefix}_bests" / f"best_{key}.png",
     )
 
 
@@ -561,6 +573,7 @@ def unsymmetric_plot(
     plot_targets: tuple[tuple[str, str], ...],
     pair_db: atomlite.Database,
     figures_dir: pathlib.Path,
+    prefix: str,
 ) -> None:
     """Make plot."""
     fig, axs = plt.subplots(ncols=3, figsize=(16, 5))
@@ -674,65 +687,91 @@ def unsymmetric_plot(
 
     fig.tight_layout()
     fig.savefig(
-        figures_dir / f"cs1_residuals_{pts}.png",
+        figures_dir / f"cs1_residuals_{pts}_{prefix}.png",
         dpi=360,
         bbox_inches="tight",
     )
     plt.close()
 
 
-def symmetric_plot(  # noqa: C901, PLR0915
+def get_study1_key(ligand1: str, ligand2: str, pair_info: dict) -> str:
+    """Translate to key from study 1."""
+    if "e" in ligand1:
+        study1_key = f"{ligand1.split('_')[0]},{ligand2.split('_')[0]}"
+    else:
+        study1_key = (
+            f"{ligand1.split('_')[0].split('s')[1]},"
+            f"{ligand2.split('_')[0].split('s')[1]}"
+        )
+    if study1_key not in pair_info:
+        if "e" in ligand1:
+            study1_key = f"{ligand2.split('_')[0]},{ligand1.split('_')[0]}"
+        else:
+            study1_key = (
+                f"{ligand2.split('_')[0].split('s')[1]},"
+                f"{ligand1.split('_')[0].split('s')[1]}"
+            )
+        if study1_key not in pair_info:
+            msg = f"{study1_key} not in pair_info: {pair_info.keys()}"
+            raise RuntimeError(msg)
+    return study1_key
+
+
+def get_gvalues(result_dict: dict) -> list[float]:
+    """Get Gavg from a dictionary of study 1 format."""
+    geom_scores = []
+    for cid_pair in result_dict:
+        if (
+            abs(result_dict[cid_pair]["large_dihedral"])
+            > Study1EnvVariables.dihedral_cutoff
+            or abs(result_dict[cid_pair]["small_dihedral"])
+            > Study1EnvVariables.dihedral_cutoff
+        ):
+            continue
+
+        geom_score = result_dict[cid_pair]["geom_score"]
+        geom_scores.append(geom_score)
+    return geom_scores
+
+
+experimental_ligand_outcomes = {
+    ("e16_0", "e10_0"): {"success": True, "g": [], "1-r": []},
+    ("e16_0", "e17_0"): {"success": True, "g": [], "1-r": []},
+    ("e10_0", "e17_0"): {"success": False, "g": [], "1-r": []},
+    ("e11_0", "e10_0"): {"success": True, "g": [], "1-r": []},
+    ("e16_0", "e14_0"): {"success": True, "g": [], "1-r": []},
+    ("e18_0", "e14_0"): {"success": True, "g": [], "1-r": []},
+    ("e18_0", "e10_0"): {"success": True, "g": [], "1-r": []},
+    ("e12_0", "e10_0"): {"success": True, "g": [], "1-r": []},
+    ("e11_0", "e14_0"): {"success": True, "g": [], "1-r": []},
+    ("e12_0", "e14_0"): {"success": True, "g": [], "1-r": []},
+    ("e11_0", "e13_0"): {"success": True, "g": [], "1-r": []},
+    ("e12_0", "e13_0"): {"success": True, "g": [], "1-r": []},
+    ("e13_0", "e14_0"): {"success": False, "g": [], "1-r": []},
+    ("e11_0", "e12_0"): {"success": False, "g": [], "1-r": []},
+    ("sla_0", "sl1_0"): {"success": False, "g": [], "1-r": []},
+    ("slb_0", "sl1_0"): {"success": True, "g": [], "1-r": []},
+    ("slc_0", "sl1_0"): {"success": True, "g": [], "1-r": []},
+    ("sld_0", "sl1_0"): {"success": False, "g": [], "1-r": []},
+    ("sla_0", "sl2_0"): {"success": False, "g": [], "1-r": []},
+    ("slb_0", "sl2_0"): {"success": False, "g": [], "1-r": []},
+    ("slc_0", "sl2_0"): {"success": False, "g": [], "1-r": []},
+    ("sld_0", "sl2_0"): {"success": False, "g": [], "1-r": []},
+    ("sla_0", "sl3_0"): {"success": False, "g": [], "1-r": []},
+    ("slb_0", "sl3_0"): {"success": False, "g": [], "1-r": []},
+    ("slc_0", "sl3_0"): {"success": False, "g": [], "1-r": []},
+    ("sld_0", "sl3_0"): {"success": False, "g": [], "1-r": []},
+}
+
+
+def symmetric_plot(  # noqa: PLR0915
     pts: str,
     plot_targets: tuple[tuple[str, str], ...],
     pair_db: atomlite.Database,
     figures_dir: pathlib.Path,
+    prefix: str,
 ) -> None:
     """Make plot."""
-    experimental_ligand_outcomes = {
-        ("e16_0", "e10_0"): True,
-        ("e16_0", "e17_0"): True,
-        ("e10_0", "e17_0"): False,
-        ("e11_0", "e10_0"): True,
-        ("e16_0", "e14_0"): True,
-        ("e18_0", "e14_0"): True,
-        ("e18_0", "e10_0"): True,
-        ("e12_0", "e10_0"): True,
-        ("e11_0", "e14_0"): True,
-        ("e12_0", "e14_0"): True,
-        ("e11_0", "e13_0"): True,
-        ("e12_0", "e13_0"): True,
-        ("e13_0", "e14_0"): False,
-        ("e11_0", "e12_0"): False,
-        ("sla_0", "sl1_0"): False,
-        ("slb_0", "sl1_0"): True,
-        ("slc_0", "sl1_0"): True,
-        ("sld_0", "sl1_0"): False,
-        ("sla_0", "sl2_0"): False,
-        ("slb_0", "sl2_0"): False,
-        ("slc_0", "sl2_0"): False,
-        ("sld_0", "sl2_0"): False,
-        ("sla_0", "sl3_0"): False,
-        ("slb_0", "sl3_0"): False,
-        ("slc_0", "sl3_0"): False,
-        ("sld_0", "sl3_0"): False,
-    }
-
-    def get_gvalues(result_dict: dict) -> list[float]:
-        """Get Gavg from a dictionary of study 1 format."""
-        geom_scores = []
-        for cid_pair in result_dict:
-            if (
-                abs(result_dict[cid_pair]["large_dihedral"])
-                > Study1EnvVariables.dihedral_cutoff
-                or abs(result_dict[cid_pair]["small_dihedral"])
-                > Study1EnvVariables.dihedral_cutoff
-            ):
-                continue
-
-            geom_score = result_dict[cid_pair]["geom_score"]
-            geom_scores.append(geom_score)
-        return geom_scores
-
     study1_pair_file = (
         pathlib.Path("/home/atarzia/workingspace/cpl/study_1")
         / "all_pair_res.json"
@@ -745,28 +784,13 @@ def symmetric_plot(  # noqa: C901, PLR0915
     twinax = ax2.twinx()
     steps = range(len(plot_targets) - 1, -1, -1)
     xnames = {}
+    ax1_pts = []
     for i, (ligand1, ligand2) in zip(steps, plot_targets, strict=False):
         key = f"{ligand1}_{ligand2}"
-        if "e" in ligand1:
-            study1_key = f"{ligand1.split('_')[0]},{ligand2.split('_')[0]}"
-        else:
-            study1_key = (
-                f"{ligand1.split('_')[0].split('s')[1]},"
-                f"{ligand2.split('_')[0].split('s')[1]}"
-            )
-        if study1_key not in pair_info:
-            if "e" in ligand1:
-                study1_key = f"{ligand2.split('_')[0]},{ligand1.split('_')[0]}"
-            else:
-                study1_key = (
-                    f"{ligand2.split('_')[0].split('s')[1]},"
-                    f"{ligand1.split('_')[0].split('s')[1]}"
-                )
-            if study1_key not in pair_info:
-                msg = f"{study1_key} not in pair_info: {pair_info.keys()}"
-                raise RuntimeError(msg)
-
-        works = experimental_ligand_outcomes[(ligand1, ligand2)]
+        study1_key = get_study1_key(
+            ligand1=ligand1, ligand2=ligand2, pair_info=pair_info
+        )
+        works = experimental_ligand_outcomes[(ligand1, ligand2)]["success"]
 
         entry = pair_db.get_property_entry(key)
 
@@ -809,6 +833,8 @@ def symmetric_plot(  # noqa: C901, PLR0915
             s=120,
         )
 
+        ax1_pts.append((np.mean(xdata), np.mean(gvalues)))
+
         xnames[key] = len(xnames)
         x_pos = xnames[key]
         ax2.scatter(
@@ -843,24 +869,63 @@ def symmetric_plot(  # noqa: C901, PLR0915
     ax.set_yticks([])
     ax.set_ylim(0, (steps[0] + 1.5) * 1)
 
+    # Add a line of best fit.
+    x = np.asarray(ax1_pts)[:, 0]
+    y = np.asarray(ax1_pts)[:, 1]
+    slope, intercept, r_value, p_value, std_err = linregress(x, y)
+    ax1.plot((0, 30), (intercept, slope * 30 + intercept), c="k")
+
     ax1.tick_params(axis="both", which="major", labelsize=16)
     ax1.set_xlabel("mean 1-residuals", fontsize=16)
-    ax1.set_ylabel("g_avg study 1", fontsize=16)
-    ax1.set_xlim(0, 15)
+    ax1.set_ylabel(r"$g_{\mathrm{avg}}$ study 1", fontsize=16)
+    ax1.set_xlim(0, 30)
     ax1.set_ylim(0, 1)
+    legend_elements = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="works",
+            markerfacecolor="tab:blue",
+            markersize=8,
+            markeredgecolor="k",
+            alpha=1,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="does not",
+            markerfacecolor="tab:orange",
+            markersize=8,
+            markeredgecolor="k",
+            alpha=1,
+        ),
+        Line2D(
+            [0],
+            [0],
+            color="k",
+            label=f"$y={round(slope,2)}x+{round(intercept,2)}$ "
+            f"({round(r_value**2,2)})",
+            alpha=1,
+        ),
+    ]
+    ax1.legend(handles=legend_elements, ncols=1, fontsize=16)
 
     ax2.tick_params(
         axis="both", which="major", labelsize=16, labelcolor="tab:cyan"
     )
     ax2.set_ylabel("1-residuals", fontsize=16, color="tab:cyan")
-    ax2.set_ylim(0, 15)
+    ax2.set_ylim(0, 30)
     ax2.set_xticks(list(xnames.values()))
     ax2.set_xticklabels(list(xnames), color="k", rotation=90)
 
     twinax.tick_params(
         axis="both", which="major", labelsize=16, labelcolor="tab:pink"
     )
-    twinax.set_ylabel("g_avg study 1", fontsize=16, color="tab:pink")
+    twinax.set_ylabel("$g$ study 1", fontsize=16, color="tab:pink")
     twinax.set_ylim(0, 1)
 
     for xn in list(xnames.keys())[:-1]:
@@ -868,12 +933,401 @@ def symmetric_plot(  # noqa: C901, PLR0915
 
     if pts == "expt":
         ax.legend(ncols=2, fontsize=16)
+    elif pts == "all":
+        pass
     else:
         ax.legend(fontsize=16)
 
     fig.tight_layout()
     fig.savefig(
-        figures_dir / f"cs1_residuals_{pts}.png",
+        figures_dir / f"cs1_residuals_{pts}_{prefix}.png",
+        dpi=360,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def remake_plot(
+    pts: str,
+    plot_targets: tuple[tuple[str, str], ...],
+    pair_db: atomlite.Database,
+    figures_dir: pathlib.Path,
+    prefix: str,
+) -> None:
+    """Make plot."""
+    study1_pair_file = (
+        pathlib.Path("/home/atarzia/workingspace/cpl/study_1")
+        / "all_pair_res.json"
+    )
+    with study1_pair_file.open("r") as f:
+        pair_info = json.load(f)
+
+    if pts in ("expt", "all"):
+        fig, axs = plt.subplots(nrows=2, figsize=(16, 10))
+    else:
+        fig, axs = plt.subplots(nrows=2, figsize=(8, 10))
+
+    ax1, ax2 = axs
+    xnames = {}
+    for x, (ligand1, ligand2) in enumerate(plot_targets):
+        key = f"{ligand1}_{ligand2}"
+        study1_key = get_study1_key(
+            ligand1=ligand1, ligand2=ligand2, pair_info=pair_info
+        )
+        entry = pair_db.get_property_entry(key)
+
+        xdata = [
+            entry.properties["pair_data"][i]["state_1_residual"]
+            for i in entry.properties["pair_data"]
+        ]
+        gvalues = get_gvalues(pair_info[study1_key])
+
+        xnames[key] = x
+
+        if not experimental_ligand_outcomes[(ligand1, ligand2)]["success"]:
+            col = "tab:orange"
+        else:
+            col = "tab:blue"
+        if (ligand1, ligand2) == ("sla_0", "sl1_0"):
+            min_fails = np.mean(xdata)
+        if (ligand1, ligand2) == ("slc_0", "sl1_0"):
+            max_works = np.mean(xdata)
+
+        p = ax1.bar(
+            x,
+            np.mean(xdata),
+            width=0.8,
+            bottom=0,
+            color=col,
+            edgecolor="k",
+            linewidth=2,
+        )
+        ax1.bar_label(
+            p,
+            label_type="edge",
+            color="k",
+            fontsize=16,
+            fmt="%.2f",
+        )
+
+        p = ax2.bar(
+            x,
+            np.mean(gvalues),
+            width=0.8,
+            bottom=0,
+            color=col,
+            edgecolor="k",
+            linewidth=2,
+        )
+        ax2.bar_label(
+            p,
+            label_type="edge",
+            color="k",
+            fontsize=16,
+            fmt="%.2f",
+        )
+
+    if pts == "all":
+        ax1.axvline(x=13.5, c="k")
+        ax1.axhspan(
+            ymin=max_works,
+            ymax=min_fails,
+            facecolor="gray",
+            alpha=0.3,
+            zorder=-1,
+        )
+
+        ax2.axvline(x=13.5, c="k")
+        ax2.axhspan(
+            ymin=0.35,
+            ymax=0.54,
+            facecolor="gray",
+            alpha=0.3,
+            zorder=-1,
+        )
+
+    ax1.tick_params(axis="both", which="major", labelsize=16)
+    ax1.set_ylabel("mean 1-residuals", fontsize=16)
+    ax1.set_ylim(0, 30)
+
+    ax1.set_xticks(list(xnames.values()))
+    ax1.set_xticklabels([])
+
+    ax2.tick_params(axis="both", which="major", labelsize=16)
+    ax2.set_ylabel(r"$g_{\mathrm{avg}}$ study 1", fontsize=16)
+    ax2.set_ylim(0, 1.1)
+
+    ax2.set_xticks(list(xnames.values()))
+    ax2.set_xticklabels(list(xnames), color="k", rotation=90)
+
+    legend_elements = [
+        Patch(
+            facecolor="tab:blue",
+            edgecolor="k",
+            label="$cis$-Pd$_2$L$_2$L'$_2$",
+        ),
+        Patch(facecolor="tab:orange", edgecolor="k", label="mixture/$trans$"),
+    ]
+    ax1.legend(handles=legend_elements, ncols=1, fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        figures_dir / f"cs1_remake_{pts}_{prefix}.png",
+        dpi=360,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def confidence_plot(  # noqa: C901, PLR0915, PLR0912
+    pts: str,
+    plot_targets: tuple[tuple[str, str], ...],
+    pair_db: atomlite.Database,
+    figures_dir: pathlib.Path,
+    prefix: str,
+) -> None:
+    """Make plot."""
+    study1_pair_file = (
+        pathlib.Path("/home/atarzia/workingspace/cpl/study_1")
+        / "all_pair_res.json"
+    )
+    with study1_pair_file.open("r") as f:
+        pair_info = json.load(f)
+
+    fig, ((ax, axc), (axf1, axf2)) = plt.subplots(
+        ncols=2,
+        nrows=2,
+        figsize=(10, 10),
+    )
+    xys = []
+    max_g_works = 0
+    max_r_works = 0
+    for ligand1, ligand2 in plot_targets:
+        key = f"{ligand1}_{ligand2}"
+        study1_key = get_study1_key(
+            ligand1=ligand1, ligand2=ligand2, pair_info=pair_info
+        )
+        entry = pair_db.get_property_entry(key)
+
+        xdata = [
+            entry.properties["pair_data"][i]["state_1_residual"]
+            for i in entry.properties["pair_data"]
+        ]
+        gvalues = get_gvalues(pair_info[study1_key])
+
+        if experimental_ligand_outcomes[(ligand1, ligand2)]["success"]:
+            col = "tab:blue"
+            max_g_works = max((max_g_works, np.mean(gvalues)))
+            max_r_works = max((max_r_works, np.mean(xdata)))
+        else:
+            col = "tab:orange"
+
+        if (ligand1, ligand2) == ("sla_0", "sl1_0"):
+            min_fails = np.mean(xdata)
+        if (ligand1, ligand2) == ("slc_0", "sl1_0"):
+            max_works = np.mean(xdata)
+
+        xys.append((np.mean(gvalues), np.mean(xdata), col))
+
+    ax.scatter(
+        [i[0] for i in xys],
+        [i[1] for i in xys],
+        c=[i[2] for i in xys],
+        s=120,
+        ec="k",
+    )
+
+    mid_gval = 0.54 - (0.54 - 0.35) / 2
+    mid_gval = max_g_works
+    gbeta = 10
+    axf2.axvline(x=mid_gval, c="k")
+    mid_1r = min_fails - (min_fails - max_works) / 2
+    mid_1r = max_r_works
+    rbeta = 2
+    axf1.axvline(x=mid_1r, c="k")
+    # axc.scatter(
+    #     [1 if i[0] < mid_gval else 1 - abs(i[0] - mid_gval) for i in xys],
+    #     [1 if i[1] < mid_1r else 1 - abs(i[1] - mid_1r) for i in xys],
+    #     c=[i[2] for i in xys],
+    #     s=120,
+    #     ec="k",
+    # )
+    axc.scatter(
+        [scoring_function(x=i[0], target=mid_gval, beta=gbeta) for i in xys],
+        [scoring_function(x=i[1], target=mid_1r, beta=rbeta) for i in xys],
+        c=[i[2] for i in xys],
+        s=120,
+        ec="k",
+    )
+
+    axf1.scatter(
+        [i[1] for i in xys],
+        [scoring_function(x=i[1], target=mid_1r, beta=rbeta) for i in xys],
+        c=[i[2] for i in xys],
+        s=120,
+        ec="k",
+    )
+
+    axf2.scatter(
+        [i[0] for i in xys],
+        [scoring_function(x=i[0], target=mid_gval, beta=gbeta) for i in xys],
+        c=[i[2] for i in xys],
+        s=120,
+        ec="k",
+    )
+
+    if pts == "all":
+        ax.axhspan(
+            ymin=max_works,
+            ymax=min_fails,
+            facecolor="gray",
+            alpha=0.3,
+            zorder=-1,
+        )
+        ax.axhline(
+            y=mid_1r,
+            c="k",
+            alpha=0.5,
+            zorder=0,
+        )
+
+        ax.axvspan(
+            xmin=0.35,
+            xmax=0.54,
+            facecolor="gray",
+            alpha=0.3,
+            zorder=-1,
+        )
+        ax.axvline(
+            x=mid_gval,
+            c="k",
+            alpha=0.5,
+            zorder=0,
+        )
+
+    true_positives = [0, 0]
+    false_positives = [0, 0]
+    true_negatives = [0, 0]
+    false_negatives = [0, 0]
+    for xyc in xys:
+        gv, rv, c = xyc
+        confidence_g = scoring_function(x=gv, target=mid_gval, beta=gbeta)
+        confidence_r = scoring_function(x=rv, target=mid_1r, beta=rbeta)
+        if c == "tab:orange":
+            # Fail.
+            if confidence_g < 0.5:  # noqa: PLR2004
+                # TN.
+                true_negatives[0] += 1
+            else:
+                # FP
+                false_positives[0] += 1
+
+            if confidence_r < 0.5:  # noqa: PLR2004
+                # TN.
+                true_negatives[1] += 1
+            else:
+                # FP
+                false_positives[1] += 1
+        else:
+            # Success.
+            if confidence_g < 0.5:  # noqa: PLR2004
+                # FN.
+                false_negatives[0] += 1
+            else:
+                # TP
+                true_positives[0] += 1
+
+            if confidence_r < 0.5:  # noqa: PLR2004
+                # FN.
+                false_negatives[1] += 1
+            else:
+                # TP
+                true_positives[1] += 1
+
+    f1_score = tuple(
+        round(
+            (2 * true_positives[i])
+            / (
+                2 * true_positives[i] + false_positives[i] + false_negatives[i]
+            ),
+            1,
+        )
+        for i in (0, 1)
+    )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_ylabel("mean 1-residuals", fontsize=16)
+    ax.set_ylim(0, 30)
+    ax.set_xlabel(r"$g_{\mathrm{avg}}$ study 1", fontsize=16)
+    ax.set_xlim(0, 1.1)
+
+    axc.tick_params(axis="both", which="major", labelsize=16)
+    axc.set_ylabel("$c$ 1-residuals", fontsize=16)
+    axc.set_xlabel("$c$ study 1", fontsize=16)
+
+    axf1.tick_params(axis="both", which="major", labelsize=16)
+    axf1.set_xlabel("mean 1-residuals", fontsize=16)
+    axf1.set_ylabel("$c$ 1-residuals", fontsize=16)
+    axf1.set_xlim(0, 30)
+    x_range = np.linspace(0.01, 30, 100)
+    axf1.plot(
+        x_range,
+        scoring_function(x=x_range, target=mid_1r, beta=rbeta),
+        c="tab:gray",
+        zorder=-2,
+    )
+    axf1.set_title(
+        f"TP={true_positives[1]},FP={false_positives[1]}, F1={f1_score[1]}",
+        fontsize=16,
+    )
+
+    axf2.tick_params(axis="both", which="major", labelsize=16)
+    axf2.set_xlabel(r"$g_{\mathrm{avg}}$ study 1", fontsize=16)
+    axf2.set_ylabel("$c$ study 1", fontsize=16)
+    axf2.set_xlim(0, 1.1)
+    x_range = np.linspace(0.01, 1, 100)
+    axf2.plot(
+        x_range,
+        scoring_function(x=x_range, target=mid_gval, beta=gbeta),
+        c="tab:gray",
+        zorder=-2,
+    )
+    axf2.set_title(
+        f"TP={true_positives[0]},FP={false_positives[0]}, F1={f1_score[0]}",
+        fontsize=16,
+    )
+
+    axc.plot((0, 1), c="k")
+
+    legend_elements = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="works",
+            markerfacecolor="tab:blue",
+            markersize=8,
+            markeredgecolor="k",
+            alpha=1,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="does not",
+            markerfacecolor="tab:orange",
+            markersize=8,
+            markeredgecolor="k",
+            alpha=1,
+        ),
+    ]
+    ax.legend(handles=legend_elements, ncols=1, fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        figures_dir / f"cs1_confidence_{pts}_{prefix}.png",
         dpi=360,
         bbox_inches="tight",
     )
@@ -884,6 +1338,7 @@ def lab_residuals_plot(
     pair_db: atomlite.Database,
     ligand_dir: pathlib.Path,
     figures_dir: pathlib.Path,
+    prefix: str,
 ) -> None:
     """Make plot."""
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -980,14 +1435,14 @@ def lab_residuals_plot(
 
     fig.tight_layout()
     fig.savefig(
-        figures_dir / "lab_state_residuals.png",
+        figures_dir / f"lab_state_residuals_{prefix}.png",
         dpi=360,
         bbox_inches="tight",
     )
     plt.close()
 
 
-def main() -> None:
+def main() -> None:  # noqa: C901, PLR0912
     """Run script."""
     args = _parse_args()
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/cs1_ligands")
@@ -1000,7 +1455,6 @@ def main() -> None:
     figures_dir.mkdir(exist_ok=True, parents=True)
 
     ligand_db = atomlite.Database(ligand_dir / "cs1_ligands.db")
-    pair_db = atomlite.Database(ligand_dir / "cs1_pairs.db")
 
     # Build all ligands.
     ligand_smiles = {
@@ -1086,66 +1540,41 @@ def main() -> None:
             )
 
         if args.plot_ligands:
+            (figures_dir / "lig_data").mkdir(exist_ok=True)
             plot_ligand(
                 ligand_name=lname,
                 ligand_db=ligand_db,
                 ligand_dir=ligand_dir,
-                figures_dir=figures_dir,
+                figures_dir=figures_dir / "lig_data",
             )
 
     if args.plot_ligands:
         plot_conformer_numbers(ligand_db=ligand_db, figures_dir=figures_dir)
         plot_flexes(ligand_db=ligand_db, figures_dir=figures_dir)
 
-    targets = (
-        ("sla_0", "sl1_0"),
-        ("slb_0", "sl1_0"),
-        ("slc_0", "sl1_0"),
-        ("sld_0", "sl1_0"),
-        ("sla_0", "sl2_0"),
-        ("slb_0", "sl2_0"),
-        ("slc_0", "sl2_0"),
-        ("sld_0", "sl2_0"),
-        ("lab_0", "la_0"),
-        ("lab_0", "lb_0"),
-        ("lab_0", "lc_0"),
-        ("lab_0", "ld_0"),
-        ("m2h_0", "m4q_0"),
-        ("m2h_0", "m4p_0"),
-        ("e16_0", "e10_0"),
-        ("e16_0", "e17_0"),
-        ("e10_0", "e17_0"),
-        ("e11_0", "e10_0"),
-        ("e16_0", "e14_0"),
-        ("e18_0", "e14_0"),
-        ("e18_0", "e10_0"),
-        ("e12_0", "e10_0"),
-        ("e11_0", "e14_0"),
-        ("e12_0", "e14_0"),
-        ("e11_0", "e13_0"),
-        ("e12_0", "e13_0"),
-        ("e13_0", "e14_0"),
-        ("e11_0", "e12_0"),
-    )
+    a_rat = [30, 25, 20, 15, 10, 5]
+    l_rat = [3, 2.5, 2, 1.5, 1, 0.5]
 
-    for ligand1, ligand2 in targets:
-        key = f"{ligand1}_{ligand2}"
+    for ar, lr in it.product(a_rat, l_rat):
+        prefix = f"{ar}_{lr}"
+        (figures_dir / f"{prefix}_bests").mkdir(exist_ok=True)
+        pair_db = atomlite.Database(ligand_dir / f"{prefix}_cs1_pairs.db")
 
-        if pair_db.has_property_entry(key):
-            continue
-
-        logging.info("analysing %s and %s", ligand1, ligand2)
-        analyse_ligand_pair(
-            ligand1=ligand1,
-            ligand2=ligand2,
-            key=key,
-            ligand_db=ligand_db,
-            pair_db=pair_db,
-            figures_dir=figures_dir,
-        )
-
-    plot_targets_sets = {
-        "expt": (
+        targets = (
+            ("sla_0", "sl1_0"),
+            ("slb_0", "sl1_0"),
+            ("slc_0", "sl1_0"),
+            ("sld_0", "sl1_0"),
+            ("sla_0", "sl2_0"),
+            ("slb_0", "sl2_0"),
+            ("slc_0", "sl2_0"),
+            ("sld_0", "sl2_0"),
+            ("lab_0", "la_0"),
+            ("lab_0", "lb_0"),
+            ("lab_0", "lc_0"),
+            ("lab_0", "ld_0"),
+            ("m2h_0", "m4q_0"),
+            ("m2h_0", "m4p_0"),
             ("e16_0", "e10_0"),
             ("e16_0", "e17_0"),
             ("e10_0", "e17_0"),
@@ -1160,48 +1589,131 @@ def main() -> None:
             ("e12_0", "e13_0"),
             ("e13_0", "e14_0"),
             ("e11_0", "e12_0"),
-        ),
-        "2024": (
-            ("sla_0", "sl1_0"),
-            ("slb_0", "sl1_0"),
-            ("slc_0", "sl1_0"),
-            ("sld_0", "sl1_0"),
-            ("sla_0", "sl2_0"),
-            ("slb_0", "sl2_0"),
-            ("slc_0", "sl2_0"),
-            ("sld_0", "sl2_0"),
-        ),
-        "het": (
-            ("lab_0", "la_0"),
-            ("lab_0", "lb_0"),
-            ("lab_0", "lc_0"),
-            ("lab_0", "ld_0"),
-            ("m2h_0", "m4q_0"),
-            ("m2h_0", "m4p_0"),
-        ),
-    }
-    for pts in plot_targets_sets:
-        plot_targets = plot_targets_sets[pts]
-        if pts in ("het",):
-            unsymmetric_plot(
-                pts=pts,
-                plot_targets=plot_targets,
-                figures_dir=figures_dir,
-                pair_db=pair_db,
+        )
+
+        for ligand1, ligand2 in targets:
+            key = f"{ligand1}_{ligand2}"
+
+            if pair_db.has_property_entry(key):
+                continue
+
+            logging.info(
+                "analysing %s and %s with %s", ligand1, ligand2, prefix
             )
-        else:
-            symmetric_plot(
-                pts=pts,
-                plot_targets=plot_targets,
-                figures_dir=figures_dir,
+            analyse_ligand_pair(
+                ligand1=ligand1,
+                ligand2=ligand2,
+                key=key,
+                ligand_db=ligand_db,
                 pair_db=pair_db,
+                figures_dir=figures_dir,
+                ar=ar,
+                lr=lr,
+                prefix=prefix,
             )
 
-    lab_residuals_plot(
-        pair_db=pair_db,
-        ligand_dir=ligand_dir,
-        figures_dir=figures_dir,
-    )
+        plot_targets_sets = {
+            "expt": (
+                ("e16_0", "e10_0"),
+                ("e16_0", "e17_0"),
+                ("e10_0", "e17_0"),
+                ("e11_0", "e10_0"),
+                ("e16_0", "e14_0"),
+                ("e18_0", "e14_0"),
+                ("e18_0", "e10_0"),
+                ("e12_0", "e10_0"),
+                ("e11_0", "e14_0"),
+                ("e12_0", "e14_0"),
+                ("e11_0", "e13_0"),
+                ("e12_0", "e13_0"),
+                ("e13_0", "e14_0"),
+                ("e11_0", "e12_0"),
+            ),
+            "2024": (
+                ("sla_0", "sl1_0"),
+                ("slb_0", "sl1_0"),
+                ("slc_0", "sl1_0"),
+                ("sld_0", "sl1_0"),
+                ("sla_0", "sl2_0"),
+                ("slb_0", "sl2_0"),
+                ("slc_0", "sl2_0"),
+                ("sld_0", "sl2_0"),
+            ),
+            "all": (
+                ("e16_0", "e10_0"),
+                ("e16_0", "e17_0"),
+                ("e10_0", "e17_0"),
+                ("e11_0", "e10_0"),
+                ("e16_0", "e14_0"),
+                ("e18_0", "e14_0"),
+                ("e18_0", "e10_0"),
+                ("e12_0", "e10_0"),
+                ("e11_0", "e14_0"),
+                ("e12_0", "e14_0"),
+                ("e11_0", "e13_0"),
+                ("e12_0", "e13_0"),
+                ("e13_0", "e14_0"),
+                ("e11_0", "e12_0"),
+                ("sla_0", "sl1_0"),
+                ("slb_0", "sl1_0"),
+                ("slc_0", "sl1_0"),
+                ("sld_0", "sl1_0"),
+                ("sla_0", "sl2_0"),
+                ("slb_0", "sl2_0"),
+                ("slc_0", "sl2_0"),
+                ("sld_0", "sl2_0"),
+            ),
+            "het": (
+                ("lab_0", "la_0"),
+                ("lab_0", "lb_0"),
+                ("lab_0", "lc_0"),
+                ("lab_0", "ld_0"),
+                ("m2h_0", "m4q_0"),
+                ("m2h_0", "m4p_0"),
+            ),
+        }
+        for pts in plot_targets_sets:
+            plot_targets = plot_targets_sets[pts]
+            if pts in ("het",):
+                unsymmetric_plot(
+                    pts=pts,
+                    plot_targets=plot_targets,
+                    figures_dir=figures_dir,
+                    pair_db=pair_db,
+                    prefix=prefix,
+                )
+
+            elif pts in ("all",):
+                remake_plot(
+                    pts=pts,
+                    plot_targets=plot_targets,
+                    figures_dir=figures_dir,
+                    pair_db=pair_db,
+                    prefix=prefix,
+                )
+                confidence_plot(
+                    pts=pts,
+                    plot_targets=plot_targets,
+                    figures_dir=figures_dir,
+                    pair_db=pair_db,
+                    prefix=prefix,
+                )
+
+            else:
+                symmetric_plot(
+                    pts=pts,
+                    plot_targets=plot_targets,
+                    figures_dir=figures_dir,
+                    pair_db=pair_db,
+                    prefix=prefix,
+                )
+
+        lab_residuals_plot(
+            pair_db=pair_db,
+            ligand_dir=ligand_dir,
+            figures_dir=figures_dir,
+            prefix=prefix,
+        )
 
 
 if __name__ == "__main__":
