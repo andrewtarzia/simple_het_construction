@@ -1,6 +1,5 @@
 """Script to build the ligands in this case study."""
 
-import argparse
 import json
 import logging
 import pathlib
@@ -16,12 +15,6 @@ import stko
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
 
 from shc.definitions import EnvVariables, Study1EnvVariables
-
-
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-
-    return parser.parse_args()
 
 
 class ConstrainedXTBFF(stko.XTBFF):
