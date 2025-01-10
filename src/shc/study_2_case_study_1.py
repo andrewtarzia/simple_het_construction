@@ -47,8 +47,6 @@ def analyse_ligand_pair(  # noqa: PLR0913
     ligand_db: atomlite.Database,
     pair_db: atomlite.Database,
     figures_dir: pathlib.Path,
-    ar: float,
-    lr: float,
     prefix: str,
 ) -> None:
     """Analyse a pair of ligands."""
@@ -85,13 +83,10 @@ def analyse_ligand_pair(  # noqa: PLR0913
         # Check torsion.
         torsion1 = abs(ligand1_confs[cid_1]["NCCN_dihedral"])
         torsion2 = abs(ligand2_confs[cid_2]["NCCN_dihedral"])
-        dihedral_cutoff = (
-            EnvVariables.study1_dihedral_cutoff
-            if ("s" in ligand1 and "s" in ligand2)
-            or ("e" in ligand1 and "e" in ligand2)
-            else EnvVariables.cs1_dihedral_cutoff
-        )
-        if torsion1 > dihedral_cutoff or torsion2 > dihedral_cutoff:
+        if (
+            torsion1 > EnvVariables.dihedral_cutoff
+            or torsion2 > EnvVariables.dihedral_cutoff
+        ):
             continue
 
         # Calculate geom score for both sides together.
@@ -104,8 +99,8 @@ def analyse_ligand_pair(  # noqa: PLR0913
         pair_results = mismatch_test(
             c_dict1=c_dict1,
             c_dict2=c_dict2,
-            length_divider=lr,
-            angle_divider=ar,
+            k_angle=EnvVariables.k_angle,
+            k_bond=EnvVariables.k_bond,
         )
 
         pair_data[cid_name] = {
@@ -176,24 +171,31 @@ def analyse_ligand_pair(  # noqa: PLR0913
         num_pairs_passed,
     )
 
-    plot_pair_position(
-        r1=np.array(
-            (best_pair.set_parameters[0], best_pair.set_parameters[1])
-        ),
-        phi1=best_pair.set_parameters[2],
-        rigidbody1=best_pair.rigidbody1,
-        r2=np.array(
-            (best_pair.state_1_parameters[0], best_pair.state_1_parameters[1])
-        ),
-        phi2=best_pair.state_1_parameters[2],
-        rigidbody2=best_pair.rigidbody2,
-        r3=np.array(
-            (best_pair.state_2_parameters[0], best_pair.state_2_parameters[1])
-        ),
-        phi3=best_pair.state_2_parameters[2],
-        rigidbody3=best_pair.rigidbody3,
-        outname=figures_dir / f"{prefix}_bests" / f"best_{key}.png",
-    )
+    if num_pairs_passed > 0:
+        plot_pair_position(
+            r1=np.array(
+                (best_pair.set_parameters[0], best_pair.set_parameters[1])
+            ),
+            phi1=best_pair.set_parameters[2],
+            rigidbody1=best_pair.rigidbody1,
+            r2=np.array(
+                (
+                    best_pair.state_1_parameters[0],
+                    best_pair.state_1_parameters[1],
+                )
+            ),
+            phi2=best_pair.state_1_parameters[2],
+            rigidbody2=best_pair.rigidbody2,
+            r3=np.array(
+                (
+                    best_pair.state_2_parameters[0],
+                    best_pair.state_2_parameters[1],
+                )
+            ),
+            phi3=best_pair.state_2_parameters[2],
+            rigidbody3=best_pair.rigidbody3,
+            outname=figures_dir / f"{prefix}_bests" / f"best_{key}.png",
+        )
 
 
 def plot_ligand(
@@ -1353,7 +1355,7 @@ def lab_residuals_plot(
     plt.close()
 
 
-def main() -> None:  # noqa: C901, PLR0912
+def main() -> None:
     """Run script."""
     args = _parse_args()
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/cs1_ligands")
@@ -1463,65 +1465,61 @@ def main() -> None:  # noqa: C901, PLR0912
         plot_conformer_numbers(ligand_db=ligand_db, figures_dir=figures_dir)
         plot_flexes(ligand_db=ligand_db, figures_dir=figures_dir)
 
-    a_rat = [30, 25, 20, 15, 10, 5]
-    l_rat = [3, 2.5, 2, 1.5, 1, 0.5]
+    prefix = "pdnff"
+    (figures_dir / f"{prefix}_bests").mkdir(exist_ok=True)
+    pair_db = atomlite.Database(ligand_dir / f"{prefix}_cs1_pairs.db")
 
-    for ar, lr in it.product(a_rat, l_rat):
-        prefix = f"{ar}_{lr}"
-        (figures_dir / f"{prefix}_bests").mkdir(exist_ok=True)
-        pair_db = atomlite.Database(ligand_dir / f"{prefix}_cs1_pairs.db")
+    targets = (
+        ("sla_0", "sl1_0"),
+        ("slb_0", "sl1_0"),
+        ("slc_0", "sl1_0"),
+        ("sld_0", "sl1_0"),
+        ("sla_0", "sl2_0"),
+        ("slb_0", "sl2_0"),
+        ("slc_0", "sl2_0"),
+        ("sld_0", "sl2_0"),
+        ("sla_0", "sl3_0"),
+        ("slb_0", "sl3_0"),
+        ("slc_0", "sl3_0"),
+        ("sld_0", "sl3_0"),
+        ("lab_0", "la_0"),
+        ("lab_0", "lb_0"),
+        ("lab_0", "lc_0"),
+        ("lab_0", "ld_0"),
+        ("m2h_0", "m4q_0"),
+        ("m2h_0", "m4p_0"),
+        ("e16_0", "e10_0"),
+        ("e16_0", "e17_0"),
+        ("e10_0", "e17_0"),
+        ("e11_0", "e10_0"),
+        ("e16_0", "e14_0"),
+        ("e18_0", "e14_0"),
+        ("e18_0", "e10_0"),
+        ("e12_0", "e10_0"),
+        ("e11_0", "e14_0"),
+        ("e12_0", "e14_0"),
+        ("e11_0", "e13_0"),
+        ("e12_0", "e13_0"),
+        ("e13_0", "e14_0"),
+        ("e11_0", "e12_0"),
+    )
 
-        targets = (
-            ("sla_0", "sl1_0"),
-            ("slb_0", "sl1_0"),
-            ("slc_0", "sl1_0"),
-            ("sld_0", "sl1_0"),
-            ("sla_0", "sl2_0"),
-            ("slb_0", "sl2_0"),
-            ("slc_0", "sl2_0"),
-            ("sld_0", "sl2_0"),
-            ("lab_0", "la_0"),
-            ("lab_0", "lb_0"),
-            ("lab_0", "lc_0"),
-            ("lab_0", "ld_0"),
-            ("m2h_0", "m4q_0"),
-            ("m2h_0", "m4p_0"),
-            ("e16_0", "e10_0"),
-            ("e16_0", "e17_0"),
-            ("e10_0", "e17_0"),
-            ("e11_0", "e10_0"),
-            ("e16_0", "e14_0"),
-            ("e18_0", "e14_0"),
-            ("e18_0", "e10_0"),
-            ("e12_0", "e10_0"),
-            ("e11_0", "e14_0"),
-            ("e12_0", "e14_0"),
-            ("e11_0", "e13_0"),
-            ("e12_0", "e13_0"),
-            ("e13_0", "e14_0"),
-            ("e11_0", "e12_0"),
+    for ligand1, ligand2 in targets:
+        key = f"{ligand1}_{ligand2}"
+
+        if pair_db.has_property_entry(key):
+            continue
+
+        logging.info("analysing %s and %s with %s", ligand1, ligand2, prefix)
+        analyse_ligand_pair(
+            ligand1=ligand1,
+            ligand2=ligand2,
+            key=key,
+            ligand_db=ligand_db,
+            pair_db=pair_db,
+            figures_dir=figures_dir,
+            prefix=prefix,
         )
-
-        for ligand1, ligand2 in targets:
-            key = f"{ligand1}_{ligand2}"
-
-            if pair_db.has_property_entry(key):
-                continue
-
-            logging.info(
-                "analysing %s and %s with %s", ligand1, ligand2, prefix
-            )
-            analyse_ligand_pair(
-                ligand1=ligand1,
-                ligand2=ligand2,
-                key=key,
-                ligand_db=ligand_db,
-                pair_db=pair_db,
-                figures_dir=figures_dir,
-                ar=ar,
-                lr=lr,
-                prefix=prefix,
-            )
 
         plot_targets_sets = {
             "expt": (
