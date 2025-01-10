@@ -675,36 +675,6 @@ def get_gvalues(result_dict: dict) -> list[float]:
     return geom_scores
 
 
-experimental_ligand_outcomes = {
-    ("e16_0", "e10_0"): {"success": True, "g": [], "1-r": []},
-    ("e16_0", "e17_0"): {"success": True, "g": [], "1-r": []},
-    ("e10_0", "e17_0"): {"success": False, "g": [], "1-r": []},
-    ("e11_0", "e10_0"): {"success": True, "g": [], "1-r": []},
-    ("e16_0", "e14_0"): {"success": True, "g": [], "1-r": []},
-    ("e18_0", "e14_0"): {"success": True, "g": [], "1-r": []},
-    ("e18_0", "e10_0"): {"success": True, "g": [], "1-r": []},
-    ("e12_0", "e10_0"): {"success": True, "g": [], "1-r": []},
-    ("e11_0", "e14_0"): {"success": True, "g": [], "1-r": []},
-    ("e12_0", "e14_0"): {"success": True, "g": [], "1-r": []},
-    ("e11_0", "e13_0"): {"success": True, "g": [], "1-r": []},
-    ("e12_0", "e13_0"): {"success": True, "g": [], "1-r": []},
-    ("e13_0", "e14_0"): {"success": False, "g": [], "1-r": []},
-    ("e11_0", "e12_0"): {"success": False, "g": [], "1-r": []},
-    ("sla_0", "sl1_0"): {"success": False, "g": [], "1-r": []},
-    ("slb_0", "sl1_0"): {"success": True, "g": [], "1-r": []},
-    ("slc_0", "sl1_0"): {"success": True, "g": [], "1-r": []},
-    ("sld_0", "sl1_0"): {"success": False, "g": [], "1-r": []},
-    ("sla_0", "sl2_0"): {"success": False, "g": [], "1-r": []},
-    ("slb_0", "sl2_0"): {"success": False, "g": [], "1-r": []},
-    ("slc_0", "sl2_0"): {"success": False, "g": [], "1-r": []},
-    ("sld_0", "sl2_0"): {"success": False, "g": [], "1-r": []},
-    ("sla_0", "sl3_0"): {"success": False, "g": [], "1-r": []},
-    ("slb_0", "sl3_0"): {"success": False, "g": [], "1-r": []},
-    ("slc_0", "sl3_0"): {"success": False, "g": [], "1-r": []},
-    ("sld_0", "sl3_0"): {"success": False, "g": [], "1-r": []},
-}
-
-
 def symmetric_plot(  # noqa: PLR0915
     pts: str,
     plot_targets: tuple[tuple[str, str], ...],
