@@ -1,29 +1,19 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Distributed under the terms of the MIT License.
-
-"""
-Script to build the ligand in this project.
-
-Author: Andrew Tarzia
-
-"""
+"""Script to build the ligand in this project."""
 
 import logging
-import sys
 import os
+import sys
+
 import stk
 import stko
 from rdkit.Chem import AllChem as rdkit
 from rdkit.Chem import Draw
-
-from env_set import liga_path, calc_path, xtb_path, figu_path
 from utilities import (
     AromaticCNCFactory,
-    update_from_rdkit_conf,
     calculate_N_centroid_N_angle,
     get_furthest_pair_FGs,
     get_xtb_energy,
+    update_from_rdkit_conf,
 )
 
 
@@ -41,8 +31,7 @@ def draw_grid(names, smiles, image_file):
 
 
 def select_conformer_xtb(molecule, name, lowe_output, calc_dir):
-    """
-    Select and optimize a conformer with desired directionality.
+    """Select and optimize a conformer with desired directionality.
 
     Currently:
         Best directionality will be defined by the smallest
@@ -163,18 +152,6 @@ def ligand_smiles():
             "CN=CC=5)=C4)=O)=C1)=CC=C2"
         ),
         # Experimental.
-        "e1": "N1C=C(C2=CC(C3C=CC=NC=3)=CC=C2)C=CC=1",
-        "e2": "C1C=CN=CC=1C#CC1C=CC=C(C#CC2C=CC=NC=2)C=1",
-        "e3": "N1=CC=C(C2=CC(C3=CC=NC=C3)=CC=C2)C=C1",
-        "e4": "C1=CC(C#CC2=CC(C#CC3=CC=NC=C3)=CC=C2)=CC=N1",
-        "e5": "C1C=NC=CC=1C1=CC=C(C2C=CN=CC=2)S1",
-        "e6": "C1N=CC=C(C2=CC=C(C3C=CN=CC=3)C=C2)C=1",
-        "e7": "C1N=CC=C(C#CC2C=CC(C#CC3=CC=NC=C3)=CC=2)C=1",
-        "e8": "C(OC)1=C(C2C=C(C3=CN=CC=C3OC)C=CC=2)C=NC=C1",
-        "e9": (
-            "C1C=C(C2C=CC(C#CC3C(C)=C(C#CC4C=CC(C5C=CN=CC=5)=CC=4)C=CC="
-            "3)=CC=2)C=CN=1"
-        ),
         "e10": (
             "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=" "C1"
         ),
@@ -187,7 +164,6 @@ def ligand_smiles():
         "e14": (
             "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)" "=C1"
         ),
-        "e15": "C1CCC(C(C1)NC(=O)C2=CC=NC=C2)NC(=O)C3=CC=NC=C3",
         "e16": (
             "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC" "=C1"
         ),
@@ -202,8 +178,9 @@ def ligand_smiles():
     }
 
 
-def main():
-    if not len(sys.argv) == 1:
+def main() -> None:
+    """Run script."""
+    if len(sys.argv) != 1:
         logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
         sys.exit()
     else:

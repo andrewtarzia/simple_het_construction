@@ -1,17 +1,9 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Distributed under the terms of the MIT License.
+"""Module for pywindow functions."""
 
-"""
-Module for pywindow functions.
-
-Author: Andrew Tarzia
-
-"""
-
+import json
 import logging
 import os
-import json
+
 import pywindow as pw
 
 
@@ -31,7 +23,7 @@ class PyWindow:
         molecule.write(xyz_file)
         if os.path.exists(json_file):
             logging.info(f"loading {json_file}")
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 results = json.load(f)
         else:
             logging.info(f"running pywindow on {self._name}:")
@@ -46,12 +38,9 @@ class PyWindow:
                     "pore_diameter_opt": (
                         mol.properties["pore_diameter_opt"]["diameter"]
                     ),
-                    "pore_volume_opt": (
-                        mol.properties["pore_volume_opt"]
-                    ),
+                    "pore_volume_opt": (mol.properties["pore_volume_opt"]),
                     "windows": tuple(
-                        i
-                        for i in mol.properties["windows"]["diameters"]
+                        i for i in mol.properties["windows"]["diameters"]
                     ),
                 }
                 mol.dump_molecule(
@@ -63,7 +52,6 @@ class PyWindow:
                 results = {
                     "pore_diameter_opt": 0,
                     "pore_volume_opt": 0,
-                    "windows": (),
                     "windows": (),
                 }
                 mol.dump_molecule(
