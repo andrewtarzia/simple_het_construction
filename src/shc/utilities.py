@@ -1,9 +1,13 @@
 """Module for utility functions."""
 
+import atomlite
 import numpy as np
 import stk
 import stko
-from rdkit.Chem import AllChem as rdkit  # noqa: N813
+from rdkit.Chem import AllChem as rdkit  # noqa: N813  # noqa: N813
+from rdkit.Chem import rdMolTransforms
+
+from shc.geometry import PairResult
 
 
 def update_from_rdkit_conf(
@@ -372,3 +376,48 @@ def get_num_alkynes(rdkit_mol: rdkit.Mol) -> int:
     )
     return len(matches)
 
+
+def to_atomlite_molecule(
+    pair: PairResult,
+    best_state: int,
+) -> atomlite.Molecule:
+    """Convert a pair result to an atomlite molecule."""
+    if best_state == 1:
+        r1 = np.array((pair.set_parameters[0], pair.set_parameters[1]))
+        phi1 = pair.set_parameters[2]
+        rigidbody1 = pair.rigidbody1
+        r2 = np.array((pair.state_1_parameters[0], pair.state_1_parameters[1]))
+        phi2 = pair.state_1_parameters[2]
+        rigidbody2 = pair.rigidbody2
+    elif best_state == 2:  # noqa: PLR2004
+        r1 = np.array((pair.set_parameters[0], pair.set_parameters[1]))
+        phi1 = pair.set_parameters[2]
+        rigidbody1 = pair.rigidbody1
+        r2 = np.array((pair.state_2_parameters[0], pair.state_2_parameters[1]))
+        phi2 = pair.state_2_parameters[2]
+        rigidbody2 = pair.rigidbody3
+
+    l_n1 = [*rigidbody1.get_n1(r1, phi1).as_list(), 0]
+    l_n2 = [*rigidbody1.get_n2(r1, phi1).as_list(), 0]
+    l_x1 = [*rigidbody1.get_x1(r1, phi1).as_list(), 0]
+    l_x2 = [*rigidbody1.get_x2(r1, phi1).as_list(), 0]
+    r_n1 = [*rigidbody2.get_n1(r2, phi2).as_list(), 0]
+    r_n2 = [*rigidbody2.get_n2(r2, phi2).as_list(), 0]
+    r_x1 = [*rigidbody2.get_x1(r2, phi2).as_list(), 0]
+    r_x2 = [*rigidbody2.get_x2(r2, phi2).as_list(), 0]
+
+    atomic_numbers = [6, 6, 1, 1, 8, 8, 1, 1]
+    atom_charges = [0] * 8
+    bonds = atomlite.Bonds = {
+        "atom1": [0, 0, 1, 4, 4, 5],
+        "atom2": [1, 2, 3, 5, 6, 7],
+        "order": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+    }
+    molecule: atomlite.Molecule = {
+        "atomic_numbers": atomic_numbers,
+        "conformers": [[l_n1, l_n2, l_x1, l_x2, r_n1, r_n2, r_x1, r_x2]],
+        "atom_charges": atom_charges,
+        "bonds": bonds,
+    }
+
+    return molecule
