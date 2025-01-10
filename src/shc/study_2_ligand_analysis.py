@@ -8,239 +8,350 @@ import time
 import atomlite
 import numpy as np
 
-from shc.definitions import EnvVariables
+from shc.definitions import EnvVariables, res_str
+from shc.matching_functions import mismatch_test
+from shc.utilities import to_atomlite_molecule
 
 
-def vector_length():
-    """Mean value of bond distance to use in candidate selection."""
-    return 2.02
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--run",
+        action="store_true",
+        help="True to run calculations of pair matching",
+    )
+    parser.add_argument(
+        "--share",
+        action="store_true",
+        help="True to output materials for sharing with collaborators",
+    )
+
+    return parser.parse_args()
 
 
-def get_test_1(large_c_dict, small_c_dict):
-    raise SystemExit("need to make sure this is pointing the right way")
-    # l_angle = (large_c_dict["NN_BCN_angles"]["NN_BCN1"] - 90) + (
-    #     large_c_dict["NN_BCN_angles"]["NN_BCN2"] - 90
-    # )
+def analyse_ligand_pair(  # noqa: PLR0915
+    ligand1_entry: atomlite.Entry,
+    ligand2_entry: atomlite.Entry,
+    pair_key: str,
+    pair_db_path: atomlite.Database,
+) -> None:
+    """Analyse a pair of ligands."""
+    pair_db = atomlite.Database(pair_db_path)
+    ligand1_confs = ligand1_entry.properties["conf_data"]
+    ligand2_confs = ligand2_entry.properties["conf_data"]
 
-    # s_angle = small_c_dict["bite_angle"]
-    # # Version 1
-    # return s_angle / l_angle
-    # # Version 2
-    # return (s_angle + l_angle) / 180
+    st = time.time()
+    num_pairs = 0
+    num_pairs_passed = 0
+    num_failed_strain = 0
+    num_failed_torsion = 0
+    cid_names = []
+    state1_scores = []
+    state2_scores = []
+    ctimes = []
+    all_scores = []
+    best_residual = float("inf")
+    best_pair = None
+    # Iterate over the product of all conformers.
+    for cid_1, cid_2 in it.product(ligand1_confs, ligand2_confs):
+        cid_name = f"{cid_1}-{cid_2}"
 
-    # Version 3.
-    # 180 - angle, to make it the angle toward the binding interaction.
-    # E.g. To become internal angle of trapezoid.
-    l_angle_1 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    l_angle_2 = 180 - large_c_dict["NN_BCN_angles"]["NN_BCN2"]
-
-    s_angle_1 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    s_angle_2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
-
-    interior_angles = l_angle_1 + l_angle_2 + s_angle_1 + s_angle_2
-    return interior_angles / 360
-
-
-def get_test_2(large_c_dict, small_c_dict, pdn_distance):
-    raise SystemExit("need to make sure this is pointing the right way")
-    sNN_dist = small_c_dict["NN_distance"]
-    lNN_dist = large_c_dict["NN_distance"]
-    # 180 - angle, to make it the angle toward the binding interaction.
-    # E.g. To become internal angle of trapezoid.
-    s_angle1 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN1"]
-    s_angle2 = 180 - small_c_dict["NN_BCN_angles"]["NN_BCN2"]
-
-    bonding_vector_length = 2 * pdn_distance
-    se1 = bonding_vector_length * np.sin(np.radians(s_angle1))
-    se2 = bonding_vector_length * np.sin(np.radians(s_angle2))
-
-    ideal_dist = sNN_dist + se1 + se2
-    return lNN_dist / ideal_dist
-
-
-def test_N_N_lengths(large_c_dict, small_c_dict):
-    large_NN_distance = large_c_dict["NN_distance"]
-    small_NN_distance = small_c_dict["NN_distance"]
-    if large_NN_distance < small_NN_distance:
-        raise ValueError(
-            f"large NN ({large_NN_distance}) < small NN "
-            f"({small_NN_distance}) distance"
+        num_pairs += 1
+        # Check strain.
+        strain1 = (
+            ligand1_confs[cid_1]["UFFEnergy;kj/mol"]
+            - ligand1_entry.properties["min_energy;kj/mol"]
         )
+        strain2 = (
+            ligand2_confs[cid_2]["UFFEnergy;kj/mol"]
+            - ligand2_entry.properties["min_energy;kj/mol"]
+        )
+        if (
+            strain1 > EnvVariables.strain_cutoff
+            or strain2 > EnvVariables.strain_cutoff
+        ):
+            num_failed_strain += 1
+            continue
+
+        # Check torsion.
+        torsion1 = abs(ligand1_confs[cid_1]["NCCN_dihedral"])
+        torsion2 = abs(ligand2_confs[cid_2]["NCCN_dihedral"])
+        if (
+            torsion1 > EnvVariables.dihedral_cutoff
+            or torsion2 > EnvVariables.dihedral_cutoff
+        ):
+            num_failed_torsion += 1
+            continue
+
+        # Calculate geom score for both sides together.
+        c_dict1 = ligand1_confs[cid_1]
+        c_dict2 = ligand2_confs[cid_2]
+
+        # Calculate final geometrical properties.
+        stc = time.time()
+        pair_results = mismatch_test(
+            c_dict1=c_dict1,
+            c_dict2=c_dict2,
+            k_angle=EnvVariables.k_angle,
+            k_bond=EnvVariables.k_bond,
+        )
+        etc = time.time()
+
+        cid_names.append(cid_name)
+        ctimes.append(float(etc - stc))
+        state1_scores.append(float(pair_results.state_1_result))
+        state2_scores.append(float(pair_results.state_2_result))
+        all_scores.append(
+            min(
+                float(pair_results.state_1_result),
+                float(pair_results.state_2_result),
+            )
+        )
+        num_pairs_passed += 1
+        # for idx in range(len(pair_results.state_1_parameters)):
+        #     pair_db.set_property(
+        # key=pair_key,# noqa: ERA001
+        # path=f"{prefix_path}.state_1_parameter.{idx}",  # noqa: ERA001
+        # property=float(pair_results.state_1_parameters[idx]),# noqa: ERA001
+        # commit=False,# noqa: ERA001
+        if float(pair_results.state_1_result) < best_residual:
+            best_state = 1
+            best_pair = pair_results
+            best_residual = min(
+                (
+                    float(pair_results.state_1_result),
+                    float(pair_results.state_2_result),
+                )
+            )
+            best_s1_cid1 = cid_1
+            best_s1_cid2 = cid_2
+
+        elif float(pair_results.state_2_result) < best_residual:
+            best_state = 2
+            best_pair = pair_results
+            best_residual = min(
+                (
+                    float(pair_results.state_1_result),
+                    float(pair_results.state_2_result),
+                )
+            )
+            best_s2_cid1 = cid_1
+            best_s2_cid2 = cid_2
+
+    ft = time.time()
+
+    if num_pairs_passed == 0:
+        logging.warning("make this smarter, need to add property entry logic")
+
+    else:
+        entry = atomlite.Entry(
+            key=pair_key,
+            molecule=to_atomlite_molecule(best_pair, best_state),
+            properties={
+                "cidnames": cid_names,
+                "ctime/s": ctimes,
+                "state_1_residuals": state1_scores,
+                "state_2_residuals": state2_scores,
+                "ligand1_key": ligand1_entry.key,
+                "ligand2_key": ligand2_entry.key,
+                "time_taken/s": float(ft - st),
+                "num_pairs": num_pairs,
+                "strain_cutoff": EnvVariables.strain_cutoff,
+                "dihedral_cutoff": EnvVariables.dihedral_cutoff,
+                "k_angle": EnvVariables.k_angle,
+                "k_bond": EnvVariables.k_bond,
+                "rmsd_threshold": EnvVariables.rmsd_threshold,
+                "num_pairs_passed": num_pairs_passed,
+                "num_failed_strain": num_failed_strain,
+                "num_failed_torsion": num_failed_torsion,
+                "mean_all": np.mean(all_scores),
+                "min_all": np.min(all_scores),
+                "mean_s1": np.mean(state1_scores),
+                "min_s1": np.min(state1_scores),
+                "mean_s2": np.mean(state1_scores),
+                "min_s2": np.min(state2_scores),
+                "best_s1_cid1": best_s1_cid1,
+                "best_s1_cid2": best_s1_cid2,
+                "best_s2_cid1": best_s2_cid1,
+                "best_s2_cid2": best_s2_cid2,
+            },
+        )
+        pair_db.add_entries(entry)
 
 
-def main() -> None:  # noqa: PLR0915
+def reanalyse_ligand_pair(
+    pair_key: str,
+    pair_db_path: atomlite.Database,
+) -> None:
+    """Analyse a pair of ligands."""
+    pair_entry = atomlite.Database(pair_db_path).get_entry(pair_key)
+
+    target_properties = [
+        "cidnames",
+        "ctime/s",
+        "state_1_residuals",
+        "state_2_residuals",
+        "ligand1_key",
+        "ligand2_key",
+        "time_taken/s",
+        "num_pairs",
+        "strain_cutoff",
+        "dihedral_cutoff",
+        "k_angle",
+        "k_bond",
+        "rmsd_threshold",
+        "num_pairs_passed",
+        "num_failed_strain",
+        "num_failed_torsion",
+        "mean_all",
+        "min_all",
+        "mean_s1",
+        "min_s1",
+        "mean_s2",
+        "min_s2",
+        "best_s1_cid1",
+        "best_s1_cid2",
+        "best_s2_cid1",
+        "best_s2_cid2",
+    ]
+    missing_properties = [
+        i for i in target_properties if i not in pair_entry.properties
+    ]
+    if len(missing_properties) == 0:
+        return
+
+    # Check if it is missing anything needed to rerun.
+    key_features = (
+        "cidnames",
+        "state_1_residuals",
+        "state_2_residuals",
+        "time_taken/s",
+        "ctime/s",
+        "num_pairs",
+        "num_pairs"
+        "num_pairs_passed"
+        "num_failed_strain"
+        "num_failed_torsion",
+    )
+    if len([i for i in missing_properties if i in key_features]) > 0:
+        msg = (
+            f"missing a necessary feature, I deleted this entry ({pair_key})"
+            f" from {pair_db_path}, please rerun"
+        )
+        atomlite.Database(pair_db_path).remove_entries(kets=pair_key)
+        raise RuntimeError(msg)
+
+    # Update those that are possible.
+    properties = pair_entry.properties
+    all_scores = []
+    state1_scores = []
+    state2_scores = []
+    best_s1_cid1 = None
+    best_s1_cid2 = None
+    best_s2_cid1 = None
+    best_s2_cid2 = None
+    best_s1_residual = float("inf")
+    best_s2_residual = float("inf")
+    for cid_pair_idx, cid_name in enumerate(properties["cidnames"]):
+        cid_1, cid_2 = cid_name.split("-")
+        s1_score = float(properties["state_1_residuals"][cid_pair_idx])
+        s2_score = float(properties["state_2_residuals"][cid_pair_idx])
+        state1_scores.append(s1_score)
+        state2_scores.append(s2_score)
+        all_scores.append(min(s1_score, s2_score))
+
+        if s1_score < best_s1_residual:
+            best_s1_cid1 = cid_1
+            best_s1_cid2 = cid_2
+            best_s1_residual = s1_score
+
+        elif s2_score < best_s2_residual:
+            best_s2_cid1 = cid_1
+            best_s2_cid2 = cid_2
+            best_s2_residual = s2_score
+
+    new_properties = {
+        "mean_all": np.mean(all_scores),
+        "min_all": np.min(all_scores),
+        "mean_s1": np.mean(state1_scores),
+        "min_s1": np.min(state1_scores),
+        "mean_s2": np.mean(state1_scores),
+        "min_s2": np.min(state2_scores),
+        "best_s1_cid1": best_s1_cid1,
+        "best_s1_cid2": best_s1_cid2,
+        "best_s2_cid1": best_s2_cid1,
+        "best_s2_cid2": best_s2_cid2,
+    }
+
+    atomlite.Database(pair_db_path).update_properties(
+        atomlite.PropertyEntry(key=pair_key, properties=new_properties)
+    )
+
+
+    )
+
+
+def main() -> None:
     """Run script."""
-    raise SystemExit("rerun build ligands to not use RMSD weirdly")
+    args = _parse_args()
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
     calculation_dir = pathlib.Path(
         "/home/atarzia/workingspace/cpl/calculations"
     )
-    figures_dir = pathlib.Path("/home/atarzia/workingspace/cpl/figures")
+    figures_dir = pathlib.Path(
+        "/home/atarzia/workingspace/cpl/figures/screening"
+    )
     ligand_dir.mkdir(exist_ok=True)
     calculation_dir.mkdir(exist_ok=True)
     figures_dir.mkdir(exist_ok=True)
+    ligand_db_path = ligand_dir / "deduped_ligands.db"
+    pair_db_path = ligand_dir / "pairs.db"
 
-    ligand_db = atomlite.Database(ligand_dir / "deduped_ligands.db")
-    pair_db = atomlite.Database(ligand_dir / "pairs.db")
+    if args.run:
+        logging.info("loading ligands...")
+        ligand_entries = list(atomlite.Database(ligand_db_path).get_entries())
 
-    raise SystemExit("do not run until `fix min energy in ligand dbs` done")
+        # Shuffle the list.
+        rng = np.random.default_rng(seed=267)
+        rng.shuffle(ligand_entries)
 
-    # Define minimum energies for all ligands.
-    logging.info("remove this, I think")
-    low_energy_values = {}
-    for entry in ligand_db.get_entries():
-        sres = entry.properties["conf_data"]
-        min_energy = 1e24
-        min_e_cid = 0
-        for cid in sres:
-            energy = sres[cid]["UFFEnergy;kj/mol"]
-            if energy < min_energy:
-                min_energy = energy
-                min_e_cid = cid
-        print(min_energy, entry.properties["min_energy;kj/mol"])
-        low_energy_values[entry.key] = (min_e_cid, min_energy)
-    print(low_energy_values)
+        logging.info(
+            "iterating, but with random choice, one day make systematic"
+        )
 
-    raise SystemExit("are they the same?")
+        target_count = 500
+        for _ in range(target_count):
+            ligand1_entry, ligand2_entry = rng.choice(ligand_entries, size=2)
 
-    for ligand1, ligand2 in it.combinations(ligands, 2):
-        logging.info(f"analysing {ligand1} and {ligand2}")
-        key = f"{ligand1}_{ligand2}"
-        print(key)
-        if pair_db.has_property_entry(key):
-            continue
+            ligand1, ligand2 = sorted((ligand1_entry.key, ligand2_entry.key))
+            pair_key = f"{ligand1}_{ligand2}"
 
-        ligand1_entry = ligand_db.get_entry(ligand1)
-        ligand1_confs = ligand1_entry["conf_data"]
-        ligand2_entry = ligand_db.get_entry(ligand2)
-        ligand2_confs = ligand2_entry["conf_data"]
-        st = time.time()
-        num_pairs = 0
-        min_geom_score = 1e24
-        print(len(ligand1_confs), len(ligand2_confs))
-        pair_data = {}
-        raise SystemExit
-        # Iterate over the product of all conformers.
-        for cid_1, cid_2 in it.product(ligand1_confs, ligand2_confs):
-            cid_name = f"{cid_1}-{cid_2}"
+            if ligand1 == ligand2:
+                continue
+            if atomlite.Database(pair_db_path).has_entry(pair_key):
+                reanalyse_ligand_pair(
+                    pair_key=pair_key,
+                    pair_db_path=pair_db_path,
+                )
 
-            # Check strain.
-            strain1 = (
-                ligand1_confs[cid_1]["UFFEnergy;kj/mol"]
-                - ligand1_entry["min_energy;kj/mol"]
-            )
-            strain2 = (
-                ligand2_confs[cid_2]["UFFEnergy;kj/mol"]
-                - ligand1_entry["min_energy;kj/mol"]
-            )
-            if (
-                strain1 > EnvVariables.strain_cutoff
-                or strain2 > EnvVariables.strain_cutoff
-            ):
+            if atomlite.Database(pair_db_path).has_property_entry(pair_key):
                 continue
 
-            print(strain1, strain2)
-            # Calculate geom score for both sides together.
-            c_dict1 = ligand1_confs[cid_1]
-            c_dict2 = ligand2_confs[cid_2]
-            print(c_dict1, c_dict2)
-
             logging.info(
-                "should I pick large and small, or just define the alg so it does not matter?"
+                "(%s/%s) analysing %s and %s",
+                _,
+                target_count,
+                ligand1,
+                ligand2,
             )
 
-            raise SystemExit
-
-            # Calculate final geometrical properties.
-            # T1.
-            angle_dev = get_test_1(
-                large_c_dict=large_c_dict,
-                small_c_dict=small_c_dict,
+            analyse_ligand_pair(
+                ligand1_entry=ligand1_entry,
+                ligand2_entry=ligand2_entry,
+                pair_key=pair_key,
+                pair_db_path=pair_db_path,
             )
-            # T2.
-            length_dev = get_test_2(
-                large_c_dict=large_c_dict,
-                small_c_dict=small_c_dict,
-                pdn_distance=vector_length(),
-            )
-            geom_score = abs(angle_dev - 1) + abs(length_dev - 1)
-
-            min_geom_score = min((geom_score, min_geom_score))
-            pair_data[cid_name] = {
-                "geom_score": geom_score,
-                "large_key": large_key,
-                "small_key": small_key,
-                "large_dihedral": large_c_dict["NCCN_dihedral"],
-                "small_dihedral": small_c_dict["NCCN_dihedral"],
-                "angle_deviation": angle_dev,
-                "length_deviation": length_dev,
-                "large_dict": large_c_dict,
-                "small_dict": small_c_dict,
-            }
-            num_pairs += 1
-        logging.info("need to handle the two different isomers of matching")
-        print("t", pair_db.has_property_entry(key))
-        entry = atomlite.PropertyEntry(
-            key=key,
-            properties={"pair_data": pair_data},
-        )
-        pair_db.update_entries(entries=entry)
-        print("t2", pair_db.has_property_entry(key))
-        ft = time.time()
-        logging.info(
-            f"time taken for pairing {ligand1}, {ligand2}: "
-            f"{round(1000*(ft-st), 2)}ms "
-            f"({round(1000*(ft-st)/num_pairs)}ms"
-            f" per pair) - {num_pairs} pairs"
-        )
-        raise SystemExit
-
-    # Figure in manuscript.
-    plotting.gs_table(results_dict=pair_info, dihedral_cutoff=dihedral_cutoff)
-
-    # Figure in manuscript.
-    plotting.plot_all_ligand_pairings_simplified(
-        results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
-        outname=f"{figure_prefix}_all_lp_simpl.pdf",
-    )
-    plotting.plot_all_ligand_pairings(
-        results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
-        outname=f"{figure_prefix}_all_lp.png",
-    )
-    plotting.plot_all_ligand_pairings_2dhist(
-        results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
-        outname=f"{figure_prefix}_all_lp_2dhist.png",
-    )
-    plotting.plot_all_ligand_pairings_2dhist_fig5(
-        results_dict=pair_info,
-        dihedral_cutoff=dihedral_cutoff,
-        outname=f"{figure_prefix}_all_lp_2dhist_fig5.pdf",
-    )
-
-    # Figures in SI.
-    plotting.plot_all_geom_scores_simplified(
-        results_dict=pair_info,
-        outname=f"{figure_prefix}_all_pairs_simpl.png",
-        dihedral_cutoff=dihedral_cutoff,
-        experimental_ligand_outcomes=experimental_ligand_outcomes,
-    )
-    plotting.plot_all_ligand_pairings_conformers(
-        results_dict=pair_info,
-        structure_results=structure_results,
-        dihedral_cutoff=dihedral_cutoff,
-        outname=f"{figure_prefix}_all_lp_conformers.pdf",
-    )
-
-    # Figures not in SI.
-    for pair_name in pair_info:
-        small_l, large_l = pair_name.split(",")
-        plotting.plot_ligand_pairing(
-            results_dict=pair_info[pair_name],
-            dihedral_cutoff=dihedral_cutoff,
-            outname=f"{figure_prefix}_lp_{small_l}_{large_l}.png",
         )
 
 
