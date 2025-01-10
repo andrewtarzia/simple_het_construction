@@ -725,6 +725,7 @@ def to_chemiscope(
     shape_string = ",".join(shape_dict.keys())
 
     properties = {
+        "key": dataframe["key"].to_list(),
         "mean_s1": dataframe["$.mean_s1"].to_list(),
         "mean_s2": dataframe["$.mean_s2"].to_list(),
         "min_s1": dataframe["$.min_s1"].to_list(),
@@ -758,6 +759,7 @@ def to_cg_chemiscope(
     """Make plot."""
     structures = []
     properties = {
+        "key": [],
         "mean_s1": [],
         "mean_s2": [],
         "min_s1": [],
@@ -790,6 +792,7 @@ def to_cg_chemiscope(
         properties["mean_s2"].append(entry.properties["mean_s2"])
         properties["min_s1"].append(entry.properties["min_s1"])
         properties["min_s2"].append(entry.properties["min_s2"])
+        properties["key"].append(entry.key)
 
     shape_dict = chemiscope.convert_stk_bonds_as_shapes(
         frames=structures,
