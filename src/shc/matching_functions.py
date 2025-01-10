@@ -35,71 +35,70 @@ def angle_test(
 def mismatch_test(
     c_dict1: dict[str, float | tuple],
     c_dict2: dict[str, float | tuple],
-    angle_divider: float,
-    length_divider: float,
+    k_bond: float,
+    k_angle: float,
 ) -> PairResult:
     """Test mismatch."""
     rigidbody1 = LhsRigidBody(
         nn_length=c_dict1["NN_distance"],
         theta1=c_dict1["NN_BCN_angles"][0],
         theta2=c_dict1["NN_BCN_angles"][1],
-        vector_length=vector_length,
+        vector_length=MatchingSettings.vector_length,
     )
 
     rigidbody2 = RhsRigidBody(
         nn_length=c_dict2["NN_distance"],
         theta1=c_dict2["NN_BCN_angles"][0],
         theta2=c_dict2["NN_BCN_angles"][1],
-        vector_length=vector_length,
+        vector_length=MatchingSettings.vector_length,
     )
 
     rigidbody3 = RhsRigidBody(
         nn_length=c_dict2["NN_distance"],
         theta1=c_dict2["NN_BCN_angles"][1],
         theta2=c_dict2["NN_BCN_angles"][0],
-        vector_length=vector_length,
+        vector_length=MatchingSettings.vector_length,
     )
-
-    set_state = [-4, 0, 0]
 
     # Opt state 1.
     def f(params: abc.Sequence[float]) -> float:
-        r1x, r1y, phi1 = set_state
+        r1x, r1y, phi1 = MatchingSettings.set_state
         r2x, r2y, phi2 = params
-        return Pair(
-            lhs=rigidbody1,
-            rhs=rigidbody2,
-            angle_divider=angle_divider,
-            length_divider=length_divider,
-        ).calculate_residual(
+        return Pair(lhs=rigidbody1, rhs=rigidbody2).calculate_residual(
             r1=np.array((r1x, r1y)),
             phi1=phi1,
             r2=np.array((r2x, r2y)),
             phi2=phi2,
+            k_bond=k_bond,
+            k_angle=k_angle,
         )
 
-    initial_guesses = ([0, 0, 20], [0, 0, -20])  # , [0, 0, 0], )
     state_1_results = []
     state_1_sets = []
-    for initial_guess in initial_guesses:
+    for initial_guess in MatchingSettings.initial_guesses:
         result = optimize.minimize(
             f,
             initial_guess,
-            bounds=((-5, 10), (-10, 0), (-45, 45)),
+            method=MatchingSettings.method,
+            bounds=MatchingSettings.bounds,
+            # options={"gtol": 1e-10},  # noqa: ERA001
+            # options={"disp": True},  # noqa: ERA001
         )
 
         state_1_sets.append(result.x)
         state_1_results.append(
-            Pair(
-                lhs=rigidbody1,
-                rhs=rigidbody2,
-                angle_divider=angle_divider,
-                length_divider=length_divider,
-            ).calculate_residual(
-                r1=np.array((set_state[0], set_state[1])),
-                phi1=set_state[2],
+            Pair(lhs=rigidbody1, rhs=rigidbody2).calculate_residual(
+                r1=np.array(
+                    (
+                        MatchingSettings.set_state[0],
+                        MatchingSettings.set_state[1],
+                    )
+                ),
+                phi1=MatchingSettings.set_state[2],
                 r2=np.array((result.x[0], result.x[1])),
                 phi2=result.x[2],
+                k_bond=k_bond,
+                k_angle=k_angle,
             )
         )
 
@@ -108,47 +107,49 @@ def mismatch_test(
 
     # Opt state 2.
     def f(params: abc.Sequence[float]) -> float:
-        r1x, r1y, phi1 = set_state
+        r1x, r1y, phi1 = MatchingSettings.set_state
         r2x, r2y, phi2 = params
-        return Pair(
-            lhs=rigidbody1,
-            rhs=rigidbody3,
-            angle_divider=angle_divider,
-            length_divider=length_divider,
-        ).calculate_residual(
+        return Pair(lhs=rigidbody1, rhs=rigidbody3).calculate_residual(
             r1=np.array((r1x, r1y)),
             phi1=phi1,
             r2=np.array((r2x, r2y)),
             phi2=phi2,
+            k_bond=k_bond,
+            k_angle=k_angle,
         )
 
     state_2_results = []
     state_2_sets = []
-    for initial_guess in initial_guesses:
+    for initial_guess in MatchingSettings.initial_guesses:
         result = optimize.minimize(
             f,
             initial_guess,
-            bounds=((-5, 10), (-10, 0), (-45, 45)),
+            method=MatchingSettings.method,
+            bounds=MatchingSettings.bounds,
+            # options={"gtol": 1e-10},  # noqa: ERA001
+            # options={"disp": True},  # noqa: ERA001
         )
 
         state_2_sets.append(result.x)
         state_2_results.append(
-            Pair(
-                lhs=rigidbody1,
-                rhs=rigidbody3,
-                angle_divider=angle_divider,
-                length_divider=length_divider,
-            ).calculate_residual(
-                r1=np.array((set_state[0], set_state[1])),
-                phi1=set_state[2],
+            Pair(lhs=rigidbody1, rhs=rigidbody3).calculate_residual(
+                r1=np.array(
+                    (
+                        MatchingSettings.set_state[0],
+                        MatchingSettings.set_state[1],
+                    )
+                ),
+                phi1=MatchingSettings.set_state[2],
                 r2=np.array((result.x[0], result.x[1])),
                 phi2=result.x[2],
+                k_bond=k_bond,
+                k_angle=k_angle,
             )
         )
 
     state_2_result = min(state_2_results)
-    state_2_parameters = state_2_sets[state_2_results.index(state_2_result)]
 
+    state_2_parameters = state_2_sets[state_2_results.index(state_2_result)]
     return PairResult(
         rigidbody1=rigidbody1,
         rigidbody2=rigidbody2,
@@ -157,7 +158,7 @@ def mismatch_test(
         state_2_result=state_2_result,
         state_1_parameters=state_1_parameters,
         state_2_parameters=state_2_parameters,
-        set_parameters=set_state,
+        set_parameters=MatchingSettings.set_state,
     )
 
 
