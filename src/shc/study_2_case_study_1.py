@@ -14,18 +14,29 @@ import stk
 import stko
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
-from rdkit.Chem import AllChem as rdkit  # noqa: N813
-from rdkit.Chem import rdMolDescriptors, rdmolops, rdMolTransforms
+from rdkit.Chem import rdMolDescriptors, rdmolops
 from scipy.stats import linregress
 
-from shc.definitions import EnvVariables, Study1EnvVariables
+from shc.definitions import (
+    EnvVariables,
+    Study1EnvVariables,
+    experimental_ligand_outcomes,
+    mean_res1_str,
+    mean_res2_str,
+    mean_res_str,
+    res_str,
+)
 from shc.matching_functions import (
     angle_test,
     mismatch_test,
     plot_pair_position,
 )
 from shc.study_2_build_ligands import explore_ligand
+from shc.utilities import get_amide_torsions, get_num_alkynes
 from shc.visualise_scoring_function import scoring_function
+
+xmin = 0
+xmax = 50
 
 
 def _parse_args() -> argparse.Namespace:
@@ -511,30 +522,42 @@ def plot_flexes(
     plt.close()
 
 
-def unsymmetric_plot(
-    pts: str,
-    plot_targets: tuple[tuple[str, str], ...],
+def unsymmetric_plot(  # noqa: PLR0915
     pair_db: atomlite.Database,
     figures_dir: pathlib.Path,
     prefix: str,
 ) -> None:
     """Make plot."""
     fig, axs = plt.subplots(ncols=3, figsize=(16, 5))
+
+    targets = (
+        ("lab_0", "la_0"),
+        ("lab_0", "lb_0"),
+        ("lab_0", "lc_0"),
+        ("lab_0", "ld_0"),
+        ("m2h_0", "m4q_0"),
+        ("m2h_0", "m4p_0"),
+    )
     ax, ax1, ax2 = axs
-    steps = range(len(plot_targets) - 1, -1, -1)
-    for i, (ligand1, ligand2) in zip(steps, plot_targets, strict=False):
+    steps = range(len(targets) - 1, -1, -1)
+    for i, (ligand1, ligand2) in zip(steps, targets, strict=False):
         key = f"{ligand1}_{ligand2}"
         entry = pair_db.get_property_entry(key)
 
+        if entry is None:
+            continue
+
+        works = experimental_ligand_outcomes[(ligand1, ligand2)]["success"]
+        col = "tab:blue" if works else "tab:orange"
         xdata = [
             entry.properties["pair_data"][i]["state_1_residual"]
             for i in entry.properties["pair_data"]
         ]
-        xmin = 0
-        xmax = 15
-        xwidth = 0.5
+
+        xwidth = 1
         xbins = np.arange(xmin - xwidth, xmax + xwidth, xwidth)
         ystep = 1
+
         ax.hist(
             x=xdata,
             bins=xbins,
@@ -545,6 +568,7 @@ def unsymmetric_plot(
             linewidth=1.0,
             alpha=1.0,
             edgecolor="k",
+            facecolor=col,
             label=f"{entry.key}",
         )
         ax.plot(
@@ -553,16 +577,17 @@ def unsymmetric_plot(
             alpha=1.0,
             c="k",
         )
+        ax.text(x=6, y=i * ystep, s=key, fontsize=16)
 
         xdata = [
             entry.properties["pair_data"][i]["state_2_residual"]
             for i in entry.properties["pair_data"]
         ]
-        xmin = 0
-        xmax = 15
-        xwidth = 0.5
+
+        xwidth = 1
         xbins = np.arange(xmin - xwidth, xmax + xwidth, xwidth)
         ystep = 1
+
         ax1.hist(
             x=xdata,
             bins=xbins,
@@ -573,6 +598,7 @@ def unsymmetric_plot(
             linewidth=1.0,
             alpha=1.0,
             edgecolor="k",
+            facecolor=col,
             label=f"{entry.key}",
         )
         ax1.plot(
@@ -587,10 +613,10 @@ def unsymmetric_plot(
             - entry.properties["pair_data"][i]["state_2_residual"]
             for i in entry.properties["pair_data"]
         ]
-        xmin = -1
-        xmax = 1
-        xwidth = 0.05
-        xbins = np.arange(xmin - xwidth, xmax + xwidth, xwidth)
+        o_length = len(xdata)
+
+        xwidth = 0.1
+        xbins = np.arange(-10 - xwidth, 10 + xwidth, xwidth)
         ystep = 10
         ax2.hist(
             x=xdata,
@@ -598,18 +624,29 @@ def unsymmetric_plot(
             density=True,
             bottom=i * ystep,
             histtype="stepfilled",
+            facecolor="none",
             stacked=True,
             linewidth=1.0,
             alpha=1.0,
-            edgecolor="k",
+            edgecolor="none",
             label=f"{entry.key}",
         )
-        ax2.plot(
-            (np.mean(xdata), np.mean(xdata)),
-            ((i + 1) * ystep, i * ystep),
-            alpha=1.0,
-            c="k",
-        )
+        xdata = [i for i in xdata if abs(i) > 0.02]  # noqa: PLR2004
+        logging.info("count of different: %s of %s", len(xdata), o_length)
+        if len(xdata) > 0:
+            ax2.hist(
+                x=xdata,
+                bins=xbins,
+                density=True,
+                bottom=i * ystep,
+                histtype="stepfilled",
+                stacked=True,
+                linewidth=1.0,
+                alpha=1.0,
+                edgecolor="k",
+                facecolor=col,
+                zorder=-2,
+            )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.set_xlabel("1-residuals", fontsize=16)
@@ -626,11 +663,11 @@ def unsymmetric_plot(
     ax2.set_xlabel("delta-residuals", fontsize=16)
     ax2.set_yticks([])
     ax2.set_ylim(0, (steps[0] + 1.5) * 10)
-    ax2.legend(fontsize=16)
+    ax2.axvline(x=0, c="k")
 
     fig.tight_layout()
     fig.savefig(
-        figures_dir / f"cs1_residuals_{pts}_{prefix}.png",
+        figures_dir / f"cs1_residuals_unsymm_{prefix}.png",
         dpi=360,
         bbox_inches="tight",
     )
@@ -678,8 +715,7 @@ def get_gvalues(result_dict: dict) -> list[float]:
 
 
 def symmetric_plot(  # noqa: PLR0915
-    pts: str,
-    plot_targets: tuple[tuple[str, str], ...],
+    targets: tuple[tuple[str, str], ...],
     pair_db: atomlite.Database,
     figures_dir: pathlib.Path,
     prefix: str,
@@ -692,13 +728,23 @@ def symmetric_plot(  # noqa: PLR0915
     with study1_pair_file.open("r") as f:
         pair_info = json.load(f)
 
+    skips = (
+        ("lab_0", "la_0"),
+        ("lab_0", "lb_0"),
+        ("lab_0", "lc_0"),
+        ("lab_0", "ld_0"),
+        ("m2h_0", "m4q_0"),
+        ("m2h_0", "m4p_0"),
+    )
+    targets = [i for i in targets if i not in skips]
+
     fig, axs = plt.subplots(ncols=3, figsize=(16, 5))
     ax, ax1, ax2 = axs
     twinax = ax2.twinx()
-    steps = range(len(plot_targets) - 1, -1, -1)
+    steps = range(len(targets) - 1, -1, -1)
     xnames = {}
     ax1_pts = []
-    for i, (ligand1, ligand2) in zip(steps, plot_targets, strict=False):
+    for i, (ligand1, ligand2) in zip(steps, targets, strict=False):
         key = f"{ligand1}_{ligand2}"
         study1_key = get_study1_key(
             ligand1=ligand1, ligand2=ligand2, pair_info=pair_info
@@ -711,10 +757,9 @@ def symmetric_plot(  # noqa: PLR0915
             entry.properties["pair_data"][i]["state_1_residual"]
             for i in entry.properties["pair_data"]
         ]
+
         gvalues = get_gvalues(pair_info[study1_key])
-        xmin = 0
-        xmax = 15
-        xwidth = 0.5
+        xwidth = 1
         xbins = np.arange(xmin - xwidth, xmax + xwidth, xwidth)
         ystep = 1
         ax.hist(
@@ -729,6 +774,7 @@ def symmetric_plot(  # noqa: PLR0915
             edgecolor="k",
             label=f"{entry.key}",
         )
+        ax.text(x=13, y=i * ystep, s=entry.key, fontsize=8)
         ax.plot(
             (np.mean(xdata), np.mean(xdata)),
             ((i + 1) * ystep, i * ystep),
@@ -786,12 +832,12 @@ def symmetric_plot(  # noqa: PLR0915
     x = np.asarray(ax1_pts)[:, 0]
     y = np.asarray(ax1_pts)[:, 1]
     slope, intercept, r_value, p_value, std_err = linregress(x, y)
-    ax1.plot((0, 30), (intercept, slope * 30 + intercept), c="k")
+    ax1.plot((xmin, xmax), (intercept, slope * xmax + intercept), c="k")
 
     ax1.tick_params(axis="both", which="major", labelsize=16)
-    ax1.set_xlabel("mean 1-residuals", fontsize=16)
+    ax1.set_xlabel(mean_res_str, fontsize=16)
     ax1.set_ylabel(r"$g_{\mathrm{avg}}$ study 1", fontsize=16)
-    ax1.set_xlim(0, 30)
+    ax1.set_xlim(xmin, xmax)
     ax1.set_ylim(0, 1)
     legend_elements = [
         Line2D(
@@ -831,7 +877,7 @@ def symmetric_plot(  # noqa: PLR0915
         axis="both", which="major", labelsize=16, labelcolor="tab:cyan"
     )
     ax2.set_ylabel("1-residuals", fontsize=16, color="tab:cyan")
-    ax2.set_ylim(0, 30)
+    ax2.set_ylim(xmin, xmax)
     ax2.set_xticks(list(xnames.values()))
     ax2.set_xticklabels(list(xnames), color="k", rotation=90)
 
@@ -844,16 +890,9 @@ def symmetric_plot(  # noqa: PLR0915
     for xn in list(xnames.keys())[:-1]:
         ax2.axvline(x=xnames[xn] + 0.5, c="gray")
 
-    if pts == "expt":
-        ax.legend(ncols=2, fontsize=16)
-    elif pts == "all":
-        pass
-    else:
-        ax.legend(fontsize=16)
-
     fig.tight_layout()
     fig.savefig(
-        figures_dir / f"cs1_residuals_{pts}_{prefix}.png",
+        figures_dir / f"cs1_residuals_symm_{prefix}.png",
         dpi=360,
         bbox_inches="tight",
     )
@@ -861,8 +900,7 @@ def symmetric_plot(  # noqa: PLR0915
 
 
 def remake_plot(
-    pts: str,
-    plot_targets: tuple[tuple[str, str], ...],
+    targets: tuple[tuple[str, str], ...],
     pair_db: atomlite.Database,
     figures_dir: pathlib.Path,
     prefix: str,
@@ -875,14 +913,22 @@ def remake_plot(
     with study1_pair_file.open("r") as f:
         pair_info = json.load(f)
 
-    if pts in ("expt", "all"):
-        fig, axs = plt.subplots(nrows=2, figsize=(16, 10))
-    else:
-        fig, axs = plt.subplots(nrows=2, figsize=(8, 10))
+    skips = (
+        ("lab_0", "la_0"),
+        ("lab_0", "lb_0"),
+        ("lab_0", "lc_0"),
+        ("lab_0", "ld_0"),
+        ("m2h_0", "m4q_0"),
+        ("m2h_0", "m4p_0"),
+    )
+    targets = [i for i in targets if i not in skips]
+    fig, axs = plt.subplots(nrows=2, figsize=(16, 10))
 
     ax1, ax2 = axs
     xnames = {}
-    for x, (ligand1, ligand2) in enumerate(plot_targets):
+    max_g_works = 0
+    max_r_works = 0
+    for x, (ligand1, ligand2) in enumerate(targets):
         key = f"{ligand1}_{ligand2}"
         study1_key = get_study1_key(
             ligand1=ligand1, ligand2=ligand2, pair_info=pair_info
@@ -897,14 +943,12 @@ def remake_plot(
 
         xnames[key] = x
 
-        if not experimental_ligand_outcomes[(ligand1, ligand2)]["success"]:
-            col = "tab:orange"
-        else:
+        if experimental_ligand_outcomes[(ligand1, ligand2)]["success"]:
             col = "tab:blue"
-        if (ligand1, ligand2) == ("sla_0", "sl1_0"):
-            min_fails = np.mean(xdata)
-        if (ligand1, ligand2) == ("slc_0", "sl1_0"):
-            max_works = np.mean(xdata)
+            max_g_works = max((max_g_works, np.mean(gvalues)))
+            max_r_works = max((max_r_works, np.mean(xdata)))
+        else:
+            col = "tab:orange"
 
         p = ax1.bar(
             x,
@@ -940,35 +984,22 @@ def remake_plot(
             fmt="%.2f",
         )
 
-    if pts == "all":
-        ax1.axvline(x=13.5, c="k")
-        ax1.axhspan(
-            ymin=max_works,
-            ymax=min_fails,
-            facecolor="gray",
-            alpha=0.3,
-            zorder=-1,
-        )
-
-        ax2.axvline(x=13.5, c="k")
-        ax2.axhspan(
-            ymin=0.35,
-            ymax=0.54,
-            facecolor="gray",
-            alpha=0.3,
-            zorder=-1,
-        )
+    ax1.axvline(x=11.5, c="k")
+    ax1.axhline(y=max_r_works, c="k")
+    ax2.axvline(x=11.5, c="k")
+    ax2.axhline(y=max_g_works, c="k")
+    logging.info("measured r works for confidence: %s", max_r_works)
 
     ax1.tick_params(axis="both", which="major", labelsize=16)
-    ax1.set_ylabel("mean 1-residuals", fontsize=16)
-    ax1.set_ylim(0, 30)
+    ax1.set_ylabel(mean_res_str, fontsize=16)
+    ax1.set_ylim(xmin, xmax)
 
     ax1.set_xticks(list(xnames.values()))
     ax1.set_xticklabels([])
 
     ax2.tick_params(axis="both", which="major", labelsize=16)
     ax2.set_ylabel(r"$g_{\mathrm{avg}}$ study 1", fontsize=16)
-    ax2.set_ylim(0, 1.1)
+    ax2.set_ylim(0, 1.2)
 
     ax2.set_xticks(list(xnames.values()))
     ax2.set_xticklabels(list(xnames), color="k", rotation=90)
@@ -985,16 +1016,15 @@ def remake_plot(
 
     fig.tight_layout()
     fig.savefig(
-        figures_dir / f"cs1_remake_{pts}_{prefix}.png",
+        figures_dir / f"cs1_remake_{prefix}.png",
         dpi=360,
         bbox_inches="tight",
     )
     plt.close()
 
 
-def confidence_plot(  # noqa: C901, PLR0915, PLR0912
-    pts: str,
-    plot_targets: tuple[tuple[str, str], ...],
+def confidence_plot(  # noqa: PLR0915, PLR0912, C901
+    targets: tuple[tuple[str, str], ...],
     pair_db: atomlite.Database,
     figures_dir: pathlib.Path,
     prefix: str,
@@ -1007,6 +1037,16 @@ def confidence_plot(  # noqa: C901, PLR0915, PLR0912
     with study1_pair_file.open("r") as f:
         pair_info = json.load(f)
 
+    skips = (
+        ("lab_0", "la_0"),
+        ("lab_0", "lb_0"),
+        ("lab_0", "lc_0"),
+        ("lab_0", "ld_0"),
+        ("m2h_0", "m4q_0"),
+        ("m2h_0", "m4p_0"),
+    )
+    targets = [i for i in targets if i not in skips]
+
     fig, ((ax, axc), (axf1, axf2)) = plt.subplots(
         ncols=2,
         nrows=2,
@@ -1015,7 +1055,7 @@ def confidence_plot(  # noqa: C901, PLR0915, PLR0912
     xys = []
     max_g_works = 0
     max_r_works = 0
-    for ligand1, ligand2 in plot_targets:
+    for ligand1, ligand2 in targets:
         key = f"{ligand1}_{ligand2}"
         study1_key = get_study1_key(
             ligand1=ligand1, ligand2=ligand2, pair_info=pair_info
@@ -1035,12 +1075,11 @@ def confidence_plot(  # noqa: C901, PLR0915, PLR0912
         else:
             col = "tab:orange"
 
-        if (ligand1, ligand2) == ("sla_0", "sl1_0"):
-            min_fails = np.mean(xdata)
-        if (ligand1, ligand2) == ("slc_0", "sl1_0"):
-            max_works = np.mean(xdata)
+        xys.append((np.mean(gvalues), np.mean(xdata), col, key))
 
-        xys.append((np.mean(gvalues), np.mean(xdata), col))
+    if max_r_works != EnvVariables.found_max_r_works:
+        msg = "new found_max_r_works!"
+        raise RuntimeError(msg)
 
     ax.scatter(
         [i[0] for i in xys],
@@ -1050,24 +1089,26 @@ def confidence_plot(  # noqa: C901, PLR0915, PLR0912
         ec="k",
     )
 
-    mid_gval = 0.54 - (0.54 - 0.35) / 2
-    mid_gval = max_g_works
-    gbeta = 10
-    axf2.axvline(x=mid_gval, c="k")
-    mid_1r = min_fails - (min_fails - max_works) / 2
-    mid_1r = max_r_works
-    rbeta = 2
-    axf1.axvline(x=mid_1r, c="k")
-    # axc.scatter(
-    #     [1 if i[0] < mid_gval else 1 - abs(i[0] - mid_gval) for i in xys],
-    #     [1 if i[1] < mid_1r else 1 - abs(i[1] - mid_1r) for i in xys],
-    #     c=[i[2] for i in xys],
-    #     s=120,
-    #     ec="k",
-    # )
+    axf2.axvline(x=max_g_works, c="k")
+    axf1.axvline(x=max_r_works, c="k")
+
     axc.scatter(
-        [scoring_function(x=i[0], target=mid_gval, beta=gbeta) for i in xys],
-        [scoring_function(x=i[1], target=mid_1r, beta=rbeta) for i in xys],
+        [
+            scoring_function(
+                x=i[0],
+                target=max_g_works,
+                beta=EnvVariables.gbeta,
+            )
+            for i in xys
+        ],
+        [
+            scoring_function(
+                x=i[1],
+                target=max_r_works,
+                beta=EnvVariables.rbeta,
+            )
+            for i in xys
+        ],
         c=[i[2] for i in xys],
         s=120,
         ec="k",
@@ -1075,7 +1116,14 @@ def confidence_plot(  # noqa: C901, PLR0915, PLR0912
 
     axf1.scatter(
         [i[1] for i in xys],
-        [scoring_function(x=i[1], target=mid_1r, beta=rbeta) for i in xys],
+        [
+            scoring_function(
+                x=i[1],
+                target=max_r_works,
+                beta=EnvVariables.rbeta,
+            )
+            for i in xys
+        ],
         c=[i[2] for i in xys],
         s=120,
         ec="k",
@@ -1083,50 +1131,71 @@ def confidence_plot(  # noqa: C901, PLR0915, PLR0912
 
     axf2.scatter(
         [i[0] for i in xys],
-        [scoring_function(x=i[0], target=mid_gval, beta=gbeta) for i in xys],
+        [
+            scoring_function(
+                x=i[0],
+                target=max_g_works,
+                beta=EnvVariables.gbeta,
+            )
+            for i in xys
+        ],
         c=[i[2] for i in xys],
         s=120,
         ec="k",
     )
 
-    if pts == "all":
-        ax.axhspan(
-            ymin=max_works,
-            ymax=min_fails,
-            facecolor="gray",
-            alpha=0.3,
-            zorder=-1,
-        )
-        ax.axhline(
-            y=mid_1r,
-            c="k",
-            alpha=0.5,
-            zorder=0,
-        )
+    ax.axhline(
+        y=max_r_works,
+        c="k",
+        alpha=0.5,
+        zorder=0,
+    )
 
-        ax.axvspan(
-            xmin=0.35,
-            xmax=0.54,
-            facecolor="gray",
-            alpha=0.3,
-            zorder=-1,
-        )
-        ax.axvline(
-            x=mid_gval,
-            c="k",
-            alpha=0.5,
-            zorder=0,
-        )
+    ax.axvline(
+        x=max_g_works,
+        c="k",
+        alpha=0.5,
+        zorder=0,
+    )
 
     true_positives = [0, 0]
     false_positives = [0, 0]
     true_negatives = [0, 0]
     false_negatives = [0, 0]
     for xyc in xys:
-        gv, rv, c = xyc
-        confidence_g = scoring_function(x=gv, target=mid_gval, beta=gbeta)
-        confidence_r = scoring_function(x=rv, target=mid_1r, beta=rbeta)
+        gv, rv, c, key = xyc
+        confidence_g = scoring_function(
+            x=gv,
+            target=max_g_works,
+            beta=EnvVariables.gbeta,
+        )
+        confidence_r = scoring_function(
+            x=rv,
+            target=max_r_works,
+            beta=EnvVariables.rbeta,
+        )
         if c == "tab:orange":
+            # Want to add to a plot those that are orange but have at least one
+            # high confidence.
+            if confidence_g > 0.5 or confidence_r > 0.5:  # noqa: PLR2004
+                offset = 20
+                bbox = {"boxstyle": "round", "fc": "1.0"}
+                arrowprops = {
+                    "arrowstyle": "->",
+                    "connectionstyle": "angle,angleA=0,angleB=90,rad=10",
+                }
+                axc.annotate(
+                    text=key,
+                    xy=(confidence_g, confidence_r),
+                    xycoords="data",
+                    xytext=(-0.5 * offset, -offset),
+                    textcoords="offset points",
+                    bbox=bbox,
+                    arrowprops=arrowprops,
+                    color="k",
+                    fontsize=8,
+                )
+
             # Fail.
             if confidence_g < 0.5:  # noqa: PLR2004
                 # TN.
@@ -1169,23 +1238,29 @@ def confidence_plot(  # noqa: C901, PLR0915, PLR0912
     )
 
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_ylabel("mean 1-residuals", fontsize=16)
+    ax.set_ylabel(mean_res_str, fontsize=16)
     ax.set_ylim(0, 30)
     ax.set_xlabel(r"$g_{\mathrm{avg}}$ study 1", fontsize=16)
     ax.set_xlim(0, 1.1)
 
     axc.tick_params(axis="both", which="major", labelsize=16)
-    axc.set_ylabel("$c$ 1-residuals", fontsize=16)
+    axc.set_ylabel(f"$c$ {mean_res_str}", fontsize=16)
     axc.set_xlabel("$c$ study 1", fontsize=16)
+    axc.axvline(x=0.5, c="k", zorder=0)
+    axc.axhline(y=0.5, c="k", zorder=0)
 
     axf1.tick_params(axis="both", which="major", labelsize=16)
-    axf1.set_xlabel("mean 1-residuals", fontsize=16)
-    axf1.set_ylabel("$c$ 1-residuals", fontsize=16)
+    axf1.set_xlabel(mean_res_str, fontsize=16)
+    axf1.set_ylabel(f"$c$ {mean_res_str}", fontsize=16)
     axf1.set_xlim(0, 30)
     x_range = np.linspace(0.01, 30, 100)
     axf1.plot(
         x_range,
-        scoring_function(x=x_range, target=mid_1r, beta=rbeta),
+        scoring_function(
+            x=x_range,
+            target=max_r_works,
+            beta=EnvVariables.rbeta,
+        ),
         c="tab:gray",
         zorder=-2,
     )
@@ -1201,7 +1276,11 @@ def confidence_plot(  # noqa: C901, PLR0915, PLR0912
     x_range = np.linspace(0.01, 1, 100)
     axf2.plot(
         x_range,
-        scoring_function(x=x_range, target=mid_gval, beta=gbeta),
+        scoring_function(
+            x=x_range,
+            target=max_g_works,
+            beta=EnvVariables.gbeta,
+        ),
         c="tab:gray",
         zorder=-2,
     )
@@ -1240,7 +1319,203 @@ def confidence_plot(  # noqa: C901, PLR0915, PLR0912
 
     fig.tight_layout()
     fig.savefig(
-        figures_dir / f"cs1_confidence_{pts}_{prefix}.png",
+        figures_dir / f"cs1_confidence_{prefix}.png",
+        dpi=360,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def unsymmetric_confidence_plot(  # noqa: PLR0915
+    targets: tuple[tuple[str, str], ...],
+    pair_db: atomlite.Database,
+    figures_dir: pathlib.Path,
+    prefix: str,
+) -> None:
+    """Make plot."""
+    fig, ((ax, axc), (ax1, ax1c)) = plt.subplots(
+        ncols=2,
+        nrows=2,
+        figsize=(10, 10),
+    )
+
+    xys = []
+    xymins = []
+    max_r_works = 0
+    max_rmin_works = 0
+    for ligand1, ligand2 in targets:
+        key = f"{ligand1}_{ligand2}"
+
+        entry = pair_db.get_property_entry(key)
+        if entry is None:
+            continue
+
+        s1data = [
+            entry.properties["pair_data"][i]["state_1_residual"]
+            for i in entry.properties["pair_data"]
+        ]
+        s2data = [
+            entry.properties["pair_data"][i]["state_2_residual"]
+            for i in entry.properties["pair_data"]
+        ]
+
+        if experimental_ligand_outcomes[(ligand1, ligand2)]["success"]:
+            col = "tab:blue"
+            max_r_works = max((max_r_works, np.mean(s1data), np.mean(s2data)))
+            max_rmin_works = max(
+                (max_rmin_works, np.min(s1data), np.min(s2data))
+            )
+        else:
+            col = "tab:orange"
+
+        xys.append((np.mean(s1data), np.mean(s2data), col, key))
+        xymins.append((np.min(s1data), np.min(s2data), col, key))
+
+    ax.scatter(
+        [i[0] for i in xys],
+        [i[1] for i in xys],
+        c=[i[2] for i in xys],
+        s=120,
+        ec="k",
+    )
+
+    ax1.scatter(
+        [i[0] for i in xymins],
+        [i[1] for i in xymins],
+        c=[i[2] for i in xymins],
+        s=120,
+        ec="k",
+    )
+
+    axc.scatter(
+        [
+            scoring_function(
+                x=i[0],
+                target=max_r_works,
+                beta=EnvVariables.rbeta,
+            )
+            for i in xys
+        ],
+        [
+            scoring_function(
+                x=i[1],
+                target=max_r_works,
+                beta=EnvVariables.rbeta,
+            )
+            for i in xys
+        ],
+        c=[i[2] for i in xys],
+        s=120,
+        ec="k",
+    )
+
+    ax1c.scatter(
+        [
+            scoring_function(
+                x=i[0],
+                target=max_rmin_works,
+                beta=EnvVariables.rbeta,
+            )
+            for i in xymins
+        ],
+        [
+            scoring_function(
+                x=i[1],
+                target=max_rmin_works,
+                beta=EnvVariables.rbeta,
+            )
+            for i in xymins
+        ],
+        c=[i[2] for i in xymins],
+        s=120,
+        ec="k",
+    )
+
+    ax.axhline(
+        y=max_r_works,
+        c="k",
+        alpha=0.5,
+        zorder=0,
+    )
+
+    ax.axvline(
+        x=max_r_works,
+        c="k",
+        alpha=0.5,
+        zorder=0,
+    )
+
+    ax1.axhline(
+        y=max_rmin_works,
+        c="k",
+        alpha=0.5,
+        zorder=0,
+    )
+
+    ax1.axvline(
+        x=max_rmin_works,
+        c="k",
+        alpha=0.5,
+        zorder=0,
+    )
+
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_ylabel(mean_res2_str, fontsize=16)
+    ax.set_ylim(xmin, xmax)
+    ax.set_xlabel(mean_res1_str, fontsize=16)
+    ax.set_xlim(xmin, xmax)
+    ax.plot((xmin, xmax), (xmin, xmax), c="k")
+
+    ax1.tick_params(axis="both", which="major", labelsize=16)
+    ax1.set_ylabel("min r2", fontsize=16)
+    ax1.set_ylim(0, 10)
+    ax1.set_xlabel("min r1", fontsize=16)
+    ax1.set_xlim(0, 10)
+    ax1.plot((xmin, xmax), (xmin, xmax), c="k")
+
+    axc.tick_params(axis="both", which="major", labelsize=16)
+    axc.set_xlabel(f"$c$ {mean_res1_str}", fontsize=16)
+    axc.set_ylabel(f"$c$ {mean_res2_str}", fontsize=16)
+    axc.axvline(x=0.5, c="k", zorder=0)
+    axc.axhline(y=0.5, c="k", zorder=0)
+    axc.plot((0, 1), c="k")
+
+    ax1c.tick_params(axis="both", which="major", labelsize=16)
+    ax1c.set_xlabel("$c$ min r1", fontsize=16)
+    ax1c.set_ylabel("$c$ min r2", fontsize=16)
+    ax1c.axvline(x=0.5, c="k", zorder=0)
+    ax1c.axhline(y=0.5, c="k", zorder=0)
+    ax1c.plot((0, 1), c="k")
+
+    legend_elements = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="works",
+            markerfacecolor="tab:blue",
+            markersize=8,
+            markeredgecolor="k",
+            alpha=1,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="does not",
+            markerfacecolor="tab:orange",
+            markersize=8,
+            markeredgecolor="k",
+            alpha=1,
+        ),
+    ]
+    ax.legend(handles=legend_elements, ncols=1, fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        figures_dir / f"cs1_confidence_unsymm_{prefix}.png",
         dpi=360,
         bbox_inches="tight",
     )
@@ -1254,26 +1529,35 @@ def lab_residuals_plot(
     prefix: str,
 ) -> None:
     """Make plot."""
-    fig, ax = plt.subplots(figsize=(8, 5))
-    plot_targets = (
+    targets = (
         ("lab_0", "la_0"),
         ("lab_0", "lb_0"),
         ("lab_0", "lc_0"),
         ("lab_0", "ld_0"),
     )
-    steps = range(len(plot_targets) - 1, -1, -1)
-    for i, (ligand1, ligand2) in zip(steps, plot_targets, strict=False):
+    cmap = {
+        "lab_0_la_0": "tab:blue",
+        "lab_0_lb_0": "tab:orange",
+        "lab_0_lc_0": "tab:green",
+        "lab_0_ld_0": "tab:red",
+    }
+    fig, ax = plt.subplots(ncols=1, figsize=(5, 5))
+    xticks = []
+    for idx, (ligand1, ligand2) in enumerate(targets):
         key = f"{ligand1}_{ligand2}"
+        xticks.append(ligand2)
         entry = pair_db.get_property_entry(key)
-        xmin = 0
-        xmax = 15
-        xwidth = 0.5
-        xbins = np.arange(xmin - xwidth, xmax + xwidth, xwidth)
-        ystep = 1
+        if entry is None:
+            continue
 
-        x1data = []
-        x2data = []
+        works = experimental_ligand_outcomes[(ligand1, ligand2)]["success"]
+        m = "o" if works else "X"
+
         conf_dir = ligand_dir / "confs_lab_0"
+        s1fdata = []
+        s1bdata = []
+        s2fdata = []
+        s2bdata = []
         for cid_name in entry.properties["pair_data"]:
             la_conf = cid_name.split("-")[0]
             conf_mol = stk.BuildingBlock.init_from_file(
@@ -1285,70 +1569,129 @@ def lab_residuals_plot(
             )
 
             if torsion_state == "f":
-                x1data.append(
+                s1fdata.append(
                     entry.properties["pair_data"][cid_name]["state_1_residual"]
+                )
+                s2fdata.append(
+                    entry.properties["pair_data"][cid_name]["state_2_residual"]
                 )
             elif torsion_state == "b":
-                x2data.append(
+                s1bdata.append(
                     entry.properties["pair_data"][cid_name]["state_1_residual"]
                 )
+                s2bdata.append(
+                    entry.properties["pair_data"][cid_name]["state_2_residual"]
+                )
 
-        if ligand2 == "la_0":
-            lbl1 = "f"
-            lbl2 = "b"
-        else:
-            lbl1 = None
-            lbl2 = None
+        ax.scatter(
+            [idx - 0.3 for i in s1fdata],
+            s1fdata,
+            c=cmap[entry.key],
+            marker=m,
+            s=30,
+            ec="none",
+        )
+        ax.scatter(
+            [idx - 0.1 for i in s2fdata],
+            s2fdata,
+            c=cmap[entry.key],
+            marker=m,
+            s=30,
+            ec="none",
+        )
+        ax.scatter(
+            [idx + 0.1 for i in s1bdata],
+            s1bdata,
+            c=cmap[entry.key],
+            marker=m,
+            s=30,
+            ec="none",
+        )
+        ax.scatter(
+            [idx + 0.3 for i in s2bdata],
+            s2bdata,
+            c=cmap[entry.key],
+            marker=m,
+            s=30,
+            ec="none",
+        )
+        ax.scatter(
+            idx - 0.3,
+            np.mean(s1fdata),
+            c=cmap[entry.key],
+            marker=m,
+            s=50,
+            ec="k",
+        )
+        ax.text(
+            x=idx - 0.3,
+            y=0.1,
+            s="1-f",
+            fontsize=8,
+            horizontalalignment="center",
+            verticalalignment="center",
+        )
+        ax.scatter(
+            idx - 0.1,
+            np.mean(s2fdata),
+            c=cmap[entry.key],
+            marker=m,
+            s=50,
+            ec="k",
+        )
+        ax.text(
+            x=idx - 0.1,
+            y=0.1,
+            s="2-f",
+            fontsize=8,
+            horizontalalignment="center",
+            verticalalignment="center",
+        )
+        ax.scatter(
+            idx + 0.1,
+            np.mean(s1bdata),
+            c=cmap[entry.key],
+            marker=m,
+            s=50,
+            ec="k",
+        )
+        ax.text(
+            x=idx + 0.1,
+            y=0.1,
+            s="1-b",
+            fontsize=8,
+            horizontalalignment="center",
+            verticalalignment="center",
+        )
+        ax.scatter(
+            idx + 0.3,
+            np.mean(s2bdata),
+            c=cmap[entry.key],
+            marker=m,
+            s=50,
+            ec="k",
+        )
+        ax.text(
+            x=idx + 0.3,
+            y=0.1,
+            s="2-b",
+            fontsize=8,
+            horizontalalignment="center",
+            verticalalignment="center",
+        )
 
-        ax.hist(
-            x=x1data,
-            bins=xbins,
-            density=True,
-            bottom=i * ystep,
-            histtype="stepfilled",
-            stacked=True,
-            linewidth=1.0,
-            alpha=1.0,
-            edgecolor="none",
-            label=lbl1,
-        )
-        ax.plot(
-            (np.mean(x1data), np.mean(x1data)),
-            ((i + 1) * ystep, i * ystep),
-            alpha=1.0,
-            c="k",
-        )
-
-        ax.hist(
-            x=x2data,
-            bins=xbins,
-            density=True,
-            bottom=i * ystep,
-            histtype="stepfilled",
-            stacked=True,
-            linewidth=1.0,
-            alpha=1.0,
-            edgecolor="k",
-            facecolor="none",
-            label=lbl2,
-        )
-        ax.plot(
-            (np.mean(x2data), np.mean(x2data)),
-            ((i + 1) * ystep, i * ystep),
-            alpha=1.0,
-            c="r",
-        )
-
+    ax.axvline(x=0.5, c="k")
+    ax.axvline(x=1.5, c="k")
+    ax.axvline(x=2.5, c="k")
     ax.tick_params(axis="both", which="major", labelsize=16)
-    ax.set_xlabel("1-residuals", fontsize=16)
-    ax.set_ylabel("frequency", fontsize=16)
-    ax.set_yticks([])
-    ax.set_ylim(0, (steps[0] + 1.5) * 1)
-    ax.legend(fontsize=16)
+    ax.set_ylabel(res_str, fontsize=16)
+    ax.set_ylim(0, None)
+    ax.set_xticks(range(len(xticks)))
+    ax.set_xticklabels(xticks)
 
     fig.tight_layout()
     fig.savefig(
-        figures_dir / f"lab_state_residuals_{prefix}.png",
+        figures_dir / f"cs1_residuals2_chand_{prefix}.png",
         dpi=360,
         bbox_inches="tight",
     )
@@ -1521,108 +1864,43 @@ def main() -> None:
             prefix=prefix,
         )
 
-        plot_targets_sets = {
-            "expt": (
-                ("e16_0", "e10_0"),
-                ("e16_0", "e17_0"),
-                ("e10_0", "e17_0"),
-                ("e11_0", "e10_0"),
-                ("e16_0", "e14_0"),
-                ("e18_0", "e14_0"),
-                ("e18_0", "e10_0"),
-                ("e12_0", "e10_0"),
-                ("e11_0", "e14_0"),
-                ("e12_0", "e14_0"),
-                ("e11_0", "e13_0"),
-                ("e12_0", "e13_0"),
-                ("e13_0", "e14_0"),
-                ("e11_0", "e12_0"),
-            ),
-            "2024": (
-                ("sla_0", "sl1_0"),
-                ("slb_0", "sl1_0"),
-                ("slc_0", "sl1_0"),
-                ("sld_0", "sl1_0"),
-                ("sla_0", "sl2_0"),
-                ("slb_0", "sl2_0"),
-                ("slc_0", "sl2_0"),
-                ("sld_0", "sl2_0"),
-            ),
-            "all": (
-                ("e16_0", "e10_0"),
-                ("e16_0", "e17_0"),
-                ("e10_0", "e17_0"),
-                ("e11_0", "e10_0"),
-                ("e16_0", "e14_0"),
-                ("e18_0", "e14_0"),
-                ("e18_0", "e10_0"),
-                ("e12_0", "e10_0"),
-                ("e11_0", "e14_0"),
-                ("e12_0", "e14_0"),
-                ("e11_0", "e13_0"),
-                ("e12_0", "e13_0"),
-                ("e13_0", "e14_0"),
-                ("e11_0", "e12_0"),
-                ("sla_0", "sl1_0"),
-                ("slb_0", "sl1_0"),
-                ("slc_0", "sl1_0"),
-                ("sld_0", "sl1_0"),
-                ("sla_0", "sl2_0"),
-                ("slb_0", "sl2_0"),
-                ("slc_0", "sl2_0"),
-                ("sld_0", "sl2_0"),
-            ),
-            "het": (
-                ("lab_0", "la_0"),
-                ("lab_0", "lb_0"),
-                ("lab_0", "lc_0"),
-                ("lab_0", "ld_0"),
-                ("m2h_0", "m4q_0"),
-                ("m2h_0", "m4p_0"),
-            ),
-        }
-        for pts in plot_targets_sets:
-            plot_targets = plot_targets_sets[pts]
-            if pts in ("het",):
-                unsymmetric_plot(
-                    pts=pts,
-                    plot_targets=plot_targets,
-                    figures_dir=figures_dir,
-                    pair_db=pair_db,
-                    prefix=prefix,
-                )
+    unsymmetric_plot(
+        figures_dir=figures_dir,
+        pair_db=pair_db,
+        prefix=prefix,
+    )
 
-            elif pts in ("all",):
-                remake_plot(
-                    pts=pts,
-                    plot_targets=plot_targets,
-                    figures_dir=figures_dir,
-                    pair_db=pair_db,
-                    prefix=prefix,
-                )
-                confidence_plot(
-                    pts=pts,
-                    plot_targets=plot_targets,
-                    figures_dir=figures_dir,
-                    pair_db=pair_db,
-                    prefix=prefix,
-                )
+    lab_residuals_plot(
+        pair_db=pair_db,
+        ligand_dir=ligand_dir,
+        figures_dir=figures_dir,
+        prefix=prefix,
+    )
 
-            else:
-                symmetric_plot(
-                    pts=pts,
-                    plot_targets=plot_targets,
-                    figures_dir=figures_dir,
-                    pair_db=pair_db,
-                    prefix=prefix,
-                )
-
-        lab_residuals_plot(
-            pair_db=pair_db,
-            ligand_dir=ligand_dir,
-            figures_dir=figures_dir,
-            prefix=prefix,
-        )
+    remake_plot(
+        targets=targets,
+        figures_dir=figures_dir,
+        pair_db=pair_db,
+        prefix=prefix,
+    )
+    confidence_plot(
+        targets=targets,
+        figures_dir=figures_dir,
+        pair_db=pair_db,
+        prefix=prefix,
+    )
+    symmetric_plot(
+        targets=targets,
+        figures_dir=figures_dir,
+        pair_db=pair_db,
+        prefix=prefix,
+    )
+    unsymmetric_confidence_plot(
+        targets=targets,
+        figures_dir=figures_dir,
+        pair_db=pair_db,
+        prefix=prefix,
+    )
 
 
 if __name__ == "__main__":
