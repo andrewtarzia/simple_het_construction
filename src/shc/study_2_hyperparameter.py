@@ -15,11 +15,11 @@ import stko
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rmsd import kabsch_rmsd
 
+from shc.definitions import experimental_ligand_outcomes, mean_res_str
 from shc.matching_functions import (
     angle_test,
     mismatch_test,
 )
-from shc.study_2_case_study_1 import experimental_ligand_outcomes, mean_res_str
 from shc.utilities import update_from_rdkit_conf
 
 
