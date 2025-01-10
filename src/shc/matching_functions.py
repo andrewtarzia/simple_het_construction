@@ -174,7 +174,7 @@ def plot_pair_position(  # noqa: PLR0913
     outname: str,
 ) -> None:
     """Plot pair rigid bodies."""
-    fig, ax = plt.subplots(figsize=(4, 4))
+    fig, ax = plt.subplots(ncols=1, figsize=(8, 5))
 
     # Plot residuals.
     ax.plot(
@@ -194,7 +194,7 @@ def plot_pair_position(  # noqa: PLR0913
         ls="--",
     )
     ax.plot(
-        (rigidbody3.get_x1(r3, phi3).x, rigidbody1.get_x1(r1, phi1).x),
+        (rigidbody3.get_x1(r3, phi3).x + 8, rigidbody1.get_x1(r1, phi1).x + 8),
         (rigidbody3.get_x1(r3, phi3).y, rigidbody1.get_x1(r1, phi1).y),
         c="tab:green",
         alpha=1.0,
@@ -202,7 +202,7 @@ def plot_pair_position(  # noqa: PLR0913
         ls="--",
     )
     ax.plot(
-        (rigidbody3.get_x2(r3, phi3).x, rigidbody1.get_x2(r1, phi1).x),
+        (rigidbody3.get_x2(r3, phi3).x + 8, rigidbody1.get_x2(r1, phi1).x + 8),
         (rigidbody3.get_x2(r3, phi3).y, rigidbody1.get_x2(r1, phi1).y),
         c="tab:green",
         alpha=1.0,
@@ -214,7 +214,40 @@ def plot_pair_position(  # noqa: PLR0913
     ax.plot(
         (rigidbody1.get_n1(r1, phi1).x, rigidbody1.get_n2(r1, phi1).x),
         (rigidbody1.get_n1(r1, phi1).y, rigidbody1.get_n2(r1, phi1).y),
-        c="tab:blue",
+        c="k",
+        alpha=1.0,
+        lw=2,
+        marker="o",
+        markersize=6,
+        markeredgecolor="none",
+    )
+
+    ax.plot(
+        (rigidbody1.get_n1(r1, phi1).x + 8, rigidbody1.get_x1(r1, phi1).x + 8),
+        (rigidbody1.get_n1(r1, phi1).y, rigidbody1.get_x1(r1, phi1).y),
+        c="tab:orange",
+        alpha=1.0,
+        lw=2,
+        marker="o",
+        markersize=6,
+        markeredgecolor="none",
+    )
+
+    ax.plot(
+        (rigidbody1.get_n2(r1, phi1).x + 8, rigidbody1.get_x2(r1, phi1).x + 8),
+        (rigidbody1.get_n2(r1, phi1).y, rigidbody1.get_x2(r1, phi1).y),
+        c="tab:orange",
+        alpha=1.0,
+        lw=2,
+        marker="o",
+        markersize=6,
+        markeredgecolor="none",
+    )
+
+    ax.plot(
+        (rigidbody1.get_n1(r1, phi1).x + 8, rigidbody1.get_n2(r1, phi1).x + 8),
+        (rigidbody1.get_n1(r1, phi1).y, rigidbody1.get_n2(r1, phi1).y),
+        c="k",
         alpha=1.0,
         lw=2,
         marker="o",
@@ -248,7 +281,7 @@ def plot_pair_position(  # noqa: PLR0913
     ax.plot(
         (rigidbody2.get_n1(r2, phi2).x, rigidbody2.get_n2(r2, phi2).x),
         (rigidbody2.get_n1(r2, phi2).y, rigidbody2.get_n2(r2, phi2).y),
-        c="tab:blue",
+        c="k",
         alpha=1.0,
         lw=2,
         marker="o",
@@ -259,7 +292,7 @@ def plot_pair_position(  # noqa: PLR0913
     ax.plot(
         (rigidbody2.get_n1(r2, phi2).x, rigidbody2.get_x1(r2, phi2).x),
         (rigidbody2.get_n1(r2, phi2).y, rigidbody2.get_x1(r2, phi2).y),
-        c="tab:orange",
+        c="tab:cyan",
         alpha=1.0,
         lw=2,
         marker="o",
@@ -270,7 +303,7 @@ def plot_pair_position(  # noqa: PLR0913
     ax.plot(
         (rigidbody2.get_n2(r2, phi2).x, rigidbody2.get_x2(r2, phi2).x),
         (rigidbody2.get_n2(r2, phi2).y, rigidbody2.get_x2(r2, phi2).y),
-        c="tab:orange",
+        c="tab:cyan",
         alpha=1.0,
         lw=2,
         marker="o",
@@ -280,9 +313,9 @@ def plot_pair_position(  # noqa: PLR0913
 
     # Plot RHS ligand state 2.
     ax.plot(
-        (rigidbody3.get_n1(r3, phi3).x, rigidbody3.get_n2(r3, phi3).x),
+        (rigidbody3.get_n1(r3, phi3).x + 8, rigidbody3.get_n2(r3, phi3).x + 8),
         (rigidbody3.get_n1(r3, phi3).y, rigidbody3.get_n2(r3, phi3).y),
-        c="tab:cyan",
+        c="k",
         alpha=1.0,
         lw=2,
         marker="o",
@@ -290,9 +323,9 @@ def plot_pair_position(  # noqa: PLR0913
         markeredgecolor="none",
     )
     ax.plot(
-        (rigidbody3.get_n1(r3, phi3).x, rigidbody3.get_x1(r3, phi3).x),
+        (rigidbody3.get_n1(r3, phi3).x + 8, rigidbody3.get_x1(r3, phi3).x + 8),
         (rigidbody3.get_n1(r3, phi3).y, rigidbody3.get_x1(r3, phi3).y),
-        c="tab:purple",
+        c="tab:cyan",
         alpha=1.0,
         lw=2,
         marker="o",
@@ -301,9 +334,9 @@ def plot_pair_position(  # noqa: PLR0913
     )
 
     ax.plot(
-        (rigidbody3.get_n2(r3, phi3).x, rigidbody3.get_x2(r3, phi3).x),
+        (rigidbody3.get_n2(r3, phi3).x + 8, rigidbody3.get_x2(r3, phi3).x + 8),
         (rigidbody3.get_n2(r3, phi3).y, rigidbody3.get_x2(r3, phi3).y),
-        c="tab:purple",
+        c="tab:cyan",
         alpha=1.0,
         lw=2,
         marker="o",
@@ -315,47 +348,70 @@ def plot_pair_position(  # noqa: PLR0913
         (rigidbody1.get_n1(r1, phi1).x, rigidbody1.get_n1(r1, phi1).y),
         2.02,
         alpha=0.2,
-        fc="yellow",
+        fc="tab:orange",
+    )
+    ax.add_patch(circ)
+    circ = patches.Circle(
+        (rigidbody1.get_n2(r1, phi1).x + 8, rigidbody1.get_n2(r1, phi1).y),
+        2.02,
+        alpha=0.2,
+        fc="tab:orange",
+    )
+    ax.add_patch(circ)
+    circ = patches.Circle(
+        (rigidbody1.get_n1(r1, phi1).x + 8, rigidbody1.get_n1(r1, phi1).y),
+        2.02,
+        alpha=0.2,
+        fc="tab:orange",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
         (rigidbody1.get_n2(r1, phi1).x, rigidbody1.get_n2(r1, phi1).y),
         2.02,
         alpha=0.2,
-        fc="yellow",
+        fc="tab:orange",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
         (rigidbody2.get_n1(r2, phi2).x, rigidbody2.get_n1(r2, phi2).y),
         2.02,
         alpha=0.2,
-        fc="yellow",
+        fc="tab:cyan",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
         (rigidbody2.get_n2(r2, phi2).x, rigidbody2.get_n2(r2, phi2).y),
         2.02,
         alpha=0.2,
-        fc="yellow",
+        fc="tab:cyan",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
-        (rigidbody3.get_n1(r3, phi3).x, rigidbody3.get_n1(r3, phi3).y),
+        (rigidbody3.get_n1(r3, phi3).x + 8, rigidbody3.get_n1(r3, phi3).y),
         2.02,
         alpha=0.2,
-        fc="yellow",
+        fc="tab:cyan",
     )
     ax.add_patch(circ)
     circ = patches.Circle(
-        (rigidbody3.get_n2(r3, phi3).x, rigidbody3.get_n2(r3, phi3).y),
+        (rigidbody3.get_n2(r3, phi3).x + 8, rigidbody3.get_n2(r3, phi3).y),
         2.02,
         alpha=0.2,
-        fc="yellow",
+        fc="tab:cyan",
     )
     ax.add_patch(circ)
 
     ax.scatter(
         r1[0],
+        r1[1],
+        c="k",
+        alpha=1.0,
+        s=120,
+        edgecolor="w",
+        zorder=4,
+    )
+    ax.scatter(
+        r1[0] + 8,
         r1[1],
         c="k",
         alpha=1.0,
@@ -373,7 +429,7 @@ def plot_pair_position(  # noqa: PLR0913
         zorder=4,
     )
     ax.scatter(
-        r3[0],
+        r3[0] + 8,
         r3[1],
         c="k",
         alpha=1.0,
@@ -382,10 +438,12 @@ def plot_pair_position(  # noqa: PLR0913
         zorder=4,
     )
 
+    lim = 16
+    ratio = 8 / 5
     ax.tick_params(axis="both", which="major", labelsize=16)
     ax.axis("off")
-    ax.set_xlim(-15, 15)
-    ax.set_ylim(-15, 15)
+    ax.set_xlim(-lim, lim)
+    ax.set_ylim(-lim / ratio, lim / ratio)
     ax.set_xticks([])
     ax.set_yticks([])
 
