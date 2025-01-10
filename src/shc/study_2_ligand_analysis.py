@@ -1,12 +1,19 @@
 """Script to build the ligand in this project."""
 
+import argparse
 import itertools as it
 import logging
 import pathlib
 import time
 
 import atomlite
+import bbprep
+import chemiscope
+import matplotlib.pyplot as plt
 import numpy as np
+import polars as pl
+import stk
+import stko
 
 from shc.definitions import EnvVariables, res_str
 from shc.matching_functions import mismatch_test
@@ -289,6 +296,527 @@ def reanalyse_ligand_pair(
     )
 
 
+def plot_timings(
+    pair_db_path: pathlib.Path,
+    figures_dir: pathlib.Path,
+) -> None:
+    """Make plot."""
+    fig, (ax, ax1) = plt.subplots(ncols=2, figsize=(16, 5))
+
+    dataframe = atomlite.Database(pair_db_path).get_property_df(
+        properties=[
+            "$.time_taken/s",
+            "$.num_pairs",
+            "$.num_pairs_passed",
+            "$.ctime/s",
+        ]
+    )
+
+    ax.scatter(
+        dataframe["$.num_pairs_passed"],
+        dataframe["$.time_taken/s"],
+        c="tab:blue",
+        s=50,
+        ec="k",
+        rasterized=True,
+    )
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel("num. pairs passed", fontsize=16)
+    ax.set_ylabel("time [s]", fontsize=16)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+
+    xwidth = 0.05
+    xbins = np.arange(0 - xwidth, 1 + xwidth, xwidth)
+    ax1.hist(
+        x=dataframe["$.ctime/s"].list.explode(),
+        bins=xbins,
+        density=True,
+        histtype="stepfilled",
+        stacked=True,
+        linewidth=1.0,
+        alpha=1.0,
+        edgecolor="k",
+        facecolor="tab:blue",
+    )
+
+    ax1.tick_params(axis="both", which="major", labelsize=16)
+    ax1.set_xlabel("calculation time [s]", fontsize=16)
+
+    fig.tight_layout()
+    fig.savefig(
+        figures_dir / "plot_timings.png",
+        dpi=360,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def plot_states(
+    pair_db_path: pathlib.Path,
+    figures_dir: pathlib.Path,
+) -> None:
+    """Make plot."""
+    fig, ax = plt.subplots(ncols=1, figsize=(5, 5))
+
+    dataframe = atomlite.Database(pair_db_path).get_property_df(
+        properties=["$.mean_s1", "$.min_s1", "$.mean_s2", "$.min_s2"]
+    )
+
+    ax.scatter(
+        dataframe["$.mean_s1"],
+        dataframe["$.mean_s2"],
+        c="tab:blue",
+        s=30,
+        ec="k",
+        label="mean",
+        rasterized=True,
+        zorder=2,
+    )
+
+    ax.scatter(
+        dataframe["$.min_s1"],
+        dataframe["$.min_s2"],
+        c="tab:orange",
+        s=20,
+        ec="k",
+        label="min",
+        rasterized=True,
+        zorder=1,
+    )
+    ax.tick_params(axis="both", which="major", labelsize=16)
+    ax.set_xlabel(f"1 {res_str}", fontsize=16)
+    ax.set_ylabel(f"2 {res_str}", fontsize=16)
+    ax.plot((0, 50), (0, 50), c="k", zorder=-1)
+    ax.set_xlim(0, 50)
+    ax.set_ylim(0, 50)
+    ax.legend(fontsize=16)
+    ax.axvspan(
+        xmin=0,
+        xmax=EnvVariables.found_max_r_works,
+        facecolor="k",
+        alpha=0.1,
+        zorder=-1,
+    )
+    ax.axhspan(
+        ymin=0,
+        ymax=EnvVariables.found_max_r_works,
+        facecolor="k",
+        alpha=0.1,
+        zorder=-1,
+    )
+
+    fig.tight_layout()
+    fig.savefig(
+        figures_dir / "plot_states.png",
+        dpi=360,
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
+def to_csv(
+    pair_db_path: pathlib.Path,
+    figures_dir: pathlib.Path,
+    ligand_dir: pathlib.Path,
+) -> None:
+    """Make plot."""
+    dataframe = atomlite.Database(pair_db_path).get_property_df(
+        properties=[
+            "$.ligand1_key",
+            "$.ligand2_key",
+            "$.mean_s1",
+            "$.min_s1",
+            "$.mean_s2",
+            "$.min_s2",
+        ]
+    )
+
+    tdata = dataframe.with_columns(
+        pl.Series(
+            name="l1_smiles",
+            values=[
+                stk.Smiles().get_key(
+                    stk.BuildingBlock.init_from_file(
+                        ligand_dir / f"{l1key}_lowe.mol"
+                    )
+                )
+                for l1key in dataframe["$.ligand1_key"]
+            ],
+        ),
+        pl.Series(
+            name="l2_smiles",
+            values=[
+                stk.Smiles().get_key(
+                    stk.BuildingBlock.init_from_file(
+                        ligand_dir / f"{l2key}_lowe.mol"
+                    )
+                )
+                for l2key in dataframe["$.ligand2_key"]
+            ],
+        ),
+    )
+
+    tdata.write_csv(
+        file=figures_dir / "candidates.csv",
+        include_header=True,
+    )
+
+
+def get_pd_polymer() -> stk.BuildingBlock:
+    """Define a building block."""
+    palladium_atom = stk.BuildingBlock(
+        smiles="[Pd+2]",
+        functional_groups=(
+            stk.SingleAtom(stk.Pd(0, charge=2)) for i in range(4)
+        ),
+        position_matrix=[[0.0, 0.0, 0.0]],
+    )
+    small_complex = stk.BuildingBlock(
+        smiles="O",
+        functional_groups=(
+            stk.SmartsFunctionalGroupFactory(
+                smarts="[#1]~[#8]~[#1]",
+                bonders=(1,),
+                deleters=(),
+            ),
+        ),
+    )
+    bb1 = stk.BuildingBlock(
+        smiles=("CN=C"),
+        functional_groups=[
+            stk.SmartsFunctionalGroupFactory(
+                smarts="[#6]~[#7X2]~[#6]",
+                bonders=(1,),
+                deleters=(),
+            ),
+        ],
+    )
+    polymer = stk.ConstructedMolecule(
+        topology_graph=stk.metal_complex.SquarePlanar(
+            metals=palladium_atom,
+            ligands={bb1: (0, 2), small_complex: (1, 3)},
+            optimizer=stk.MCHammer(target_bond_length=0.5),
+        ),
+    )
+
+    return stk.BuildingBlock.init_from_molecule(
+        molecule=polymer,
+        functional_groups=stk.SmartsFunctionalGroupFactory(
+            smarts="[#7]~[#46](~[#8](~[#1])~[#1])~[#7]",
+            bonders=(1,),
+            deleters=(2, 3, 4),
+        ),
+    )
+
+
+class FakeMacro(stk.cage.Cage):
+    """Fake a macrocycle for now."""
+
+    _vertex_prototypes = (
+        stk.cage.LinearVertex(
+            0, np.array([0, 0.5, 0]), use_neighbor_placement=False
+        ),
+        stk.cage.LinearVertex(
+            1, np.array([0, -0.5, 0]), use_neighbor_placement=False
+        ),
+        stk.cage.LinearVertex(
+            2, np.array([1, 0, 0]), use_neighbor_placement=False
+        ),
+        stk.cage.LinearVertex(
+            3, np.array([-1, 0, 0]), use_neighbor_placement=False
+        ),
+    )
+
+    _edge_prototypes = (
+        stk.Edge(0, _vertex_prototypes[0], _vertex_prototypes[2]),
+        stk.Edge(1, _vertex_prototypes[0], _vertex_prototypes[3]),
+        stk.Edge(2, _vertex_prototypes[1], _vertex_prototypes[2]),
+        stk.Edge(3, _vertex_prototypes[1], _vertex_prototypes[3]),
+    )
+
+
+def merge_two_ligands(
+    mol1: stk.BuildingBlock,
+    mol2: stk.BuildingBlock,
+    pair_key: str,
+    state: int,
+    figures_dir: pathlib.Path,
+) -> stk.BuildingBlock:
+    """Merge two ligands to be in one structure."""
+    struct_dir = figures_dir / "cscope_merged"
+    struct_dir.mkdir(exist_ok=True, parents=True)
+    mol_file = struct_dir / f"{pair_key}_merged.mol"
+    if not mol_file.exists():
+        mol1 = bbprep.FurthestFGs().modify(
+            building_block=stk.BuildingBlock.init_from_molecule(
+                mol1,
+                functional_groups=(
+                    stk.SmartsFunctionalGroupFactory(
+                        smarts="[#6]~[#7X2]~[#6]",
+                        bonders=(1,),
+                        deleters=(),
+                    ),
+                ),
+            ),
+            desired_functional_groups=2,
+        )
+        mol2 = bbprep.FurthestFGs().modify(
+            building_block=stk.BuildingBlock.init_from_molecule(
+                mol2,
+                functional_groups=(
+                    stk.SmartsFunctionalGroupFactory(
+                        smarts="[#6]~[#7X2]~[#6]",
+                        bonders=(1,),
+                        deleters=(),
+                    ),
+                ),
+            ),
+            desired_functional_groups=2,
+        )
+        pd = get_pd_polymer()
+
+        if state == 1:
+            va = {0: 0, 1: 1}
+        elif state == 2:  # noqa: PLR2004
+            va = {0: 0, 1: 0}
+
+        constructued = stk.ConstructedMolecule(
+            topology_graph=FakeMacro(
+                building_blocks={
+                    mol1: (0,),
+                    mol2: (1,),
+                    pd: (2, 3),
+                },
+                optimizer=stk.MCHammer(num_steps=200),
+                vertex_alignments=va,
+                reaction_factory=stk.DativeReactionFactory(
+                    stk.GenericReactionFactory(
+                        bond_orders={
+                            frozenset(
+                                {
+                                    stk.GenericFunctionalGroup,
+                                    stk.SingleAtom,
+                                }
+                            ): 9,
+                        },
+                    ),
+                ),
+            ),
+        )
+
+        # Remove fluff.
+        ligands = [
+            i
+            for i in stko.molecule_analysis.DecomposeMOC().decompose(
+                molecule=constructued,
+                metal_atom_nos=(46,),
+            )
+            if i.get_num_atoms() > 8  # noqa: PLR2004
+        ]
+        atoms = []
+        bonds = []
+        pos_mat = []
+        for ligand in ligands:
+            atom_ids_map = {}
+            for atom in ligand.get_atoms():
+                new_id = len(atoms)
+                atom_ids_map[atom.get_id()] = new_id
+                atoms.append(
+                    stk.Atom(
+                        id=atom_ids_map[atom.get_id()],
+                        atomic_number=atom.get_atomic_number(),
+                        charge=atom.get_charge(),
+                    )
+                )
+
+            bonds.extend(
+                i.with_ids(id_map=atom_ids_map) for i in ligand.get_bonds()
+            )
+            pos_mat.extend(list(ligand.get_position_matrix()))
+
+        constructued = stk.BuildingBlock.init(
+            atoms=atoms,
+            bonds=bonds,
+            position_matrix=np.array(pos_mat),
+        )
+
+        constructued.write(mol_file)
+
+    else:
+        constructued = stk.BuildingBlock.init_from_file(mol_file)
+
+    return stk.BuildingBlock.init_from_molecule(constructued)
+
+
+def to_chemiscope(
+    pair_db_path: pathlib.Path,
+    figures_dir: pathlib.Path,
+    ligand_dir: pathlib.Path,
+) -> None:
+    """Make plot."""
+    dataframe = atomlite.Database(pair_db_path).get_property_df(
+        properties=[
+            "$.ligand1_key",
+            "$.ligand2_key",
+            "$.mean_s1",
+            "$.min_s1",
+            "$.mean_s2",
+            "$.min_s2",
+            "$.best_s1_cid1",
+            "$.best_s1_cid2",
+            "$.best_s2_cid1",
+            "$.best_s2_cid2",
+        ]
+    )
+
+    molecules = [
+        (
+            stk.BuildingBlock.init_from_file(
+                ligand_dir / f"confs_{l1}" / f"{l1}_c{s1cid1}_cuff.mol"
+            ),
+            stk.BuildingBlock.init_from_file(
+                ligand_dir / f"confs_{l2}" / f"{l2}_c{s1cid2}_cuff.mol"
+            ),
+            pair_key,
+            1,
+        )
+        if m1 < m2
+        else (
+            stk.BuildingBlock.init_from_file(
+                ligand_dir / f"confs_{l1}" / f"{l1}_c{s2cid1}_cuff.mol"
+            ),
+            stk.BuildingBlock.init_from_file(
+                ligand_dir / f"confs_{l2}" / f"{l2}_c{s2cid2}_cuff.mol"
+            ),
+            pair_key,
+            2,
+        )
+        for pair_key, l1, l2, s1cid1, s1cid2, s2cid1, s2cid2, m1, m2 in zip(
+            dataframe["key"],
+            dataframe["$.ligand1_key"],
+            dataframe["$.ligand2_key"],
+            dataframe["$.best_s1_cid1"],
+            dataframe["$.best_s1_cid2"],
+            dataframe["$.best_s2_cid1"],
+            dataframe["$.best_s2_cid2"],
+            dataframe["$.min_s1"],
+            dataframe["$.min_s2"],
+            strict=True,
+        )
+    ]
+    structures = [
+        merge_two_ligands(
+            mol1=i[0],
+            mol2=i[1],
+            pair_key=i[2],
+            state=i[3],
+            figures_dir=figures_dir,
+        )
+        for i in molecules
+    ]
+    shape_dict = chemiscope.convert_stk_bonds_as_shapes(
+        frames=structures,
+        bond_color="#000000",
+        bond_radius=0.12,
+    )
+
+    # Write the shape string for settings to turn them on automatically.
+    shape_string = ",".join(shape_dict.keys())
+
+    properties = {
+        "mean_s1": dataframe["$.mean_s1"].to_list(),
+        "mean_s2": dataframe["$.mean_s2"].to_list(),
+        "min_s1": dataframe["$.min_s1"].to_list(),
+        "min_s2": dataframe["$.min_s2"].to_list(),
+    }
+
+    chemiscope.write_input(
+        path=str(figures_dir / "candidates.json.gz"),
+        frames=structures,
+        properties=properties,
+        meta={"name": "Candidates."},
+        settings=chemiscope.quick_settings(
+            x="mean_s1",
+            y="mean_s2",
+            color="",
+            structure_settings={
+                "shape": shape_string,
+                "atoms": True,
+                "bonds": False,
+                "spaceFilling": False,
+            },
+        ),
+        shapes=shape_dict,
+    )
+
+
+def to_cg_chemiscope(
+    pair_db_path: pathlib.Path,
+    figures_dir: pathlib.Path,
+) -> None:
+    """Make plot."""
+    structures = []
+    properties = {
+        "mean_s1": [],
+        "mean_s2": [],
+        "min_s1": [],
+        "min_s2": [],
+    }
+    pair_db = atomlite.Database(pair_db_path)
+    for entry in pair_db.get_entries():
+        try:
+            molecule = stk.BuildingBlock.init_from_rdkit_mol(
+                atomlite.json_to_rdkit(entry.molecule)
+            )
+
+        except RuntimeError:
+            # Incase I had used the old algorithm that gives 2D structures.
+            mjson = entry.molecule
+
+            new_confs = [[*i, 0] for i in mjson["conformers"][0]]
+
+            mjson["conformers"][0] = new_confs
+            pair_db.update_entries(
+                atomlite.Entry(key=entry.key, molecule=mjson)
+            )
+            molecule = stk.BuildingBlock.init_from_rdkit_mol(
+                atomlite.json_to_rdkit(pair_db.get_entry(entry.key).molecule)
+            )
+
+        structures.append(molecule)
+
+        properties["mean_s1"].append(entry.properties["mean_s1"])
+        properties["mean_s2"].append(entry.properties["mean_s2"])
+        properties["min_s1"].append(entry.properties["min_s1"])
+        properties["min_s2"].append(entry.properties["min_s2"])
+
+    shape_dict = chemiscope.convert_stk_bonds_as_shapes(
+        frames=structures,
+        bond_color="#000000",
+        bond_radius=0.12,
+    )
+
+    # Write the shape string for settings to turn them on automatically.
+    shape_string = ",".join(shape_dict.keys())
+
+    chemiscope.write_input(
+        path=str(figures_dir / "cg_candidates.json.gz"),
+        frames=structures,
+        properties=properties,
+        meta={"name": "CG- Candidates."},
+        settings=chemiscope.quick_settings(
+            x="mean_s1",
+            y="mean_s2",
+            color="",
+            structure_settings={
+                "shape": shape_string,
+                "atoms": True,
+                "bonds": False,
+                "spaceFilling": False,
+            },
+        ),
+        shapes=shape_dict,
     )
 
 
@@ -352,6 +880,23 @@ def main() -> None:
                 pair_key=pair_key,
                 pair_db_path=pair_db_path,
             )
+
+    if args.share:
+        plot_timings(pair_db_path=pair_db_path, figures_dir=figures_dir)
+        plot_states(pair_db_path=pair_db_path, figures_dir=figures_dir)
+        to_cg_chemiscope(
+            pair_db_path=pair_db_path,
+            figures_dir=figures_dir,
+        )
+        to_chemiscope(
+            pair_db_path=pair_db_path,
+            ligand_dir=ligand_dir,
+            figures_dir=figures_dir,
+        )
+        to_csv(
+            pair_db_path=pair_db_path,
+            ligand_dir=ligand_dir,
+            figures_dir=figures_dir,
         )
 
 
