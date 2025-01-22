@@ -145,10 +145,9 @@ class ConstrainedXTBFF(stko.XTBFF):
                 atom3.__class__.__name__,
             )
             if (
-                (angle_type == ("N", "Pd", "N")
-                and (atom_ids[0] in ns_in_pyr and atom_ids[2] in ns_in_lig))
-                or (atom_ids[2] in ns_in_pyr and atom_ids[0] in ns_in_lig)
-            ):
+                angle_type == ("N", "Pd", "N")
+                and (atom_ids[0] in ns_in_pyr and atom_ids[2] in ns_in_lig)
+            ) or (atom_ids[2] in ns_in_pyr and atom_ids[0] in ns_in_lig):
                 constraints.append(tuple(atom_ids))
 
         # Do some fancy (actually hard-coded...) atom selection to get the

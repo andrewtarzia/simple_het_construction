@@ -5,7 +5,6 @@ import shutil
 
 import numpy as np
 import stk
-
 from shc.definitions import Study1EnvVariables
 from shc.matching_functions import vector_length
 from shc.study_1_ligand_analysis import (
