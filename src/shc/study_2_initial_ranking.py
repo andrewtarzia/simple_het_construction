@@ -155,19 +155,20 @@ def main() -> None:
         to_cg_chemiscope(
             pair_db_path=pair_db_path,
             figures_dir=figures_dir,
-            filname="initial_cg_candidates",
+            filename="initial_cg_candidates",
         )
         to_chemiscope(
             pair_db_path=pair_db_path,
             ligand_dir=ligand_dir,
             figures_dir=figures_dir,
-            filname="initial_candidates",
+            struct_dir=figures_dir / "initial_cscope_merged",
+            filename="initial_candidates",
         )
         to_csv(
             pair_db_path=pair_db_path,
             ligand_dir=ligand_dir,
             figures_dir=figures_dir,
-            filname="initial_candidates",
+            filename="initial_candidates",
         )
 
 
