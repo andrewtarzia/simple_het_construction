@@ -16,7 +16,11 @@ import stko
 
 from shc.definitions import EnvVariables, res_str
 from shc.matching_functions import mismatch_test
-from shc.utilities import to_atomlite_molecule
+from shc.utilities import (
+    merge_stk_molecules,
+    remake_atomlite_molecule,
+    to_atomlite_molecule,
+)
 
 
 def analyse_ligand_pair(  # noqa: PLR0915
@@ -41,6 +45,8 @@ def analyse_ligand_pair(  # noqa: PLR0915
     ctimes = []
     all_scores = []
     best_residual = float("inf")
+    best_s1_residual = float("inf")
+    best_s2_residual = float("inf")
     best_pair = None
     best_state = None
     best_s1_cid1 = None
@@ -109,27 +115,37 @@ def analyse_ligand_pair(  # noqa: PLR0915
         # path=f"{prefix_path}.state_1_parameter.{idx}",  # noqa: ERA001
         # property=float(pair_results.state_1_parameters[idx]),# noqa: ERA001
         # commit=False,# noqa: ERA001
-        if float(pair_results.state_1_result) < best_residual:
-            best_state = 1
-            best_pair = pair_results
+        if (
+            float(pair_results.state_1_result) < best_residual
+            or float(pair_results.state_2_result) < best_residual
+        ):
             best_residual = min(
                 (
                     float(pair_results.state_1_result),
                     float(pair_results.state_2_result),
                 )
             )
+            best_pair = pair_results
+
+            if float(pair_results.state_1_result) < float(
+                pair_results.state_2_result
+            ):
+                best_state = 1
+            elif float(pair_results.state_2_result) < float(
+                pair_results.state_1_result
+            ):
+                best_state = 2
+            else:
+                # They are the same.
+                pass
+
+        if float(pair_results.state_1_result) < best_s1_residual:
+            best_s1_residual = float(pair_results.state_1_result)
             best_s1_cid1 = cid_1
             best_s1_cid2 = cid_2
 
-        elif float(pair_results.state_2_result) < best_residual:
-            best_state = 2
-            best_pair = pair_results
-            best_residual = min(
-                (
-                    float(pair_results.state_1_result),
-                    float(pair_results.state_2_result),
-                )
-            )
+        if float(pair_results.state_2_result) < best_s2_residual:
+            best_s2_residual = float(pair_results.state_2_result)
             best_s2_cid1 = cid_1
             best_s2_cid2 = cid_2
 
@@ -165,8 +181,10 @@ def analyse_ligand_pair(  # noqa: PLR0915
                 "min_s1": np.min(state1_scores),
                 "mean_s2": np.mean(state1_scores),
                 "min_s2": np.min(state2_scores),
+                "best_s1_residual": best_s1_residual,
                 "best_s1_cid1": best_s1_cid1,
                 "best_s1_cid2": best_s1_cid2,
+                "best_s2_residual": best_s2_residual,
                 "best_s2_cid1": best_s2_cid1,
                 "best_s2_cid2": best_s2_cid2,
             },
@@ -178,7 +196,12 @@ def reanalyse_ligand_pair(
     pair_key: str,
     pair_db_path: atomlite.Database,
 ) -> None:
-    """Analyse a pair of ligands."""
+    """Re-analyse a pair of ligands.
+
+    This is a chance to efficiently update molecule schema or properties in a
+    database to avoid rerunning everything.
+
+    """
     pair_entry = atomlite.Database(pair_db_path).get_entry(pair_key)
 
     target_properties = [
@@ -208,6 +231,8 @@ def reanalyse_ligand_pair(
         "best_s1_cid2",
         "best_s2_cid1",
         "best_s2_cid2",
+        "best_s1_residual",
+        "best_s2_residual",
     ]
     missing_properties = [
         i for i in target_properties if i not in pair_entry.properties
@@ -271,14 +296,20 @@ def reanalyse_ligand_pair(
         "min_s1": np.min(state1_scores),
         "mean_s2": np.mean(state1_scores),
         "min_s2": np.min(state2_scores),
+        "best_s1_residual": best_s1_residual,
         "best_s1_cid1": best_s1_cid1,
         "best_s1_cid2": best_s1_cid2,
+        "best_s2_residual": best_s2_residual,
         "best_s2_cid1": best_s2_cid1,
         "best_s2_cid2": best_s2_cid2,
     }
 
-    atomlite.Database(pair_db_path).update_properties(
-        atomlite.PropertyEntry(key=pair_key, properties=new_properties)
+    atomlite.Database(pair_db_path).update_entries(
+        atomlite.Entry(
+            key=pair_key,
+            molecule=remake_atomlite_molecule(pair_entry.molecule),
+            properties=new_properties,
+        )
     )
 
 
@@ -530,11 +561,9 @@ def merge_two_ligands(
     mol2: stk.BuildingBlock,
     pair_key: str,
     state: int,
-    figures_dir: pathlib.Path,
+    struct_dir: pathlib.Path,
 ) -> stk.BuildingBlock:
     """Merge two ligands to be in one structure."""
-    struct_dir = figures_dir / "cscope_merged"
-    struct_dir.mkdir(exist_ok=True, parents=True)
     mol_file = struct_dir / f"{pair_key}_merged.mol"
     if not mol_file.exists():
         mol1 = bbprep.FurthestFGs().modify(
@@ -603,32 +632,159 @@ def merge_two_ligands(
             )
             if i.get_num_atoms() > 8  # noqa: PLR2004
         ]
-        atoms = []
-        bonds = []
-        pos_mat = []
-        for ligand in ligands:
-            atom_ids_map = {}
-            for atom in ligand.get_atoms():
-                new_id = len(atoms)
-                atom_ids_map[atom.get_id()] = new_id
-                atoms.append(
-                    stk.Atom(
-                        id=atom_ids_map[atom.get_id()],
-                        atomic_number=atom.get_atomic_number(),
-                        charge=atom.get_charge(),
-                    )
-                )
+        constructued = merge_stk_molecules(ligands)
+        constructued.write(mol_file)
 
-            bonds.extend(
-                i.with_ids(id_map=atom_ids_map) for i in ligand.get_bonds()
-            )
-            pos_mat.extend(list(ligand.get_position_matrix()))
+    else:
+        constructued = stk.BuildingBlock.init_from_file(mol_file)
 
-        constructued = stk.BuildingBlock.init(
-            atoms=atoms,
-            bonds=bonds,
-            position_matrix=np.array(pos_mat),
+    return stk.BuildingBlock.init_from_molecule(constructued)
+
+
+def merge_two_ligands_with_cg(  # noqa: PLR0913
+    mol1: stk.BuildingBlock,
+    mol2: stk.BuildingBlock,
+    cgmol: stk.BuildingBlock,
+    pair_key: str,
+    state: int,
+    struct_dir: pathlib.Path,
+) -> stk.BuildingBlock:
+    """Merge two ligands to be in one structure."""
+    struct_dir.mkdir(exist_ok=True, parents=True)
+    mol_file = struct_dir / f"{pair_key}_merged.mol"
+
+    if not mol_file.exists():
+        mol1 = bbprep.FurthestFGs().modify(
+            building_block=stk.BuildingBlock.init_from_molecule(
+                mol1,
+                functional_groups=(
+                    stko.functional_groups.ThreeSiteFactory(
+                        smarts="[#6]~[#7X2]~[#6]",
+                        bonders=(1,),
+                        deleters=(),
+                    ),
+                ),
+            ),
+            desired_functional_groups=2,
         )
+        mol2 = bbprep.FurthestFGs().modify(
+            building_block=stk.BuildingBlock.init_from_molecule(
+                mol2,
+                functional_groups=(
+                    stko.functional_groups.ThreeSiteFactory(
+                        smarts="[#6]~[#7X2]~[#6]",
+                        bonders=(1,),
+                        deleters=(),
+                    ),
+                ),
+            ),
+            desired_functional_groups=2,
+        )
+
+        # First, we know that the model moves CG models into x-y plane at
+        # specific origins.
+        m1_origin = np.array((-10, 0, 0))
+        m2_origin = np.array((4, 0, 0))
+        nn_axis = np.array((0, 1, 0))
+
+        mol1 = mol1.with_centroid(position=m1_origin)
+        mol2 = mol2.with_centroid(position=m2_origin)
+
+        # We know m1 faces [1,0,0] and m2 faces [-1, 0, 0]
+        placer_centroid = mol1.get_centroid(atom_ids=mol1.get_placer_ids())
+        core_centroid = mol1.get_centroid(atom_ids=mol1.get_core_atom_ids())
+        core_to_placer = placer_centroid - core_centroid
+        mol1 = mol1.with_rotation_between_vectors(
+            start=core_to_placer,
+            target=np.array([1, 0, 0]),
+            origin=mol1.get_centroid(),
+        )
+
+        placer_centroid = mol2.get_centroid(atom_ids=mol2.get_placer_ids())
+        core_centroid = mol2.get_centroid(atom_ids=mol2.get_core_atom_ids())
+        core_to_placer = placer_centroid - core_centroid
+        mol2 = mol2.with_rotation_between_vectors(
+            start=core_to_placer,
+            target=np.array([-1, 0, 0]),
+            origin=mol2.get_centroid(),
+        )
+
+        # Then orient with original axis.
+        fg0_position, fg1_position = (
+            mol1.get_centroid(fg.get_placer_ids())
+            for fg in mol1.get_functional_groups()
+        )
+        mol1 = mol1.with_rotation_between_vectors(
+            start=fg1_position - fg0_position,
+            target=nn_axis,
+            origin=mol1.get_centroid(),
+        )
+
+        fg0_position, fg1_position = (
+            mol2.get_centroid(fg.get_placer_ids())
+            for fg in mol2.get_functional_groups()
+        )
+        mol2 = mol2.with_rotation_between_vectors(
+            start=fg1_position - fg0_position,
+            target=nn_axis if state == 1 else -nn_axis,
+            origin=mol2.get_centroid(),
+        )
+
+        # Orient again into the xy plane.
+        placer_centroid = mol1.get_centroid(atom_ids=mol1.get_placer_ids())
+        core_centroid = mol1.get_centroid(atom_ids=mol1.get_core_atom_ids())
+        core_to_placer = placer_centroid - core_centroid
+        mol1 = mol1.with_rotation_between_vectors(
+            start=core_to_placer,
+            target=np.array([1, 0, 0]),
+            origin=mol1.get_centroid(),
+        )
+
+        placer_centroid = mol2.get_centroid(atom_ids=mol2.get_placer_ids())
+        core_centroid = mol2.get_centroid(atom_ids=mol2.get_core_atom_ids())
+        core_to_placer = placer_centroid - core_centroid
+        mol2 = mol2.with_rotation_between_vectors(
+            start=core_to_placer,
+            target=np.array([-1, 0, 0]),
+            origin=mol2.get_centroid(),
+        )
+
+        # Orient again with new NN axis.
+        hh1_ids = [
+            i.get_id() for i in cgmol.get_atoms() if i.get_atomic_number() == 1
+        ][:2]
+        hh2_ids = [
+            i.get_id() for i in cgmol.get_atoms() if i.get_atomic_number() == 1
+        ][2:]
+        fg0_position, fg1_position = (
+            mol1.get_centroid(fg.get_placer_ids())
+            for fg in mol1.get_functional_groups()
+        )
+        edge_position1, edge_position2 = list(
+            cgmol.get_atomic_positions(hh1_ids)
+        )
+        mol1 = mol1.with_rotation_between_vectors(
+            start=fg1_position - fg0_position,
+            target=edge_position2 - edge_position1,
+            origin=mol1.get_centroid(),
+        )
+
+        fg0_position, fg1_position = (
+            mol2.get_centroid(fg.get_placer_ids())
+            for fg in mol2.get_functional_groups()
+        )
+        edge_position1, edge_position2 = list(
+            cgmol.get_atomic_positions(hh2_ids)
+        )
+        mol2 = mol2.with_rotation_between_vectors(
+            start=fg1_position - fg0_position,
+            target=edge_position2 - edge_position1
+            if state == 1
+            else edge_position1 - edge_position2,
+            origin=mol2.get_centroid(),
+        )
+
+        constructued = merge_stk_molecules((mol1, mol2, cgmol))
 
         constructued.write(mol_file)
 
@@ -641,70 +797,88 @@ def merge_two_ligands(
 def to_chemiscope(
     pair_db_path: pathlib.Path,
     figures_dir: pathlib.Path,
+    struct_dir: pathlib.Path,
     ligand_dir: pathlib.Path,
     filename: str,
 ) -> None:
     """Make plot."""
-    dataframe = atomlite.Database(pair_db_path).get_property_df(
-        properties=[
-            "$.ligand1_key",
-            "$.ligand2_key",
-            "$.mean_s1",
-            "$.min_s1",
-            "$.mean_s2",
-            "$.min_s2",
-            "$.best_s1_cid1",
-            "$.best_s1_cid2",
-            "$.best_s2_cid1",
-            "$.best_s2_cid2",
-        ]
-    )
+    structures = []
+    properties = {
+        "key": [],
+        "mean_s1": [],
+        "mean_s2": [],
+        "min_s1": [],
+        "min_s2": [],
+    }
 
-    molecules = [
-        (
-            stk.BuildingBlock.init_from_file(
-                ligand_dir / f"confs_{l1}" / f"{l1}_c{s1cid1}_cuff.mol"
-            ),
-            stk.BuildingBlock.init_from_file(
-                ligand_dir / f"confs_{l2}" / f"{l2}_c{s1cid2}_cuff.mol"
-            ),
-            pair_key,
-            1,
+    pair_db = atomlite.Database(pair_db_path)
+    for entry in pair_db.get_entries():
+        try:
+            molecule = stk.BuildingBlock.init_from_rdkit_mol(
+                atomlite.json_to_rdkit(entry.molecule)
+            )
+
+        except RuntimeError:
+            # Incase I had used the old algorithm that gives 2D structures.
+            mjson = entry.molecule
+
+            new_confs = [[*i, 0] for i in mjson["conformers"][0]]
+
+            mjson["conformers"][0] = new_confs
+            pair_db.update_entries(
+                atomlite.Entry(key=entry.key, molecule=mjson)
+            )
+            molecule = stk.BuildingBlock.init_from_rdkit_mol(
+                atomlite.json_to_rdkit(pair_db.get_entry(entry.key).molecule)
+            )
+
+        l1 = entry.properties["ligand1_key"]
+        l2 = entry.properties["ligand2_key"]
+        s1cid1 = entry.properties["best_s1_cid1"]
+        s1cid2 = entry.properties["best_s1_cid2"]
+        s2cid1 = entry.properties["best_s2_cid1"]
+        s2cid2 = entry.properties["best_s2_cid2"]
+
+        cgmolecule_tuple = (
+            (
+                stk.BuildingBlock.init_from_file(
+                    ligand_dir / f"confs_{l1}" / f"{l1}_c{s1cid1}_cuff.mol"
+                ),
+                stk.BuildingBlock.init_from_file(
+                    ligand_dir / f"confs_{l2}" / f"{l2}_c{s1cid2}_cuff.mol"
+                ),
+                1,
+            )
+            if entry.properties["best_s1_residual"]
+            < entry.properties["best_s2_residual"]
+            else (
+                stk.BuildingBlock.init_from_file(
+                    ligand_dir / f"confs_{l1}" / f"{l1}_c{s2cid1}_cuff.mol"
+                ),
+                stk.BuildingBlock.init_from_file(
+                    ligand_dir / f"confs_{l2}" / f"{l2}_c{s2cid2}_cuff.mol"
+                ),
+                2,
+            )
         )
-        if m1 < m2
-        else (
-            stk.BuildingBlock.init_from_file(
-                ligand_dir / f"confs_{l1}" / f"{l1}_c{s2cid1}_cuff.mol"
-            ),
-            stk.BuildingBlock.init_from_file(
-                ligand_dir / f"confs_{l2}" / f"{l2}_c{s2cid2}_cuff.mol"
-            ),
-            pair_key,
-            2,
+
+        structures.append(
+            merge_two_ligands_with_cg(
+                mol1=cgmolecule_tuple[0],
+                mol2=cgmolecule_tuple[1],
+                cgmol=molecule,
+                pair_key=entry.key,
+                state=cgmolecule_tuple[2],
+                struct_dir=struct_dir,
+            )
         )
-        for pair_key, l1, l2, s1cid1, s1cid2, s2cid1, s2cid2, m1, m2 in zip(
-            dataframe["key"],
-            dataframe["$.ligand1_key"],
-            dataframe["$.ligand2_key"],
-            dataframe["$.best_s1_cid1"],
-            dataframe["$.best_s1_cid2"],
-            dataframe["$.best_s2_cid1"],
-            dataframe["$.best_s2_cid2"],
-            dataframe["$.min_s1"],
-            dataframe["$.min_s2"],
-            strict=True,
-        )
-    ]
-    structures = [
-        merge_two_ligands(
-            mol1=i[0],
-            mol2=i[1],
-            pair_key=i[2],
-            state=i[3],
-            figures_dir=figures_dir,
-        )
-        for i in molecules
-    ]
+
+        properties["mean_s1"].append(entry.properties["mean_s1"])
+        properties["mean_s2"].append(entry.properties["mean_s2"])
+        properties["min_s1"].append(entry.properties["min_s1"])
+        properties["min_s2"].append(entry.properties["min_s2"])
+        properties["key"].append(entry.key)
+
     shape_dict = chemiscope.convert_stk_bonds_as_shapes(
         frames=structures,
         bond_color="#000000",
@@ -713,14 +887,6 @@ def to_chemiscope(
 
     # Write the shape string for settings to turn them on automatically.
     shape_string = ",".join(shape_dict.keys())
-
-    properties = {
-        "key": dataframe["key"].to_list(),
-        "mean_s1": dataframe["$.mean_s1"].to_list(),
-        "mean_s2": dataframe["$.mean_s2"].to_list(),
-        "min_s1": dataframe["$.min_s1"].to_list(),
-        "min_s2": dataframe["$.min_s2"].to_list(),
-    }
 
     chemiscope.write_input(
         path=str(figures_dir / f"{filename}.json.gz"),
