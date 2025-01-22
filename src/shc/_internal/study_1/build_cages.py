@@ -6,14 +6,16 @@ from dataclasses import dataclass
 from itertools import combinations
 
 import stk
-from definitions import Study1EnvVariables
-from optimisation import optimisation_sequence
-from topologies import (
+
+from shc.definitions import Study1EnvVariables
+
+from .optimisation import optimisation_sequence
+from .topologies import (
     M30L60,
     heteroleptic_cages,
     ligand_cage_topologies,
 )
-from utilities import AromaticCNC, AromaticCNCFactory, get_furthest_pair_FGs
+from .utilities import AromaticCNC, AromaticCNCFactory, get_furthest_pair_FGs
 
 react_factory = stk.DativeReactionFactory(
     stk.GenericReactionFactory(
@@ -185,7 +187,7 @@ def define_to_build(  # noqa: C901
     lct = ligand_cage_topologies()
 
     to_build = {}
-    for lig in ligands:
+    for lig, lvalue in ligands.items():
         try:
             topo_strs = lct[lig]
         except KeyError:
@@ -193,43 +195,43 @@ def define_to_build(  # noqa: C901
 
         if "m2" in topo_strs:
             to_build[f"m2_{lig}"] = CageInfo(
-                tg=homoleptic_m2l4(pd, ligands[lig]),
+                tg=homoleptic_m2l4(pd, lvalue),
                 charge=4,
             )
 
         if "m3" in topo_strs:
             to_build[f"m3_{lig}"] = CageInfo(
-                tg=homoleptic_m3l6(pd, ligands[lig]),
+                tg=homoleptic_m3l6(pd, lvalue),
                 charge=6,
             )
 
         if "m4" in topo_strs:
             to_build[f"m4_{lig}"] = CageInfo(
-                tg=homoleptic_m4l8(pd, ligands[lig]),
+                tg=homoleptic_m4l8(pd, lvalue),
                 charge=8,
             )
 
         if "m6" in topo_strs:
             to_build[f"m6_{lig}"] = CageInfo(
-                tg=homoleptic_m6l12(pd, ligands[lig]),
+                tg=homoleptic_m6l12(pd, lvalue),
                 charge=12,
             )
 
         if "m12" in topo_strs:
             to_build[f"m12_{lig}"] = CageInfo(
-                tg=homoleptic_m12l24(pd, ligands[lig]),
+                tg=homoleptic_m12l24(pd, lvalue),
                 charge=24,
             )
 
         if "m24" in topo_strs:
             to_build[f"m24_{lig}"] = CageInfo(
-                tg=homoleptic_m24l48(pd, ligands[lig]),
+                tg=homoleptic_m24l48(pd, lvalue),
                 charge=48,
             )
 
         if "m30" in topo_strs:
             to_build[f"m30_{lig}"] = CageInfo(
-                tg=homoleptic_m30l60(pd, ligands[lig]),
+                tg=homoleptic_m30l60(pd, lvalue),
                 charge=60,
             )
 

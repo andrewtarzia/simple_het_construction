@@ -1,15 +1,28 @@
 """Script to analyse all cages constructed."""
 
-import glob
 import json
 import logging
-import os
 
 import stk
-from pywindow_module import PyWindow
-from study_1_cage_plotting import plot_strain_pore_sasa
-from topologies import heteroleptic_cages, ligand_cage_topologies
-from utilities import (
+
+from shc.definitions import Study1EnvVariables
+
+from .cage_plotting import (
+    plot_all_contributions,
+    plot_gsasa,
+    plot_gsolv,
+    plot_pore,
+    plot_property,
+    plot_qsqp,
+    plot_sasa,
+    plot_stab_energy,
+    plot_strain,
+    plot_strain_pore_sasa,
+    plot_topo_energy,
+)
+from .pywindow_module import PyWindow
+from .topologies import heteroleptic_cages, ligand_cage_topologies
+from .utilities import (
     AromaticCNCFactory,
     get_furthest_pair_FGs,
     get_mm_distance,
@@ -26,14 +39,14 @@ from utilities import (
 )
 
 
-def get_min_order_parameter(molecule):
+def get_min_order_parameter(molecule: stk.Molecule) -> float:
     order_results = get_order_values(mol=molecule, metal=46)
     return order_results["sq_plan"]["min"]
 
 
-def main() -> None:  # noqa: C901, PLR0912, PLR0915
+def main() -> None:  # noqa: C901, PLR0915
     """Run script."""
-    li_path = liga_path()
+    li_path = Study1EnvVariables.liga_path()
     ligands = {
         i.split("/")[-1].replace("_opt.mol", ""): (
             stk.BuildingBlock.init_from_file(
@@ -41,7 +54,7 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 functional_groups=(AromaticCNCFactory(),),
             )
         )
-        for i in glob.glob(str(li_path / "*_opt.mol"))
+        for i in li_path.glob("*_opt.mol")
     }
 
     ligands = {
@@ -51,10 +64,10 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
         for i in ligands
     }
 
-    _wd = cage_path()
-    _cd = calc_path()
-    _ld = liga_path()
-    _pd = project_path()
+    _wd = Study1EnvVariables.cage_path()
+    _cd = Study1EnvVariables.calc_path()
+    _ld = Study1EnvVariables.liga_path()
+    _pd = Study1EnvVariables.project_path()
 
     property_dictionary = {
         "cis": {
@@ -108,20 +121,20 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
         for topt in ("cis", "trans"):
             sname = _wd / f"{topt}_{l1}_{l2}_opt.mol"
             structure_files.append(str(sname))
-    logging.info(f"there are {len(structure_files)} structures.")
+    logging.info("there are %s structures.", {len(structure_files)})
 
     structure_results = {
         i.split("/")[-1].replace("_opt.mol", ""): {} for i in structure_files
     }
-    structure_res_file = os.path.join(_wd, "all_structure_res.json")
-    if os.path.exists(structure_res_file):
-        with open(structure_res_file) as f:
+    structure_res_file = _wd / "all_structure_res.json"
+    if structure_res_file.exists():
+        with structure_res_file.open("r") as f:
             structure_results = json.load(f)
     else:
         for s_file in structure_files:
             name = s_file.split("/")[-1].replace("_opt.mol", "")
             splits = name.split("_")
-            if len(splits) == 2:
+            if len(splits) == 2:  # noqa: PLR2004
                 prefix, lname = splits
                 if prefix not in ligand_cage_topologies()[lname]:
                     continue
@@ -251,74 +264,68 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 name, _cd
             ).get_results(molecule)
 
-        with open(structure_res_file, "w") as f:
+        with structure_res_file.open("w") as f:
             json.dump(structure_results, f, indent=4)
-
-    for name in structure_results:
-        if "pw_results" in structure_results[name]:
-            print(
-                name, structure_results[name]["pw_results"]["pore_volume_opt"]
-            )
 
     plot_strain_pore_sasa(
         results_dict=structure_results,
         outname="strain_pore_sasa",
     )
-    plotting.plot_strain(
+    plot_strain(
         results_dict=structure_results,
         outname="xtb_strain_energy",
         yproperty="xtb_lig_strain_au",
     )
-    plotting.plot_sasa(
+    plot_sasa(
         results_dict=structure_results,
         outname="xtb_sasa",
         yproperty="xtb_sasa",
     )
-    plotting.plot_pore(
+    plot_pore(
         results_dict=structure_results,
         outname="cage_pw_diameter",
         yproperty="pore_diameter_opt",
     )
     raise SystemExit
-    plotting.plot_all_contributions(
+    plot_all_contributions(
         results_dict=structure_results,
         outname="main_contributions",
     )
-    plotting.plot_gsasa(
+    plot_gsasa(
         results_dict=structure_results,
         outname="main_ssolv",
         yproperty="xtb_gsasa_au",
     )
-    plotting.plot_gsolv(
+    plot_gsolv(
         results_dict=structure_results,
         outname="main_gsolv",
         yproperty="xtb_gsolv_au",
     )
-    plotting.plot_topo_energy(
+    plot_topo_energy(
         results_dict=structure_results,
         outname="main_topology_ey",
     )
 
-    plotting.plot_stab_energy(
+    plot_stab_energy(
         results_dict=structure_results,
         outname="stabilisation_ey",
     )
-    plotting.plot_topo_energy(
+    plot_topo_energy(
         results_dict=structure_results,
         outname="gas_topology_ey",
         solvent="gas",
     )
-    plotting.plot_qsqp(
+    plot_qsqp(
         results_dict=structure_results,
         outname="cage_qsqp",
         yproperty="min_order_param",
     )
-    plotting.plot_property(
+    plot_property(
         results_dict=structure_results,
         outname="cage_poreangle",
         yproperty="pore_angle",
     )
-    plotting.plot_property(
+    plot_property(
         results_dict=structure_results,
         outname="cage_mm_distance",
         yproperty="mm_distance",

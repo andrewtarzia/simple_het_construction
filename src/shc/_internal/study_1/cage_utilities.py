@@ -12,8 +12,12 @@ import stko
 from pymatgen.analysis.local_env import LocalStructOrderParams
 from scipy.spatial.distance import euclidean
 
+from shc.definitions import Study1EnvVariables
 
-def convert_stk_to_pymatgen(stk_mol):
+from .plotting import name_parser
+
+
+def convert_stk_to_pymatgen(stk_mol: stk.Molecule) -> pmg.Molecule:
     """Convert stk.Molecule to pymatgen.Molecule.
 
     Parameters
@@ -29,7 +33,7 @@ def convert_stk_to_pymatgen(stk_mol):
     """
     stk_mol.write("temp.xyz")
     pmg_mol = pmg.Molecule.from_file("temp.xyz")
-    os.system("rm temp.xyz")
+    os.system("rm temp.xyz")  # noqa: S605, S607
 
     return pmg_mol
 
@@ -205,7 +209,7 @@ def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
     else:
         logging.info(f"xtb energy calculation of {name} with {solvent_list}")
         xtb = stko.XTBEnergy(
-            xtb_path=xtb_path(),
+            xtb_path=Study1EnvVariables.xtb_path,
             output_dir=output_dir,
             gfn_version=2,
             num_cores=6,
@@ -248,7 +252,7 @@ def get_xtb_sasa(molecule, name, charge, calc_dir, solvent):
     else:
         logging.info(f"xtb sasa calculation of {name} with {solvent_list}")
         xtb = XTBSasa(
-            xtb_path=xtb_path(),
+            xtb_path=Study1EnvVariables.xtb_path(),
             output_dir=output_dir,
             gfn_version=2,
             num_cores=6,
@@ -387,7 +391,7 @@ def get_xtb_free_energy(molecule, name, charge, calc_dir, solvent):
             f"xtb free energy calculation of {name} with {solvent_list}"
         )
         xtb = stko.XTBEnergy(
-            xtb_path=xtb_path(),
+            xtb_path=Study1EnvVariables.xtb_path(),
             output_dir=output_dir,
             gfn_version=2,
             num_cores=6,
@@ -403,7 +407,7 @@ def get_xtb_free_energy(molecule, name, charge, calc_dir, solvent):
         total_results = xtb_results.get_total_free_energy()
         total_free_energy = total_results[0]
         total_frequencies = xtb_results.get_frequencies()
-        with open(output_file, "w") as f:
+        with output_file.open("w") as f:
             f.write(f"{total_results[0]}\n")
         with open(freq_file, "w") as f:
             for freq in total_frequencies[0]:
@@ -463,9 +467,9 @@ def get_xtb_strain(
     exp_lig,
     solvent,
 ):
-    ls_file = os.path.join(calc_dir, f"{name}_strain_xtb.json")
-    if os.path.exists(ls_file):
-        with open(ls_file) as f:
+    ls_file = calc_dir / f"{name}_strain_xtb.json"
+    if ls_file.exists():
+        with ls_file.open("r") as f:
             strain_energies = json.load(f)
         return strain_energies
     strain_energies = {}
@@ -566,8 +570,9 @@ def get_mm_distance(molecule, metal_atom_num):
         for i in molecule.get_atoms()
         if i.get_atomic_number() == metal_atom_num
     ]
-    if len(atom_ids) != 2:
-        raise ValueError(f"{len(atom_ids)} metal atoms found. Expecting 2")
+    if len(atom_ids) != 2:  # noqa: PLR2004
+        msg = f"{len(atom_ids)} metal atoms found. Expecting 2"
+        raise ValueError(msg)
 
     position_matrix = molecule.get_position_matrix()
 

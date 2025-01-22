@@ -1,18 +1,18 @@
 """Module for pywindow functions."""
 
 import json
-import logging
-import os
+import pathlib
 
-import pywindow as pw
+import pywindow as pw  # pyright: ignore  # noqa: PGH003
+import stk
 
 
 class PyWindow:
-    def __init__(self, name, calc_dir):
+    def __init__(self, name: str, calc_dir: pathlib.Path) -> None:
         self._name = name
         self._calc_dir = calc_dir
 
-    def get_results(self, molecule):
+    def get_results(self, molecule: stk.Molecule) -> dict:
         results = {}
 
         xyz_file = str(self._calc_dir / f"{self._name}_pw.xyz")
@@ -21,12 +21,10 @@ class PyWindow:
 
         # Read in host from xyz file.
         molecule.write(xyz_file)
-        if os.path.exists(json_file):
-            logging.info(f"loading {json_file}")
-            with open(json_file) as f:
+        if json_file.exists():
+            with json_file.open("r") as f:
                 results = json.load(f)
         else:
-            logging.info(f"running pywindow on {self._name}:")
             molsys = pw.MolecularSystem.load_file(xyz_file)
             mol = molsys.system_to_molecule()
             try:
@@ -60,7 +58,7 @@ class PyWindow:
                     override=True,
                 )
 
-            with open(json_file, "w") as f:
+            with json_file.open("w") as f:
                 json.dump(results, f)
 
         return results

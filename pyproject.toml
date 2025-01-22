@@ -16,6 +16,7 @@ dependencies = [
     "stk",
     "rdkit",
     "chemiscope",
+    "pywindowx",
 ]
 requires-python = ">=3.11"
 dynamic = ["version"]

@@ -1,14 +1,16 @@
 """Script to build the ligand in this project."""
 
 import logging
-import os
-import sys
+import pathlib
 
 import stk
 import stko
-from rdkit.Chem import AllChem as rdkit
+from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import Draw
-from utilities import (
+
+from shc.definitions import Study1EnvVariables
+
+from .utilities import (
     AromaticCNCFactory,
     calculate_N_centroid_N_angle,
     get_furthest_pair_FGs,
@@ -17,7 +19,12 @@ from utilities import (
 )
 
 
-def draw_grid(names, smiles, image_file):
+def draw_grid(
+    names: list[str],
+    smiles: list[str],
+    image_file: pathlib.Path,
+) -> None:
+    """Draw a grid of molecules with rdkit."""
     mols = [rdkit.MolFromSmiles(i) for i in smiles]
     svg = Draw.MolsToGridImage(
         mols,
@@ -26,11 +33,16 @@ def draw_grid(names, smiles, image_file):
         legends=names,
         useSVG=True,
     )
-    with open(image_file, "w") as f:
+    with image_file.open("w") as f:
         f.write(svg)
 
 
-def select_conformer_xtb(molecule, name, lowe_output, calc_dir):
+def select_conformer_xtb(
+    molecule: stk.Molecule,
+    name: str,
+    lowe_output: pathlib.Path,
+    calc_dir: pathlib.Path,
+) -> stk.Molecule:
     """Select and optimize a conformer with desired directionality.
 
     Currently:
@@ -68,14 +80,14 @@ def select_conformer_xtb(molecule, name, lowe_output, calc_dir):
         new_mol = new_mol.with_functional_groups(
             functional_groups=get_furthest_pair_FGs(new_mol),
         )
-        if os.path.exists(conf_opt_file_name):
+        if conf_opt_file_name.exists():
             new_mol = new_mol.with_structure_from_file(
                 path=conf_opt_file_name,
             )
         else:
-            logging.info(f"xtb opt of {name} conformer {cid}")
+            logging.info("xtb opt of %s conformer %s", name, cid)
             xtb_opt = stko.XTB(
-                xtb_path=xtb_path(),
+                xtb_path=Study1EnvVariables.xtb_path(),
                 output_dir=calc_dir / f"{name}_{cid}_ligxtb",
                 gfn_version=2,
                 num_cores=6,
@@ -101,23 +113,23 @@ def select_conformer_xtb(molecule, name, lowe_output, calc_dir):
             solvent="dmso",
         )
         if angle < min_angle:
-            logging.info(f">> new selected conformer: {cid}")
+            logging.info(">> new selected conformer: %s", cid)
             min_angle = angle
             final_molecule = stk.BuildingBlock.init_from_molecule(
                 new_mol,
             )
 
         if energy < min_energy:
-            logging.info(f">> new lowest energy conformer: {cid}")
+            logging.info(">> new lowest energy conformer: %s", cid)
             min_energy = energy
             new_mol.write(str(lowe_output))
-            with open(lowe_energy_output, "w") as f:
+            with lowe_energy_output.open("w") as f:
                 f.write(f"{min_energy}\n")
 
     return final_molecule
 
 
-def ligand_smiles():
+def ligand_smiles() -> dict[str, str]:
     return {
         # Diverging.
         "l1": "C1=NC=CC(C2=CC=C3OC4C=CC(C5C=CN=CC=5)=CC=4C3=C2)=C1",
@@ -180,20 +192,10 @@ def ligand_smiles():
 
 def main() -> None:
     """Run script."""
-    if len(sys.argv) != 1:
-        logging.info(f"Usage: {__file__}\n   Expected 0 arguments:")
-        sys.exit()
-    else:
-        pass
-
-    _wd = liga_path()
-    _cd = calc_path()
-
-    if not os.path.exists(_wd):
-        os.mkdir(_wd)
-
-    if not os.path.exists(_cd):
-        os.mkdir(_cd)
+    _wd = Study1EnvVariables.liga_path()
+    _wd.mkdir(exists_ok=True)
+    _cd = Study1EnvVariables.calc_path()
+    _cd.mkdir(exists_ok=True)
 
     lsmiles = ligand_smiles()
     for lig in lsmiles:
@@ -206,8 +208,8 @@ def main() -> None:
         )
         unopt_mol.write(unopt_file)
 
-        if not os.path.exists(opt_file):
-            logging.info(f"selecting construction ligand for {lig}")
+        if not opt_file.exists():
+            logging.info("selecting construction ligand for %s", lig)
             if lig[0] == "l":
                 opt_mol = select_conformer_xtb(
                     molecule=unopt_mol,
@@ -218,9 +220,9 @@ def main() -> None:
                 opt_mol.write(opt_file)
 
     draw_grid(
-        names=[i for i in lsmiles],
+        names=list(lsmiles),
         smiles=[lsmiles[i] for i in lsmiles],
-        image_file=str(figu_path() / "ligands.svg"),
+        image_file=str(Study1EnvVariables.figu_path / "ligands.svg"),
     )
 
 

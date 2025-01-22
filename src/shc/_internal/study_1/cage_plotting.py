@@ -6,7 +6,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from shc.study_1_plotting import axes_labels
+from shc.definitions import Study1EnvVariables
+
+from .plotting import axes_labels
 
 
 def plot_strain_pore_sasa(results_dict, outname):
@@ -90,7 +92,7 @@ def plot_strain_pore_sasa(results_dict, outname):
 
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.pdf"),
+        Study1EnvVariables.figu_path / f"{outname}.pdf",
         dpi=720,
         bbox_inches="tight",
     )
@@ -975,7 +977,7 @@ def plot_stab_energy(results_dict, outname, solvent=None):
     ax.legend(fontsize=16)
     fig.tight_layout()
     fig.savefig(
-        os.path.join(figu_path(), f"{outname}.png"),
+        Study1EnvVariables.figu_path / f"{outname}.png",
         dpi=360,
         bbox_inches="tight",
     )

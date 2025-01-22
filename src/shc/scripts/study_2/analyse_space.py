@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import stk
 import stko
-from definitions import EnvVariables
 from matplotlib import colors
 from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import rdMolDescriptors, rdmolops
+
+from shc.definitions import EnvVariables
 
 
 def get_num_alkynes(rdkit_mol: rdkit.Mol) -> int:

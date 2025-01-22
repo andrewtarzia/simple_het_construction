@@ -16,7 +16,7 @@ from rmsd import kabsch_rmsd
 
 from shc.definitions import Study1EnvVariables
 from shc.matching_functions import vector_length
-from shc.study_1_plotting import (
+from shc.plotting import (
     gs_table,
     plot_all_geom_scores_simplified,
     plot_all_ligand_pairings,
