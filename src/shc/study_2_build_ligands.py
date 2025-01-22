@@ -502,8 +502,7 @@ def explore_ligand(
 ) -> None:
     """Do conformer scan."""
     st = time.time()
-    conf_dir = ligand_dir / f"confs_{ligand_name}"
-    conf_dir.mkdir(exist_ok=True)
+    conf_database_path = ligand_dir / f"confs_{ligand_name}"
 
     logging.info("building conformer ensemble of %s", ligand_name)
     confs = molecule.to_rdkit_mol()
@@ -516,7 +515,7 @@ def explore_ligand(
     conformers_kept = []
     min_energy = float("inf")
     for cid in cids:
-        conf_opt_file_name = f"{ligand_name}_c{cid}_cuff.mol"
+        conf_key = f"{ligand_name}_{cid}_aa"
 
         # Update stk_mol to conformer geometry.
         new_mol = update_from_rdkit_conf(
@@ -585,10 +584,8 @@ def explore_ligand(
         if min_rmsd < EnvVariables.rmsd_threshold:
             continue
 
-        new_mol.write(conf_dir / conf_opt_file_name)
         conformers_kept.append((cid, new_mol))
         analyser = stko.molecule_analysis.DitopicThreeSiteAnalyser()
-
         lig_conf_data[cid] = {
             "NcentroidN_angle": analyser.get_binder_centroid_angle(new_mol),
             "NCCN_dihedral": analyser.get_binder_adjacent_torsion(new_mol),
@@ -597,6 +594,13 @@ def explore_ligand(
             "UFFEnergy;kj/mol": energy * 4.184,
         }
         num_confs_kept += 1
+
+        conf_entry = atomlite.Entry.from_rdkit(key=conf_key, molecule=new_mol)
+
+        new_mol.write("t.mol")
+
+        raise SystemExit
+        atomlite.Database(conf_database_path).add_entries(conf_entry)
 
     entry = atomlite.Entry.from_rdkit(
         key=ligand_name,
@@ -627,6 +631,7 @@ def main() -> None:
         "rerun component grid making - components_2d, delete images, and use rdkit to make a nice grid"
     )
     raise SystemExit("rerun build ligands to not use RMSD weirdly")
+    raise SystemExit("rerun with new conformer db file")
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
     calculation_dir = pathlib.Path(
         "/home/atarzia/workingspace/cpl/calculations"
