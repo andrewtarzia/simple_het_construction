@@ -161,24 +161,23 @@ def get_order_values(mol, metal, per_site=False):
     if per_site:
         results = order_values
         return results
-    else:
-        # Get max, mins and averages of all OPs for the whole molecule.
-        OPs = [order_values[i].keys() for i in order_values][0]
-        OP_lists = {}
-        for OP in OPs:
-            OP_lists[OP] = [order_values[i][OP] for i in order_values]
+    # Get max, mins and averages of all OPs for the whole molecule.
+    OPs = [order_values[i].keys() for i in order_values][0]
+    OP_lists = {}
+    for OP in OPs:
+        OP_lists[OP] = [order_values[i][OP] for i in order_values]
 
-        results = {
-            # OP: (min, max, avg)
-            i: {
-                "min": min(OP_lists[i]),
-                "max": max(OP_lists[i]),
-                "avg": np.average(OP_lists[i]),
-            }
-            for i in OP_lists
+    results = {
+        # OP: (min, max, avg)
+        i: {
+            "min": min(OP_lists[i]),
+            "max": max(OP_lists[i]),
+            "avg": np.average(OP_lists[i]),
         }
+        for i in OP_lists
+    }
 
-        return results
+    return results
 
 
 def get_xtb_energy(molecule, name, charge, calc_dir, solvent):
@@ -451,10 +450,9 @@ def get_dft_energy(name, txt_file):
             number = line.strip().split()[1]
             if number == "None":
                 return None
-            else:
-                energy = float(number)
-                # kJmol-1
-                return energy
+            energy = float(number)
+            # kJmol-1
+            return energy
 
 
 def get_xtb_strain(

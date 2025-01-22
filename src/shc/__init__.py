@@ -10,8 +10,8 @@ from shc import (
 
 __all__ = [
     "definitions",
-    "study_1_plotting",
     "matching_functions",
-    "utilities",
+    "study_1_plotting",
     "study_2_build_ligands",
+    "utilities",
 ]

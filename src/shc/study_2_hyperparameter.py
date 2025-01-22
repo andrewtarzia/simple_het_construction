@@ -129,7 +129,7 @@ def analyse_ligand_pair(  # noqa: PLR0913
     pair_db.connection.commit()
     ft = time.time()
     logging.info(
-        "pairing %s, %s: " "%s s " "(%s s" " per pair) - %s pairs passed",
+        "pairing %s, %s: %s s (%s s per pair) - %s pairs passed",
         ligand1,
         ligand2,
         round((ft - st), 2),

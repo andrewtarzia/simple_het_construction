@@ -375,8 +375,7 @@ def gs_table(results_dict: dict, dihedral_cutoff: float) -> None:
 
             geom_score = rdict[cid_pair]["geom_score"]
             geom_scores.append(geom_score)
-            if geom_score < min_geom_score:
-                min_geom_score = geom_score
+            min_geom_score = min(geom_score, min_geom_score)
 
             if geom_score < 0.45:  # noqa: PLR2004
                 good_geoms += 1

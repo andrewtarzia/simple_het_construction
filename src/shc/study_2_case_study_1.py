@@ -174,7 +174,7 @@ def analyse_ligand_pair(  # noqa: PLR0913
     pair_db.connection.commit()
     ft = time.time()
     logging.info(
-        "pairing %s, %s: " "%s s " "(%s s" " per pair) - %s pairs passed",
+        "pairing %s, %s: %s s (%s s per pair) - %s pairs passed",
         ligand1,
         ligand2,
         round((ft - st), 2),
@@ -866,8 +866,8 @@ def symmetric_plot(  # noqa: PLR0915
             [0],
             [0],
             color="k",
-            label=f"$y={round(slope,2)}x+{round(intercept,2)}$ "
-            f"({round(r_value**2,2)})",
+            label=f"$y={round(slope, 2)}x+{round(intercept, 2)}$ "
+            f"({round(r_value**2, 2)})",
             alpha=1,
         ),
     ]

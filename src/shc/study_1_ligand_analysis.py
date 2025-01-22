@@ -276,7 +276,7 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 conf_data_file=confuff_data_file,
             )
             logging.info(
-                "time taken for conf gen of %s: " "%s s",
+                "time taken for conf gen of %s: %s s",
                 lig,
                 round(time.time() - st, 2),
             )

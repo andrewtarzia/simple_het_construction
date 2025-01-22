@@ -28,15 +28,13 @@ class ConstrainedXTBFF(stko.XTBFF):
             if len(const) == 3:  # noqa: PLR2004
                 front = "    angle: "
                 end = ", 90\n"
-                constrain_str += (
-                    f"{front}{const[0]+1}, {const[1]+1}, {const[2]+1}{end}"
-                )
+                constrain_str += f"{front}{const[0] + 1}, {const[1] + 1}, {const[2] + 1}{end}"
             elif len(const) == 4:  # noqa: PLR2004
                 front = "    dihedral: "
                 end = ", 0\n"
                 constrain_str += (
-                    f"{front}{const[0]+1}, {const[1]+1}, {const[2]+1},"
-                    f" {const[3]+1}{end}"
+                    f"{front}{const[0] + 1}, {const[1] + 1}, {const[2] + 1},"
+                    f" {const[3] + 1}{end}"
                 )
 
             else:
@@ -147,8 +145,8 @@ class ConstrainedXTBFF(stko.XTBFF):
                 atom3.__class__.__name__,
             )
             if (
-                angle_type == ("N", "Pd", "N")
-                and (atom_ids[0] in ns_in_pyr and atom_ids[2] in ns_in_lig)
+                (angle_type == ("N", "Pd", "N")
+                and (atom_ids[0] in ns_in_pyr and atom_ids[2] in ns_in_lig))
                 or (atom_ids[2] in ns_in_pyr and atom_ids[0] in ns_in_lig)
             ):
                 constraints.append(tuple(atom_ids))

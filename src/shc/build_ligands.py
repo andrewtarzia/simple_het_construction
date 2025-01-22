@@ -142,10 +142,10 @@ def ligand_smiles():
         ),
         # Experimental, but assembly tested.
         "ll1": (
-            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=" "C1"
+            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
         ),
         "ls": (
-            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC" "=C1"
+            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
         ),
         "ll2": (
             "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
@@ -153,7 +153,7 @@ def ligand_smiles():
         ),
         # Experimental.
         "e10": (
-            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=" "C1"
+            "C1=CC(C#CC2=CC3C4C=C(C#CC5=CC=CN=C5)C=CC=4N(C)C=3C=C2)=CN=C1"
         ),
         "e11": ("C1N=CC=CC=1C1=CC2=C(C3=C(C2(C)C)C=C(C2=CN=CC=C2)C=C3)C=C1"),
         "e12": "C1=CC=C(C2=CC3C(=O)C4C=C(C5=CN=CC=C5)C=CC=4C=3C=C2)C=N1",
@@ -162,10 +162,10 @@ def ligand_smiles():
             "O)C3C=CC=NC=3)=O)=C5)C)C2=O)C=NC=1"
         ),
         "e14": (
-            "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)" "=C1"
+            "C1=CN=CC(C#CC2C=CC3C(=O)C4C=CC(C#CC5=CC=CN=C5)=CC=4C=3C=2)=C1"
         ),
         "e16": (
-            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC" "=C1"
+            "C(C1=CC2C3C=C(C4=CC=NC=C4)C=CC=3C(OC)=C(OC)C=2C=C1)1=CC=NC=C1"
         ),
         "e17": (
             "C12C=CN=CC=1C(C#CC1=CC=C3C(C(C4=C(N3C)C=CC(C#CC3=CC=CC5C3="
@@ -181,7 +181,7 @@ def ligand_smiles():
 def main() -> None:
     """Run script."""
     if len(sys.argv) != 1:
-        logging.info(f"Usage: {__file__}\n" "   Expected 0 arguments:")
+        logging.info(f"Usage: {__file__}\n   Expected 0 arguments:")
         sys.exit()
     else:
         pass
