@@ -97,21 +97,33 @@ def main() -> None:
             )
 
     if args.share:
-        plot_timings(pair_db_path=pair_db_path, figures_dir=figures_dir)
-        plot_states(pair_db_path=pair_db_path, figures_dir=figures_dir)
+        plot_timings(
+            pair_db_path=pair_db_path,
+            figures_dir=figures_dir,
+            filename="plot_timings",
+        )
+        plot_states(
+            pair_db_path=pair_db_path,
+            figures_dir=figures_dir,
+            filename="plot_states",
+        )
         to_cg_chemiscope(
             pair_db_path=pair_db_path,
             figures_dir=figures_dir,
+            filename="cg_candidates",
         )
         to_chemiscope(
             pair_db_path=pair_db_path,
             ligand_dir=ligand_dir,
             figures_dir=figures_dir,
+            struct_dir=figures_dir / "cscope_merged",
+            filename="candidates",
         )
         to_csv(
             pair_db_path=pair_db_path,
             ligand_dir=ligand_dir,
             figures_dir=figures_dir,
+            filename="candidates",
         )
 
 
