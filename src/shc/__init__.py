@@ -1,17 +1,11 @@
 """Module for matching heteroleptic ligands."""
 
-from shc import (
-    definitions,
-    matching_functions,
-    study_1_plotting,
-    study_2_build_ligands,
-    utilities,
-)
+from shc import definitions, geometry, matching_functions, study_2, utilities
 
 __all__ = [
     "definitions",
+    "geometry",
     "matching_functions",
-    "study_1_plotting",
-    "study_2_build_ligands",
+    "study_2",
     "utilities",
 ]

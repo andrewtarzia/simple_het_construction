@@ -7,7 +7,7 @@ import pathlib
 import atomlite
 import numpy as np
 
-from shc.study_2_utilities import (
+from shc.study_2 import (
     analyse_ligand_pair,
     plot_states,
     plot_timings,

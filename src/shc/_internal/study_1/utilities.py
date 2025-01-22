@@ -17,7 +17,7 @@ class AromaticCNCFactory(stk.FunctionalGroupFactory):
         self._bonders = bonders
         self._deleters = deleters
 
-    def get_functional_groups(self, molecule: stk.Molecule):  # noqa: ANN201
+    def get_functional_groups(self, molecule: stk.Molecule):
         """Get functional groups."""
         generic_functional_groups = stk.SmartsFunctionalGroupFactory(
             smarts="[#6]~[#7X2]~[#6]",
