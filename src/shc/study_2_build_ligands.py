@@ -212,28 +212,27 @@ def generate_all_ligands(  # noqa: C901
         (ligand_dir / "keys.db").unlink()
     key_db = atomlite.Database(ligand_dir / "keys.db")
 
-    for lig in core_smiles:
-        rdkit_mol = rdkit.MolFromSmiles(core_smiles[lig])
+    for lig, smi in core_smiles.items():
+        rdkit_mol = rdkit.MolFromSmiles(smi)
         Draw.MolToFile(
             rdkit_mol, components_dir / f"core_{lig}_2d.png", size=(300, 300)
         )
 
-    for lig in linker_smiles:
-        rdkit_mol = rdkit.MolFromSmiles(linker_smiles[lig])
+    for lig, smi in linker_smiles.items():
+        rdkit_mol = rdkit.MolFromSmiles(smi)
         Draw.MolToFile(
             rdkit_mol, components_dir / f"link_{lig}_2d.png", size=(300, 300)
         )
 
-    for lig in binder_smiles:
-        rdkit_mol = rdkit.MolFromSmiles(binder_smiles[lig])
+    for lig, smi in binder_smiles.items():
+        rdkit_mol = rdkit.MolFromSmiles(smi)
         Draw.MolToFile(
             rdkit_mol, components_dir / f"bind_{lig}_2d.png", size=(300, 300)
         )
 
     count = 0
 
-    for core_name in core_smiles:
-        core = core_smiles[core_name]
+    for core_name, core in core_smiles.items():
         logging.info("c%s: at count %s", core_name, count)
 
         for link1_name, link2_name in it.combinations(linker_smiles, r=2):
@@ -624,6 +623,9 @@ def explore_ligand(
 
 def main() -> None:
     """Run script."""
+    raise SystemExit(
+        "rerun component grid making - components_2d, delete images, and use rdkit to make a nice grid"
+    )
     raise SystemExit("rerun build ligands to not use RMSD weirdly")
     ligand_dir = pathlib.Path("/home/atarzia/workingspace/cpl/ligand_analysis")
     calculation_dir = pathlib.Path(
@@ -662,18 +664,13 @@ def main() -> None:
         b1, l1, c, l2, b2 = comp_split
         if (
             (
-                b1 != "x"
-                and int(b1) in rmed_binders
-                or b2 != "x"
-                and int(b2) in rmed_binders
+                (b1 != "x" and int(b1) in rmed_binders)
+                or (b2 != "x" and int(b2) in rmed_binders)
             )
-            or l1 != "x"
-            and int(l1) in rmed_linkers
+            or (l1 != "x" and int(l1) in rmed_linkers)
             or (
-                l2 != "x"
-                and int(l2) in rmed_linkers
-                or c != "x"
-                and int(c) in rmed_cores
+                (l2 != "x" and int(l2) in rmed_linkers)
+                or (c != "x" and int(c) in rmed_cores)
             )
         ):
             entries_to_delete.append(entry.key)
