@@ -21,7 +21,7 @@ def plot_conformer_props(
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    for ligand in structure_results:
+    for ligand, sres in structure_results.items():
         if "e" in ligand:
             continue
         if "ll" in ligand:
@@ -29,7 +29,6 @@ def plot_conformer_props(
         if "ls" in ligand:
             continue
         original_number = 500
-        sres = structure_results[ligand]
         after_rmsd = len(sres)
 
         low_energy = low_energy_values[ligand][1]
@@ -42,10 +41,10 @@ def plot_conformer_props(
         after_strain = len(within_strain)
 
         within_torsion = {}
-        for cid in within_strain:
+        for cid, strain_count in within_strain.items():
             dihedral = within_strain[cid]["NCCN_dihedral"]
             if abs(dihedral) <= dihedral_cutoff:
-                within_torsion[cid] = within_strain[cid]
+                within_torsion[cid] = strain_count
 
         after_torsion = len(within_torsion)
         logging.info(

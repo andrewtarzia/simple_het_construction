@@ -14,9 +14,13 @@ from rdkit.Chem import AllChem as rdkit  # noqa: N813
 from rdkit.Chem import Draw
 from rmsd import kabsch_rmsd
 
-from shc.definitions import Study1EnvVariables
-from shc.matching_functions import vector_length
-from shc.plotting import (
+from shc.definitions import MatchingSettings, Study1EnvVariables
+from shc.study_1 import (
+    AromaticCNCFactory,
+    calculate_n_centroid_n_angle,
+    calculate_nccn_dihedral,
+    calculate_nn_bcn_angles,
+    calculate_nn_distance,
     gs_table,
     plot_all_geom_scores_simplified,
     plot_all_ligand_pairings,
@@ -26,14 +30,7 @@ from shc.plotting import (
     plot_all_ligand_pairings_simplified,
     plot_single_distribution,
 )
-from shc.utilities import (
-    AromaticCNCFactory,
-    calculate_n_centroid_n_angle,
-    calculate_nccn_dihedral,
-    calculate_nn_bcn_angles,
-    calculate_nn_distance,
-    update_from_rdkit_conf,
-)
+from shc.utilities import update_from_rdkit_conf
 
 
 def study_1_get_test_1(large_c_dict: dict, small_c_dict: dict) -> float:
@@ -408,7 +405,7 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
                 length_dev = study_1_get_test_2(
                     large_c_dict=large_c_dict,
                     small_c_dict=small_c_dict,
-                    pdn_distance=vector_length,
+                    pdn_distance=MatchingSettings.vector_length,
                 )
                 geom_score = abs(angle_dev - 1) + abs(length_dev - 1)
 
