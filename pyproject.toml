@@ -85,31 +85,3 @@ convention = "google"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_functions = ["test_*"]
-
-[tool.mypy]
-show_error_codes = true
-implicit_optional = false
-warn_no_return = true
-strict_optional = true
-
-[[tool.mypy.overrides]]
-module = [
-    "rdkit.*",
-    "scipy.*",
-    "pytest_lazyfixture.*",
-    "pathos.*",
-    "matplotlib.*",
-    "pandas.*",
-    "seaborn.*",
-    "mchammer.*",
-    "spindry.*",
-    "pymongo.*",
-    "vabene.*",
-    "setuptools.*",
-    "stk.*",
-    "stko.*",
-    "networkx.*",
-    "openbabel.*",
-    "MDAnalysis.*",
-]
-ignore_missing_imports = true
