@@ -1778,13 +1778,13 @@ def main() -> None:
         ),
     }
 
-    for lname in ligand_smiles:
+    for lname, lsmile in ligand_smiles.items():
         lowe_file = ligand_dir / f"{lname}_lowe.mol"
         if lowe_file.exists():
             molecule = stk.BuildingBlock.init_from_file(lowe_file)
         else:
             # Build polymer.
-            molecule = stk.BuildingBlock(smiles=ligand_smiles[lname])
+            molecule = stk.BuildingBlock(smiles=lsmile)
             molecule = stko.ETKDG().optimize(molecule)
 
         if not ligand_db.has_entry(key=lname):
