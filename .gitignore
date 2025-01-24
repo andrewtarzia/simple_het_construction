@@ -21,4 +21,4 @@ tests/failures.txt
 .pytest_cache
 .ruff_cache
 
-tests/study_1_reproduce/test_output
+tests/reproductions/test_output
