@@ -354,9 +354,7 @@ def gs_table(results_dict: dict, dihedral_cutoff: float) -> None:
     """Print g table."""
     logging.info("plotting: making gs table")
 
-    for pair_name in results_dict:
-        rdict = results_dict[pair_name]
-
+    for pair_name, rdict in results_dict.items():
         if "e" in pair_name:
             continue
 
@@ -388,6 +386,36 @@ def gs_table(results_dict: dict, dihedral_cutoff: float) -> None:
             round(np.mean(geom_scores), 2),
             round(np.std(geom_scores), 2),
         )
+
+
+def find_min_conformers(results_dict: dict, dihedral_cutoff: float) -> None:
+    """Print min conformers for each pair."""
+    for pair_name, rdict in results_dict.items():
+        min_geom_score = 1e24
+        min_conformers = None
+
+        for cid_pair in rdict:
+            if (
+                abs(rdict[cid_pair]["large_dihedral"]) > dihedral_cutoff
+                or abs(rdict[cid_pair]["small_dihedral"]) > dihedral_cutoff
+            ):
+                continue
+
+            geom_score = rdict[cid_pair]["geom_score"]
+            if geom_score < min_geom_score:
+                min_geom_score = geom_score
+                min_conformers = cid_pair
+
+        mol1 = pair_name.split(",")[0] + "-" + min_conformers.split(",")[0]
+        mol2 = pair_name.split(",")[1] + "-" + min_conformers.split(",")[1]
+        logging.info(
+            "%s: %s with %s AND %s",
+            pair_name,
+            round(min_geom_score, 2),
+            mol1,
+            mol2,
+        )
+    raise SystemExit
 
 
 def simple_beeswarm(

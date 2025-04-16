@@ -21,6 +21,7 @@ from shc.study_1 import (
     calculate_nccn_dihedral,
     calculate_nn_bcn_angles,
     calculate_nn_distance,
+    find_min_conformers,
     gs_table,
     plot_all_geom_scores_simplified,
     plot_all_ligand_pairings,
@@ -446,6 +447,10 @@ def main() -> None:  # noqa: C901, PLR0912, PLR0915
 
     # Figure in manuscript.
     gs_table(
+        results_dict=pair_info,
+        dihedral_cutoff=Study1EnvVariables.dihedral_cutoff,
+    )
+    find_min_conformers(
         results_dict=pair_info,
         dihedral_cutoff=Study1EnvVariables.dihedral_cutoff,
     )
